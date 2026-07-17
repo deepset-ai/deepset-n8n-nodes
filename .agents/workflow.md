@@ -177,11 +177,15 @@ Do not re-diagnose this from scratch — it's an upstream dependency-resolution
 issue in n8n's bundled AI/langchain nodes, not something fixable in this
 repo.
 
-### Testing against the `gallant_satoshi` Docker container
-The user tests this node against their own local n8n instance running in a
-Docker container named `gallant_satoshi` (see `docker inspect gallant_satoshi`
-for its mounts/env — only `~/.n8n` on the host is mounted, to `/home/node/.n8n`
-in the container).
+### Testing against a local n8n Docker container
+If you're testing this node against a local n8n instance running in a Docker
+container — as opposed to `n8n-node dev`'s own built-in instance, or
+`--external-n8n` pointed at a global/npx install (see the "Local testing"
+section of each package's README) — the commands below use `<container>` as a
+placeholder for whatever you've named your own container (`docker ps` to find
+it). They also assume the common setup of mounting only `~/.n8n` on the host
+into `/home/node/.n8n` in the container; check your own container's actual
+mounts/env with `docker inspect <container>` if something doesn't line up.
 
 **Fundamental fact about `~/.n8n/custom` (read this first):** n8n's
 `CustomDirectoryLoader` (the thing that scans `~/.n8n/custom/node_modules/*`)
@@ -194,9 +198,10 @@ So once deployed there, this node's real, internal type string is
 `n8n-nodes-haystack-enterprise.haystackEnterpriseAi`. Any workflow JSON built
 by hand or exported from a "real" install must have its node `type` field
 changed to the `CUSTOM.` prefix before it will work against this container.
-`test-workflow-search.json` in the repo root already uses the `CUSTOM.` prefix
-for this reason — **that's a property of this local dev setup, not of the
-node itself.** Once this package is genuinely installed as a real Community
+The example workflows under each package's `test/examples/` (see each
+package's README, "Example workflows" section) already use the `CUSTOM.`
+prefix for this reason — **that's a property of this local dev setup, not of
+the node itself.** Once this package is genuinely installed as a real Community
 Node (published, and installed via Settings → Community Nodes, or manually
 placed in `~/.n8n/nodes/node_modules/<pkg>` — a different loader — the type
 reverts to the real package-qualified `n8n-nodes-haystack-enterprise.<name>`).
@@ -210,7 +215,7 @@ directly in the DB (read-only fields matter here — this is a plain string
 replace within the `nodes` JSON blob column, not a schema/relational change,
 so it's safe to do directly):
 ```
-docker exec gallant_satoshi node -e "
+docker exec <container> node -e "
 const sqlite3 = require('node:sqlite');
 const db = new sqlite3.DatabaseSync('/home/node/.n8n/database.sqlite', { readonly: false });
 const row = db.prepare('SELECT nodes FROM workflow_entity WHERE id = ?').get('<workflow-id>');
@@ -229,7 +234,7 @@ much lower-risk operation.
 editor or an authenticated session at all** — construct and run n8n's real
 `CustomDirectoryLoader` directly:
 ```
-docker exec gallant_satoshi node -e "
+docker exec <container> node -e "
 const { CustomDirectoryLoader } = require('/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@<hash>/node_modules/n8n-core/dist/nodes-loader/custom-directory-loader.js');
 (async () => {
   const loader = new CustomDirectoryLoader('/home/node/.n8n/custom');
@@ -280,13 +285,13 @@ the container, replacing that dead symlink with real files, **and** symlink
 in `n8n-workflow` (see gotcha below) — then restart:
 ```
 npm run build
-docker exec gallant_satoshi rm -rf /home/node/.n8n/custom/node_modules/n8n-nodes-haystack-enterprise
-docker exec gallant_satoshi mkdir -p /home/node/.n8n/custom/node_modules/n8n-nodes-haystack-enterprise
-docker cp package.json gallant_satoshi:/home/node/.n8n/custom/node_modules/n8n-nodes-haystack-enterprise/package.json
-docker cp dist gallant_satoshi:/home/node/.n8n/custom/node_modules/n8n-nodes-haystack-enterprise/dist
-docker exec gallant_satoshi mkdir -p /home/node/.n8n/custom/node_modules/n8n-nodes-haystack-enterprise/node_modules
-docker exec gallant_satoshi sh -c 'ln -sfn "$(node -e "console.log(require.resolve(\"n8n-workflow\", {paths: [\"/usr/local/lib/node_modules/n8n\"]}).replace(/\/dist\/.*/, \"\"))")" /home/node/.n8n/custom/node_modules/n8n-nodes-haystack-enterprise/node_modules/n8n-workflow'
-docker restart gallant_satoshi
+docker exec <container> rm -rf /home/node/.n8n/custom/node_modules/n8n-nodes-haystack-enterprise
+docker exec <container> mkdir -p /home/node/.n8n/custom/node_modules/n8n-nodes-haystack-enterprise
+docker cp package.json <container>:/home/node/.n8n/custom/node_modules/n8n-nodes-haystack-enterprise/package.json
+docker cp dist <container>:/home/node/.n8n/custom/node_modules/n8n-nodes-haystack-enterprise/dist
+docker exec <container> mkdir -p /home/node/.n8n/custom/node_modules/n8n-nodes-haystack-enterprise/node_modules
+docker exec <container> sh -c 'ln -sfn "$(node -e "console.log(require.resolve(\"n8n-workflow\", {paths: [\"/usr/local/lib/node_modules/n8n\"]}).replace(/\/dist\/.*/, \"\"))")" /home/node/.n8n/custom/node_modules/n8n-nodes-haystack-enterprise/node_modules/n8n-workflow'
+docker restart <container>
 ```
 **Gotcha 1:** on subsequent rebuilds, always `docker exec ... rm -rf .../dist`
 **before** `docker cp dist ...` again. `docker cp` copies a source directory
@@ -319,36 +324,104 @@ under a pnpm content-hash directory, e.g.
 `n8n-workflow@file+packages+workflow_zod@3.25.67`, that changes across n8n
 versions).
 
+**Deploying `packages/haystack-enterprise-mcp` specifically:** the same
+`docker cp` dist + package.json, symlink peer deps, restart procedure above
+applies per-package under `~/.n8n/custom/node_modules/<real-npm-name>/`
+(swap in `n8n-nodes-haystack-enterprise-mcp` for the package name), but this
+package has some extra wrinkles the simpler `haystack-enterprise` case above
+doesn't:
+
+- **It has real (non-peer) runtime dependencies** — `@langchain/core`,
+  `@modelcontextprotocol/sdk`, `zod` — unlike `n8n-workflow`/`n8n-core` (peer
+  deps, symlinked to n8n's own copy, see below), these need to actually be
+  *present*, since nothing does a real `npm install` for a `docker cp`-deployed
+  custom node. Don't hand-copy them from the monorepo's hoisted root
+  `node_modules` — it's polluted with huge unrelated devDependency trees
+  (`@n8n/node-cli`'s own langchain/AI-node scaffolding) and hoisting order
+  isn't guaranteed to match what the package actually needs. Instead, do a
+  clean isolated install: write a scratch `package.json` containing only this
+  package's `"dependencies"` block (not `peerDependencies` — that would try to
+  install a *separate* `n8n-workflow`/`n8n-core` from the registry instead of
+  sharing n8n's instance), `npm install --omit=dev` in that scratch dir, then
+  copy the resulting `node_modules` wholesale into
+  `.../n8n-nodes-haystack-enterprise-mcp/node_modules/`.
+
+- **Critical gotcha — crashes the whole container on boot:** `n8n-core`'s
+  `CustomDirectoryLoader.loadAll()` does `fast-glob('**/*.node.js', { cwd:
+  '/home/node/.n8n/custom' })` with **no `node_modules` exclusion at all**,
+  then blindly `require()`s and instantiates every match as if it were an n8n
+  node class. `pkce-challenge` (a transitive dep of
+  `@modelcontextprotocol/sdk`, used only for its OAuth/PKCE
+  authorization-flow helpers, which this node never uses) ships
+  `dist/index.node.js` as its Node-platform build — an incidental naming
+  collision with n8n's own `*.node.js` node-file convention, nothing to do
+  with n8n. The loader tries `new (require('.../pkce-challenge/dist/index.node.js').index)()`,
+  throws `TypeError: require(...).index is not a constructor`, and n8n exits
+  the whole process (`Exiting due to an error` — not a per-node skip). This is
+  a general risk of dumping arbitrary npm dependency trees under
+  `~/.n8n/custom`: any package anywhere in the tree with a `*.node.js`-named
+  file will do this. **Fix:** delete that one file
+  (`node_modules/pkce-challenge/dist/index.node.js`) after each fresh scratch
+  install, before copying into the container. Re-check for new collisions with
+  `find node_modules -name '*.node.js'` if the dependency set ever changes.
+
+- **`n8n-core` is also a peer dependency for this package, needing the same
+  symlink treatment as `n8n-workflow` above.** This node's `supplyData()` must
+  wrap its LangChain tools in `new StructuredToolkit(tools)` (a class from
+  `n8n-core`) rather than returning a bare array, because n8n's own
+  `getConnectedTools()`/`ToolExecutor`/`extendResponseMetadata()` all check for
+  a single `Tool`/`StructuredTool` or an `n8n-core` `StructuredToolkit`
+  instance specifically. A bare array happens to work for a live Agent run (an
+  incidental side effect), but breaks the canvas's "Execute step" test button
+  with `Cannot read properties of undefined (reading 'replaceAll')`. Like
+  `n8n-workflow`, `n8n-core` must be the *exact same module instance* n8n's own
+  runtime uses, or `instanceof StructuredToolkit` checks silently return
+  `false` (a classic dual-package hazard) — so symlink it in (resolved
+  dynamically the same way as the `n8n-workflow` symlink above), don't let a
+  separate copy get installed via `npm install`.
+
+- **Diagnosing a crash when the container won't stay up long enough for
+  `docker exec`:** `docker cp <container>:<path> -` works on a *stopped*
+  container's filesystem (no need to start it), and `docker commit <container>
+  <tmp-image>` + `docker run --rm --entrypoint sh <tmp-image> -c "..."` gives a
+  full shell into the crashed image's filesystem without racing the
+  crash-then-exit cycle. Note that any `n8n-core` `src/*.ts` paths shown in
+  stack traces are sourcemap-only — the file doesn't physically exist; read
+  the equivalent `dist/*.js` file instead (same directory, `.js` not `.ts`).
+  If your container has no restart policy, a boot crash just leaves it
+  exited (not stuck retrying) — a fresh `docker start` after fixing the cause
+  is enough.
+
 To verify a deploy actually loads — **without needing an authenticated
 session or waiting on the editor** — replicate n8n's own loader directly:
 ```
-docker exec gallant_satoshi node -e "
+docker exec <container> node -e "
 const { loadClassInIsolation } = require('/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@<hash>/node_modules/n8n-core/dist/nodes-loader/load-class-in-isolation.js');
-const instance = loadClassInIsolation('/home/node/.n8n/custom/node_modules/n8n-nodes-haystack-enterprise/dist/nodes/HaystackEnterprise/<ClassFile>.node.js', '<ClassName>');
+const instance = loadClassInIsolation('/home/node/.n8n/custom/node_modules/<real-npm-name>/dist/nodes/<NodeDir>/<ClassFile>.node.js', '<ClassName>');
 console.log(instance.description.name);
 "
 ```
+(e.g. `<real-npm-name>` = `n8n-nodes-haystack-enterprise`, `<NodeDir>` = `HaystackEnterprise`, for that package)
 (find the current n8n-core pnpm hash with
-`docker exec gallant_satoshi find /usr/local/lib/node_modules/n8n/node_modules/.pnpm -maxdepth 1 -iname 'n8n-core@*'`).
+`docker exec <container> find /usr/local/lib/node_modules/n8n/node_modules/.pnpm -maxdepth 1 -iname 'n8n-core@*'`).
 This throws the exact same error the real server would hit — a plain
 `node -e "require(...)"` on the file directly is **not** equivalent and gives
 a false negative (it doesn't replicate n8n's `require` context), so don't
 rely on that.
 
-There is also a separate, stale copy of this package installed the "normal"
-way via n8n's Community Nodes UI, living at
-`~/.n8n/nodes/node_modules/n8n-nodes-haystack-enterprise` (a frozen tarball
-snapshot, unrelated to the custom-folder copy above). It won't reflect local
-changes either — if it's ever reinstalled for comparison, remember the
-`n8n-nodes-deepset` prototype package used to live there too and both were
-uninstalled together on 2026-07-06 to free up the plain `haystackEnterpriseApi`
-credential type name (see `[[dev-environment-n8n-docker]]` memory). Note also
-that the Community Nodes install flow (`POST /rest/community-packages`)
-strictly validates the package name/version against the real npm registry —
-it **cannot** be used to sideload this unpublished local build; the
-`docker cp` + symlink procedure above is the only way to test local changes.
+There is also a separate location where a "normal" Community Nodes UI install
+would live: `~/.n8n/nodes/node_modules/n8n-nodes-haystack-enterprise` (a
+frozen tarball snapshot, unrelated to the custom-folder copy above). If you've
+ever installed this package (or an earlier prototype of it) that way, it won't
+reflect local changes either — uninstall it first if you want a clean slate,
+so its registered type/credential names don't clash with the custom-folder
+copy. Note also that the Community Nodes install flow
+(`POST /rest/community-packages`) strictly validates the package name/version
+against the real npm registry — it **cannot** be used to sideload this
+unpublished local build; the `docker cp` + symlink procedure above is the only
+way to test local changes.
 
-After redeploying, always check `docker logs gallant_satoshi --tail 30` for a
+After redeploying, always check `docker logs <container> --tail 30` for a
 clean `Editor is now accessible via` line with no crash trace before telling
 the user it's ready to test — a broken custom node crashes the whole n8n
 process on boot (see the class-name-must-match-filename gotcha in
