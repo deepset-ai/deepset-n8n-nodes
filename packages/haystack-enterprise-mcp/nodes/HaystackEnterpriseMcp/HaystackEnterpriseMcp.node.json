@@ -1,0 +1,21 @@
+{
+	"node": "n8n-nodes-haystack-enterprise-mcp",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["AI"],
+	"subcategories": {
+		"AI": ["Tools"]
+	},
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.cloud.deepset.ai"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool"
+			}
+		]
+	}
+}

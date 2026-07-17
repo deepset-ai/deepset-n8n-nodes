@@ -1,0 +1,993 @@
+{
+  "name": "Haystack Enterprise – Google Drive folder mirror",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 2,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "0336cca6-dacb-4e87-b0ba-118bbb779757",
+      "name": "Nightly Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "driveFolderId",
+              "value": "REPLACE_WITH_YOUR_DRIVE_FOLDER_ID",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "folderName",
+              "value": "REPLACE_WITH_YOUR_FOLDER_NAME",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7863d412-dc19-40da-8adf-c52931a79e5a",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "searchMethod": "query",
+        "queryString": "",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "={{ $json.driveFolderId }}",
+            "mode": "id"
+          },
+          "whatToSearch": "files"
+        },
+        "options": {
+          "fields": [
+            "id",
+            "name",
+            "mimeType",
+            "modifiedTime",
+            "webViewLink",
+            "md5Checksum",
+            "headRevisionId",
+            "owners",
+            "lastModifyingUser"
+          ]
+        }
+      },
+      "id": "c39720b5-c223-4dac-b4c4-78adaaa20207",
+      "name": "List Drive Files",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1600,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.existingHaystackFiles = [];\n\nreturn $input.all()\n  .filter((item) => item.json.mimeType !== 'application/vnd.google-apps.folder')\n  .map((item) => {\n    const f = item.json;\n    const owner = (f.owners && f.owners[0]) || {};\n    const contentHash = f.md5Checksum || f.headRevisionId || f.modifiedTime;\n    return {\n      json: {\n        source_id: f.id,\n        name: f.name,\n        mimeType: f.mimeType,\n        source_url: f.webViewLink,\n        owner_email: owner.emailAddress || '',\n        last_modified_by: (f.lastModifyingUser && f.lastModifyingUser.emailAddress) || '',\n        drive_modified_time: f.modifiedTime,\n        content_hash: contentHash,\n      },\n    };\n  });"
+      },
+      "id": "ac5f2792-8a2c-4f93-a09d-80d087732382",
+      "name": "Normalize Drive Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workspaceName": "REPLACE_WITH_YOUR_WORKSPACE",
+        "resource": "file",
+        "operation": "getAll",
+        "returnAll": true,
+        "filters": {},
+        "sort": {}
+      },
+      "id": "0debaba5-ecc0-4ec8-955f-d29290585d36",
+      "name": "Get Existing Haystack Files",
+      "type": "CUSTOM.haystackEnterpriseAi",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        0
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "haystackEnterpriseApi": {
+          "name": "Haystack Enterprise API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "607b7a22-cfce-48c7-bfbe-a8b1f7cbe441",
+      "name": "Loop Existing Files",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond1",
+              "leftValue": "={{ !!$json.file_id }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0b3c6897-4e1c-4f88-9b7d-7510cef2f9be",
+      "name": "Has Existing File?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1000,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst items = $input.all();\nstaticData.currentExistingFile = { file_id: items[0].json.file_id, name: items[0].json.name };\nreturn items;"
+      },
+      "id": "c241224b-653a-4492-bcf4-a83eaa83aab3",
+      "name": "Stash Current File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -700,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "workspaceName": "REPLACE_WITH_YOUR_WORKSPACE",
+        "resource": "file",
+        "operation": "getMeta",
+        "fileId": "={{ $json.file_id }}"
+      },
+      "id": "deb26c56-ad65-4163-98e4-7fc2769c3e62",
+      "name": "Get File Meta",
+      "type": "CUSTOM.haystackEnterpriseAi",
+      "typeVersion": 1,
+      "position": [
+        -500,
+        140
+      ],
+      "credentials": {
+        "haystackEnterpriseApi": {
+          "name": "Haystack Enterprise API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.existingHaystackFiles = staticData.existingHaystackFiles || [];\n\nconst items = $input.all();\nconst original = staticData.currentExistingFile;\n\nfor (const item of items) {\n  const meta = item.json || {};\n  if (meta.source_system === 'google_drive') {\n    staticData.existingHaystackFiles.push({\n      haystack_file_id: original.file_id,\n      name: original.name,\n      source_id: meta.source_id || null,\n      // Stored with a _text suffix - see the metadata typing sticky note below.\n      content_hash: meta.content_hash_text || null,\n    });\n  }\n}\n\nreturn items;"
+      },
+      "id": "4a8dda60-be7a-4c15-a719-399a713c62ee",
+      "name": "Accumulate Existing File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst existing = staticData.existingHaystackFiles || [];\nconst driveFiles = $('Normalize Drive Files').all().map((i) => i.json);\n\nconst existingBySourceId = new Map(existing.map((f) => [f.source_id, f]));\nconst driveBySourceId = new Map(driveFiles.map((f) => [f.source_id, f]));\n\nconst results = [];\nconst now = $now.toISO();\n\nfor (const drive of driveFiles) {\n  const match = existingBySourceId.get(drive.source_id);\n\n  if (!match) {\n    results.push({ json: { action: 'upload', ...drive, synced_at: now } });\n    continue;\n  }\n\n  if (match.name !== drive.name) {\n    // Overwrite mode matches by file name, so a rename can't be applied in place -\n    // recreate it under the new name instead.\n    results.push({ json: { action: 'delete', haystack_file_id: match.haystack_file_id, name: match.name } });\n    results.push({ json: { action: 'upload', ...drive, synced_at: now } });\n    continue;\n  }\n\n  if (match.content_hash !== drive.content_hash) {\n    results.push({ json: { action: 'update', haystack_file_id: match.haystack_file_id, ...drive, synced_at: now } });\n    continue;\n  }\n\n  results.push({ json: { action: 'unchanged', ...drive } });\n}\n\nfor (const existingFile of existing) {\n  if (!driveBySourceId.has(existingFile.source_id)) {\n    results.push({ json: { action: 'delete', haystack_file_id: existingFile.haystack_file_id, name: existingFile.name } });\n  }\n}\n\nreturn results;"
+      },
+      "id": "961322f3-39ae-491a-8ab1-ade7707f55c4",
+      "name": "Diff Drive Vs Haystack",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond1",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "upload",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1a4ac6bc-7369-4afa-bd99-149500c7cbf4",
+      "name": "Is Upload?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond1",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "update",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e1065d45-8985-4f2d-8ffc-df3b6f2b5bb8",
+      "name": "Is Update?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond1",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "delete",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c2ed095a-1ce7-41d0-901c-a46358abf426",
+      "name": "Is Delete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -200,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.source_id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "6ee834ee-f897-431f-843d-b00230ce012d",
+      "name": "Download From Drive (New)",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -400,
+        -220
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workspaceName": "REPLACE_WITH_YOUR_WORKSPACE",
+        "resource": "file",
+        "operation": "upload",
+        "uploadFrom": "binaryData",
+        "binaryPropertyName": "data",
+        "writeMode": "KEEP",
+        "metadata": "={{ JSON.stringify({\n  source_system: 'google_drive',\n  source_id: $json.source_id,\n  source_url: $json.source_url,\n  folder_path: $('Config').first().json.folderName,\n  owner_email: $json.owner_email,\n  last_modified_by: $json.last_modified_by,\n  drive_modified_time: $json.drive_modified_time,\n  content_hash_text: $json.content_hash,\n  mime_type: $json.mimeType,\n  synced_at: $json.synced_at\n}) }}"
+      },
+      "id": "8fa8e921-58ef-4d83-820e-d2c6e5209437",
+      "name": "Upload To Haystack",
+      "type": "CUSTOM.haystackEnterpriseAi",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        -220
+      ],
+      "credentials": {
+        "haystackEnterpriseApi": {
+          "name": "Haystack Enterprise API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.source_id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "7ccbe101-1359-4175-83c1-98a5c5cbcc56",
+      "name": "Download From Drive (Changed)",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -200,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workspaceName": "REPLACE_WITH_YOUR_WORKSPACE",
+        "resource": "file",
+        "operation": "upload",
+        "uploadFrom": "binaryData",
+        "binaryPropertyName": "data",
+        "writeMode": "OVERWRITE",
+        "metadata": "={{ JSON.stringify({\n  source_system: 'google_drive',\n  source_id: $json.source_id,\n  source_url: $json.source_url,\n  folder_path: $('Config').first().json.folderName,\n  owner_email: $json.owner_email,\n  last_modified_by: $json.last_modified_by,\n  drive_modified_time: $json.drive_modified_time,\n  content_hash_text: $json.content_hash,\n  mime_type: $json.mimeType,\n  synced_at: $json.synced_at\n}) }}"
+      },
+      "id": "a9184893-3a71-4046-a8b1-2927879c3cbc",
+      "name": "Overwrite In Haystack",
+      "type": "CUSTOM.haystackEnterpriseAi",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "haystackEnterpriseApi": {
+          "name": "Haystack Enterprise API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workspaceName": "REPLACE_WITH_YOUR_WORKSPACE",
+        "resource": "file",
+        "operation": "delete",
+        "fileId": "={{ $json.haystack_file_id }}"
+      },
+      "id": "618d940d-9661-4434-97a3-417462b86c81",
+      "name": "Delete From Haystack",
+      "type": "CUSTOM.haystackEnterpriseAi",
+      "typeVersion": 1,
+      "position": [
+        0,
+        220
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "haystackEnterpriseApi": {
+          "name": "Haystack Enterprise API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 4
+      },
+      "id": "4d0b6d46-c9f5-46e9-8b3c-dc0e493ee72f",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// $input.all() is only used to confirm all upload/update/delete branches finished (Merge\n// Results is a barrier) - its item content itself isn't usable, since the Haystack Enterprise\n// node's own API response overwrites json and drops the 'action' tag Diff set. The definitive\n// classification instead comes straight from the Diff node's output.\n$input.all();\n\nconst details = $('Diff Drive Vs Haystack').all().map((i) => i.json);\nconst counts = { uploaded: 0, updated: 0, deleted: 0, unchanged: 0 };\n\nfor (const item of details) {\n  const action = item.action;\n  if (action === 'upload') counts.uploaded++;\n  else if (action === 'update') counts.updated++;\n  else if (action === 'delete') counts.deleted++;\n  else counts.unchanged++;\n}\n\nconst staticData = $getWorkflowStaticData('global');\nstaticData.indexPollAttempts = 0;\n\nreturn [{ json: { counts, details } }];"
+      },
+      "id": "0ad48a1f-b02e-4fad-bf75-1ec8ea7daf05",
+      "name": "Build Change Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 60,
+        "unit": "seconds"
+      },
+      "id": "3ff970b7-0827-4568-9685-f59e4cbcde57",
+      "name": "Wait Before First Check",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workspaceName": "REPLACE_WITH_YOUR_WORKSPACE",
+        "resource": "index",
+        "operation": "getAll",
+        "returnAll": true,
+        "filters": {},
+        "sort": {}
+      },
+      "id": "81b72abb-3f5a-4b08-9df0-0ab69da5653d",
+      "name": "Check Index Status",
+      "type": "CUSTOM.haystackEnterpriseAi",
+      "typeVersion": 1,
+      "position": [
+        600,
+        0
+      ],
+      "credentials": {
+        "haystackEnterpriseApi": {
+          "name": "Haystack Enterprise API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.indexPollAttempts = (staticData.indexPollAttempts || 0) + 1;\n\nconst indexes = $input.all().map((i) => i.json);\n\n// Only indexes we actually want deployed can ever finish indexing; an index whose\n// desired_status is e.g. DELETED or PAUSED may sit with a stale/irrelevant status.\nconst deployedIndexes = indexes.filter((idx) => idx.desired_status === 'DEPLOYED');\nconst notReady = deployedIndexes.filter((idx) => (idx.status?.pending_file_count ?? 0) > 0);\n\nconst indexStatuses = indexes.map((idx) => ({\n  name: idx.name,\n  desired_status: idx.desired_status,\n  indexed_no_documents_file_count: idx.status?.indexed_no_documents_file_count ?? null,\n  indexed_file_count: idx.status?.indexed_file_count ?? null,\n  pending_file_count: idx.status?.pending_file_count ?? null,\n  failed_file_count: idx.status?.failed_file_count ?? null,\n  total_file_count: idx.status?.total_file_count ?? null,\n}));\n\nreturn [{\n  json: {\n    allReady: notReady.length === 0,\n    attempts: staticData.indexPollAttempts,\n    timedOut: staticData.indexPollAttempts >= 40,\n    notReadyIndexes: notReady.map((idx) => idx.name),\n    indexStatuses,\n  },\n}];"
+      },
+      "id": "87b7a2e5-039b-4c3c-bdf7-f75b78d298e5",
+      "name": "Evaluate Index Readiness",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond1",
+              "leftValue": "={{ $json.allReady }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "cond2",
+              "leftValue": "={{ $json.timedOut }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "5d79cbe6-e3a7-4b87-a528-ef8ded4d6464",
+      "name": "All Indexes Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "a21a85ff-7ace-47fe-9a35-2f5d03e35fcd",
+      "name": "Wait Before Retry",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1000,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const summary = $('Build Change Summary').first().json;\nconst indexStatus = $input.first().json;\n\nconst lines = [\n  'Google Drive -> Haystack Enterprise sync report',\n  `Uploaded: ${summary.counts.uploaded}`,\n  `Updated: ${summary.counts.updated}`,\n  `Deleted: ${summary.counts.deleted}`,\n  `Unchanged: ${summary.counts.unchanged}`,\n  '',\n  indexStatus.allReady\n    ? `Indexes finished reconciling after ${indexStatus.attempts} check(s).`\n    : `Timed out waiting for indexes after ${indexStatus.attempts} checks. Still not ready: ${indexStatus.notReadyIndexes.join(', ')}`,\n  '',\n  'Index status:',\n  ...indexStatus.indexStatuses.map((idx) =>\n    `- ${idx.name} (desired: ${idx.desired_status}): ${idx.indexed_file_count} indexed, ${idx.pending_file_count} pending, ${idx.failed_file_count} failed, ${idx.indexed_no_documents_file_count} indexed w/o documents, ${idx.total_file_count} total`,\n  ),\n];\n\nreturn [{\n  json: {\n    summary: summary.counts,\n    details: summary.details,\n    indexStatus,\n    reportText: lines.join('\\n'),\n  },\n}];"
+      },
+      "id": "bf3ca752-f21a-41b0-aedd-f161df8f069a",
+      "name": "Build Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Before running this\n- Set your Drive folder ID/name and Haystack workspace (6x \"Workspace Name or ID\" dropdowns) after import.\n- This mirrors ONE flat folder (no subfolders). Recursive mirroring would need an extra folder-walk step.\n- The \"Get Existing Haystack Files\" -> per-file \"Get File Meta\" loop is N+1 API calls. Fine for hundreds of files/night; reconsider for very large workspaces.\n- \"Get Existing Haystack Files\" has \"Execute Once\" enabled - required, not optional. Its input (\"Normalize Drive Files\") emits one item per Drive file, and the Haystack Enterprise AI node's own execute() re-runs its chosen operation once per input item by design (correct for per-file operations like Upload/Delete, wrong for a blanket \"list everything\" call like getAll). Without Execute Once, getAll reran once per Drive file, returning that many duplicate copies of the file list concatenated together - which silently survived the source_id-keyed unchanged/updated comparison but surfaced as the same file being flagged for deletion many times over in the orphan-detection pass.\n- Node type is 'CUSTOM.haystackEnterpriseAi', matching a locally-loaded custom node (~/.n8n/custom). If installing this as a real published community node instead, change the type to 'n8n-nodes-haystack-enterprise.haystackEnterpriseAi' on all 6 Haystack Enterprise AI nodes.\n- Only files tagged 'source_system: google_drive' in their metadata are considered \"managed\" by this workflow, so it won't touch unrelated files already in the workspace.\n- Google-native files (Docs/Sheets/Slides/Drawings) get exported on download using the Drive node's default conversion formats (HTML/CSV/PPTX/JPEG) since no explicit \"Google File Conversion\" is configured - check the two \"Download From Drive\" nodes' Options if you want PDF/DOCX instead.\n- Metadata field types are inferred from the FIRST value Haystack ever sees for a key and locked for the whole workspace from then on (see https://docs.cloud.deepset.ai/docs/add-metadata#metadata-format ). content_hash is stored as content_hash_text (the _text suffix forces string typing) because its value's shape differs by file type (md5 hash vs. Google Drive revision ID vs. timestamp fallback) and would otherwise get its type locked inconsistently. There is no API to reset an already-locked field's type short of deleting the index/workspace - if you see a 400 mentioning \"failed to parse field ... of type ...\", rename the offending metadata key (add a _text/_int/etc. suffix) rather than trying to fix the old field.\n- \"Get Existing Haystack Files\" has \"Always Output Data\" enabled so the diff still runs on a brand-new/empty workspace: n8n skips a node entirely (not \"runs with 0 items\") when its only input branch carries 0 items, which cascades - a fresh workspace's empty file list would otherwise silently stop \"Loop Existing Files\", and everything after it, forever. The placeholder item this produces has no file_id, so \"Has Existing File?\" routes it straight back into the loop instead of into \"Get File Meta\". The one true no-op case left is both the Drive folder and the workspace being empty at the same time; nothing to sync, so nothing runs, which is correct.",
+        "height": 600,
+        "width": 980,
+        "color": 5
+      },
+      "id": "085899d5-568c-43ae-8cf8-0b3b2eed3be2",
+      "name": "Sticky: 085899d5",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2000,
+        -640
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Rename handling\nHaystack's \"Overwrite\" write mode matches files by name, not by ID. So if a Drive file keeps the same source_id but gets renamed, we can't overwrite in place - the diff emits a delete (old name) + upload (new name) pair instead.",
+        "height": 240,
+        "width": 400,
+        "color": 4
+      },
+      "id": "b72cbda8-a61f-4a21-9a85-8fe275dc8454",
+      "name": "Sticky: b72cbda8",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        -280
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Index readiness logic\nAn index only counts as \"ready\" once pending_file_count is 0, and only indexes with desired_status DEPLOYED are checked - an index being paused/deleted (a different desired_status) is ignored rather than blocking the loop forever. Polling caps at 40 attempts (~20 min at 30s each) then proceeds anyway with timedOut: true, so the report always completes even if an index gets stuck.",
+        "height": 240,
+        "width": 420,
+        "color": 3
+      },
+      "id": "80a97d49-1746-4a5d-b28b-a8142ee3924e",
+      "name": "Sticky: 80a97d49",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        600,
+        -280
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Nightly Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "List Drive Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Drive Files": {
+      "main": [
+        [
+          {
+            "node": "Normalize Drive Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Drive Files": {
+      "main": [
+        [
+          {
+            "node": "Get Existing Haystack Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing Haystack Files": {
+      "main": [
+        [
+          {
+            "node": "Loop Existing Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Existing Files": {
+      "main": [
+        [
+          {
+            "node": "Diff Drive Vs Haystack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Has Existing File?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Existing File?": {
+      "main": [
+        [
+          {
+            "node": "Stash Current File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Existing Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stash Current File": {
+      "main": [
+        [
+          {
+            "node": "Get File Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get File Meta": {
+      "main": [
+        [
+          {
+            "node": "Accumulate Existing File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accumulate Existing File": {
+      "main": [
+        [
+          {
+            "node": "Loop Existing Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Diff Drive Vs Haystack": {
+      "main": [
+        [
+          {
+            "node": "Is Upload?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Upload?": {
+      "main": [
+        [
+          {
+            "node": "Download From Drive (New)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Update?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download From Drive (New)": {
+      "main": [
+        [
+          {
+            "node": "Upload To Haystack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload To Haystack": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Update?": {
+      "main": [
+        [
+          {
+            "node": "Download From Drive (Changed)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Delete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download From Drive (Changed)": {
+      "main": [
+        [
+          {
+            "node": "Overwrite In Haystack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Overwrite In Haystack": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Is Delete?": {
+      "main": [
+        [
+          {
+            "node": "Delete From Haystack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Delete From Haystack": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Build Change Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Change Summary": {
+      "main": [
+        [
+          {
+            "node": "Wait Before First Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Before First Check": {
+      "main": [
+        [
+          {
+            "node": "Check Index Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Index Status": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Index Readiness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Index Readiness": {
+      "main": [
+        [
+          {
+            "node": "All Indexes Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All Indexes Ready?": {
+      "main": [
+        [
+          {
+            "node": "Build Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait Before Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Before Retry": {
+      "main": [
+        [
+          {
+            "node": "Check Index Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "Haystack Enterprise"
+    }
+  ]
+}

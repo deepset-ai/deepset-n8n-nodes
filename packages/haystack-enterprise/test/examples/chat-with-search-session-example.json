@@ -1,0 +1,195 @@
+{
+  "name": "Haystack Enterprise AI – chat with reused search session",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "streaming"
+        }
+      },
+      "id": "a1b2c3d4-0001-4a1a-9a1a-000000000001",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [-1120, 0],
+      "webhookId": "a1b2c3d4-0001-4a1a-9a1a-000000000099"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Chat operations don't create search sessions automatically  — creating\n// a fresh one on every single message would spam the workspace with sessions.\n// This workflow owns that decision instead: it keeps a map of\n// { n8n chat sessionId -> Haystack Enterprise Platform search_session_id } in the workflow's static\n// data, so the same conversation reuses one Haystack Enterprise Platform search session across\n// messages, and a new one is only created the first time a given n8n chat\n// session is seen.\n//\n// Static data is per-workflow, in-memory-backed storage that n8n persists to\n// the database after each execution. It's fine for demos/small deployments,\n// but it resets if you clear it manually, and it isn't shared across workers\n// in a scaled/queue-mode setup. For production, replace this lookup/store\n// pair with a real data store (a Data Table node, a database, Redis, etc.)\n// keyed the same way.\nconst staticData = $getWorkflowStaticData('global');\nstaticData.searchSessions = staticData.searchSessions || {};\n\nconst n8nSessionId = $json.sessionId;\nconst existingSearchSessionId = staticData.searchSessions[n8nSessionId] || '';\n\nreturn [\n  {\n    json: {\n      ...$json,\n      searchSessionId: existingSearchSessionId,\n    },\n  },\n];"
+      },
+      "id": "a1b2c3d4-0002-4a1a-9a1a-000000000002",
+      "name": "Look Up Search Session",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-900, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a1b2c3d4-0003-4a1a-9a1a-000000000003",
+              "leftValue": "={{ $json.searchSessionId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-4a1a-9a1a-000000000004",
+      "name": "Has Search Session?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-680, 0]
+    },
+    {
+      "parameters": {
+        "workspaceName": "my-workspace",
+        "resource": "searchSession",
+        "operation": "create",
+        "deploymentId": "my-first-service"
+      },
+      "id": "a1b2c3d4-0005-4a1a-9a1a-000000000005",
+      "name": "Create Search Session",
+      "type": "CUSTOM.haystackEnterpriseAi",
+      "typeVersion": 1,
+      "position": [-460, 120],
+      "credentials": {
+        "haystackEnterpriseApi": {
+          "name": "Haystack Enterprise API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Runs only the first time a given n8n chat session shows up (the \"no\n// existing search session\" branch): remember the search session Haystack Enterprise Platform just\n// created against this n8n chat session, so the next message in the same\n// conversation reuses it instead of creating another one.\nconst staticData = $getWorkflowStaticData('global');\nstaticData.searchSessions = staticData.searchSessions || {};\n\nconst triggerData = $('When chat message received').item.json;\nstaticData.searchSessions[triggerData.sessionId] = $json.search_session_id;\n\nreturn [\n  {\n    json: {\n      ...triggerData,\n      searchSessionId: $json.search_session_id,\n    },\n  },\n];"
+      },
+      "id": "a1b2c3d4-0006-4a1a-9a1a-000000000006",
+      "name": "Remember Search Session",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-240, 120]
+    },
+    {
+      "parameters": {
+        "workspaceName": "my-workspace-name",
+        "resource": "service",
+        "operation": "chatStream",
+        "deploymentId": "my-service-name",
+        "query": "={{ $json.chatInput }}",
+        "searchSessionId": "={{ $json.searchSessionId }}",
+        "simplify": true,
+        "additionalFields": {}
+      },
+      "id": "a1b2c3d4-0007-4a1a-9a1a-000000000007",
+      "name": "Haystack Enterprise AI",
+      "type": "CUSTOM.haystackEnterpriseAi",
+      "typeVersion": 1,
+      "position": [-20, 0],
+      "credentials": {
+        "haystackEnterpriseApi": {
+          "name": "Haystack Enterprise API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "### Chat reusing a search session\n\nSearch sessions are used in chats as a chat history mechanism. This workflow sets the search session explicitly on each conversation, not a new one per message:\n\n1. **Look Up Search Session** checks the workflow's static data for a search session already mapped to this n8n chat session.\n2. **Has Search Session?** branches: if found, skip straight to Chat.\n3. If not found, **Create Search Session** creates one via the Search Session resource, and **Remember Search Session** stores the mapping for next time.\n4. Both branches converge on the **Haystack Enterprise AI** chat call, using whichever search session ID is now in `$json.searchSessionId`.\n\nStatic data is workflow-scoped, in-memory-backed storage — good for a demo or small deployment. For production (especially scaled/queue-mode n8n), swap the lookup/store steps for a real data store (Data Table node, database, Redis, ...) keyed the same way.",
+        "height": 400,
+        "width": 460
+      },
+      "id": "a1b2c3d4-0008-4a1a-9a1a-000000000008",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1120, 220]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Look Up Search Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Look Up Search Session": {
+      "main": [
+        [
+          {
+            "node": "Has Search Session?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Search Session?": {
+      "main": [
+        [
+          {
+            "node": "Haystack Enterprise AI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Search Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Search Session": {
+      "main": [
+        [
+          {
+            "node": "Remember Search Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remember Search Session": {
+      "main": [
+        [
+          {
+            "node": "Haystack Enterprise AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "Haystack Enterprise"
+    }
+  ]
+}

@@ -31,23 +31,38 @@ be approved
   WordPress.
 
 ## Project structure
-There are two main folders in this project:
-- `nodes` contains all of the nodes in a package (there can be more than 1).
-  The code for each node usually lives in its own folder
-- `credentials` contains all of the credentials in a package. Usually it's just
-  a single file for every credential
+This repo is an **npm workspaces monorepo**: the root `package.json` is
+private and only declares the `packages/*` workspace; every publishable n8n
+community node package lives in its own directory under `packages/`, each
+with its own `package.json`, `nodes/`, `credentials/`, `test/`,
+`tsconfig.json`, and `eslint.config.mjs`. This split exists because n8n's
+cloud eligibility (`n8n.strict` + the eslint cloud config) is a whole-package
+setting — there's no per-node toggle — so a node that must stay
+self-hosted-only lives in its own cloud-ineligible package rather than in a
+package that also ships cloud-eligible nodes.
+
+Within each package, there are two main folders:
+- `nodes` contains all of the nodes in that package (there can be more than
+  1). The code for each node usually lives in its own folder
+- `credentials` contains all of the credentials in that package. Usually it's
+  just a single file for every credential
 So it looks something like this:
 .
-├── nodes/
-│   └── Example/
-│       ├── Example.node.ts
+├── packages/
+│   └── example-package/
+│       ├── nodes/
+│       │   └── Example/
+│       │       ├── Example.node.ts
+│       │       └── ...
+│       ├── credentials/
+│       │   └── Example.credentials.ts
+│       ├── package.json
 │       └── ...
-├── credentials/
-│   └── Example.credentials.ts
-├── package.json
+├── package.json          # root: private, workspaces: ["packages/*"]
 └── ...
-It's important to note that `package.json` has a special field `n8n` that have
-information about nodes and credentials in a package:
+It's important to note that each package's own `package.json` has a special
+field `n8n` that have information about nodes and credentials in that
+package:
 ```json
 {
   "name": "n8n-nodes-example",
@@ -77,8 +92,8 @@ project _may_ contain example nodes and/or credentials that need to be
 - **Always** address any lint/typecheck errors/warnings, unless there is a
   **very specific reason** to ignore/disable it
 - Make sure to use **proper types whenever possible**
-- If you are updating the npm package version, make sure to **update
-  CHANGELOG.md** in the root of the repository
+- If you are updating a package's version, make sure to **update its own
+  `CHANGELOG.md`** (inside that package's directory under `packages/`)
 - Read `.agents/workflow.md` for more info
 
 ## Context-specific docs

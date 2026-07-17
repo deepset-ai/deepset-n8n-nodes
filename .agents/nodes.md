@@ -176,3 +176,43 @@ export const postFields: INodeProperties[] = [
   All" is `false`
 - Don't forget to mark required properties as `required: true`
 - Use camelCase for property names
+- **The exported class name must exactly match the `.node.ts` file's base
+  name.** E.g. `Foo.node.ts` must `export class Foo`. n8n's node loader does
+  the equivalent of `require(file)[fileBaseName]` and calls `new` on it
+  directly — a mismatch is **not** caught by lint, build, or typecheck, and
+  only fails at runtime with `require(...).Foo is not a constructor`, crashing
+  n8n on startup. This matters in particular when a lint rule
+  (`node-filename-against-convention`) forces you to rename the **file** to
+  match `description.name` (e.g. for the "(New)" side-by-side testing suffix)
+  — remember to rename the **class** to match too.
+- **A "Custom API Call" option will automatically appear in the Resource/
+  Operation dropdown, and there is nothing to do about it — this is expected,
+  not a bug in the node.** n8n's backend (`load-nodes-and-credentials.js`,
+  `injectCustomApiCallOptions()`) unconditionally appends this option to every
+  `resource`/`operation` property's `options` array for any **non-versioned**
+  node whose credential defines `authenticate` (i.e. any node using
+  `IAuthenticateGeneric`, which is required for real API calls to work via
+  `httpRequestWithAuthentication` — there's no way around needing it). There
+  is no opt-out flag on the node or credential description.
+  - It is also **entirely non-functional**: selecting it renders zero
+    additional configurable fields (no Method/URL/Headers/Body, unlike the
+    standalone HTTP Request node) and there is no execution-time handling for
+    it anywhere in n8n's backend or in official `n8n-nodes-base` nodes.
+    Verified directly against several genuinely non-versioned official nodes
+    with qualifying credentials (GitHub, Asana, Trello, Stripe, Mailchimp) —
+    none of them reference it in their own code either. This is a universal,
+    harmless, dead-end dropdown entry for this entire class of node, not
+    something specific to community nodes or to this package.
+  - Versioned nodes (wrapped in `VersionedNodeType`, e.g. Slack) don't show it
+    because the injection targets the top-level `description.properties`,
+    which is empty for versioned nodes (real properties live nested in
+    `nodeVersions[x].description.properties`) — this is an accidental
+    side-effect of versioning, **not** a reason to introduce versioning (see
+    `.agents/versioning.md` — do not version a node just to hide this).
+  - Do not try to "fix" this by removing `authenticate` from the credential
+    to dodge the trigger — confirmed that without `authenticate`,
+    `credentials-helper.js`'s `authenticate()` passes the request through
+    completely unmodified, so the credential's "Test" button would send
+    requests with zero auth injected and always fail, even with valid
+    credentials. That's a real functional regression to hide a cosmetic,
+    inert dropdown item — not a good trade.
