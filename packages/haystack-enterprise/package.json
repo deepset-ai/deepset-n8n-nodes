@@ -49,7 +49,7 @@
         "@n8n/scan-community-package": "*",
         "eslint": "9.32.0",
         "prettier": "3.6.2",
-        "release-it": "^19.0.4",
+        "release-it": "^20.2.1",
         "typescript": "5.9.2",
         "vitest": "^3.0.0"
     },
