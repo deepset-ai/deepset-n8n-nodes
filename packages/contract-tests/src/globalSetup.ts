@@ -12,10 +12,10 @@ let prismProcess: ChildProcess | undefined;
 
 /**
  * Prism's bundled `@stoplight/json-schema-ref-parser` HTTP resolver is broken
- * against Node's native `fetch` on Node version 24 (worked on Node 22) — it 
- * throws`RequestInit: Expected signal ... to be an instance of AbortSignal`
- * when`prism mock` is given a URL directly. so, we fetch remote specs ourselves
- * with our own working `fetch()` and hand Prism a local file.
+ * against Node's native `fetch` on Node version 24 (worked on Node 22) — it
+ * throws `RequestInit: Expected signal ... to be an instance of AbortSignal`
+ * when `prism mock` is given a URL directly. So we fetch remote specs
+ * ourselves with our own working `fetch()` and hand Prism a local file.
  */
 async function resolveSpecToLocalFile(specSource: string): Promise<string> {
 	if (!specSource.startsWith('http://') && !specSource.startsWith('https://')) {

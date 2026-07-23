@@ -56,10 +56,12 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 		// Manual after_value/after_file_id only apply to a single query — Return
 		// All manages its own cursor internally (see the loop below), so these
 		// are left out of `qs` there to avoid fighting over the same params.
-		if (filters.afterValue !== undefined && filters.afterValue !== '') {
+		// The API only accepts them together — sending just one is likely to
+		// 422 — so only include either if both are actually set.
+		const hasAfterValue = filters.afterValue !== undefined && filters.afterValue !== '';
+		const hasAfterFileId = filters.afterFileId !== undefined && filters.afterFileId !== '';
+		if (hasAfterValue && hasAfterFileId) {
 			qs.after_value = filters.afterValue;
-		}
-		if (filters.afterFileId) {
 			qs.after_file_id = filters.afterFileId;
 		}
 		const response = await apiRequest.call(this, 'GET', `/workspaces/${workspaceName}/files`, {

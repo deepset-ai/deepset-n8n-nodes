@@ -204,6 +204,25 @@ describe('executeFile — get many', () => {
 		expect(result).toEqual([{ json: { file_id: 'f3' } }]);
 	});
 
+	it('omits after_value/after_file_id entirely when only one of the pair is provided', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				workspaceName: 'ws',
+				returnAll: false,
+				limit: 50,
+				filters: { afterValue: '2024-01-02' },
+				sort: {},
+			},
+			async () => ({ data: [{ file_id: 'f1' }], has_more: false, total: 1 }),
+		);
+
+		await executeFile.call(context, 'getAll', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as [string, { qs: Record<string, unknown> }];
+		expect(options.qs).not.toHaveProperty('after_value');
+		expect(options.qs).not.toHaveProperty('after_file_id');
+	});
+
 	it('ignores a manual after_value/after_file_id cursor when Return All is on', async () => {
 		let call = 0;
 		const { context, httpRequestWithAuthentication } = createContext(

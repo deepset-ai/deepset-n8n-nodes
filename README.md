@@ -43,7 +43,7 @@ By default this starts a local [Prism](https://github.com/stoplightio/prism) moc
 CONTRACT_SPEC=./openapi.yaml npm run test:contract
 
 # Skip the mock server and hit a real environment directly (e.g. an ephemeral env), using a local spec that matches it
-CONTRACT_TARGET=https://your-ephemeral-env.example.com CONTRACT_SPEC=./openapi.yaml npm run test:contract
+CONTRACT_TARGET=https://your-ephemeral-env.example.com/api/v1 CONTRACT_SPEC=./openapi.yaml npm run test:contract
 ```
 
 See `packages/contract-tests/src/registry/` for what's covered per resource.
