@@ -11,9 +11,9 @@ This repo contains deepset's [n8n](https://n8n.io/) community node packages for 
 
 Each package lives in its own directory under `packages/`, with its own `package.json`, `nodes/`, `credentials/`, `test/`, and `README.md`. See each package's README for what it does, its operations/credentials, and how to install and use it.
 
-## Status: pre-release
+## Status: released
 
-Neither package is published to npm yet. If you're a colleague testing these nodes locally ahead of an official release, see the **"Local testing (pre-release)"** section in each package's README for how to install n8n locally and load the node into it, along with ready-made example workflows under each package's `test/examples/`.
+Both packages are published to npm and available as n8n community nodes — see each package's README for installation instructions. If you want to run a node from a local checkout instead of an installed release (e.g. to test changes before cutting one), see the **"Local development"** section in each package's README for how to install n8n locally and load the node into it, along with ready-made example workflows under each package's `test/examples/`.
 
 ## Development
 
@@ -47,6 +47,32 @@ CONTRACT_TARGET=https://your-ephemeral-env.example.com/api/v1 CONTRACT_SPEC=./op
 ```
 
 See `packages/contract-tests/src/registry/` for what's covered per resource.
+
+## Releasing
+
+Each package is released and published to npm independently, gated by its own package-specific git tag:
+
+- `haystack-enterprise-v<version>` — publishes `n8n-nodes-haystack-enterprise`
+- `haystack-enterprise-mcp-v<version>` — publishes `n8n-nodes-haystack-enterprise-mcp`
+
+Pushing a matching tag triggers [`.github/workflows/publish.yml`](./.github/workflows/publish.yml), which lints, builds, and publishes that package to npm with a [provenance](https://docs.npmjs.com/generating-provenance-statements) attestation (required by n8n for all community nodes starting May 1 2026).
+
+To cut a release for a package:
+
+```bash
+npm run lint -w packages/<name> && npm run build -w packages/<name>
+# for haystack-enterprise specifically, also run: npm run test:contract
+
+# bump "version" in packages/<name>/package.json and add an entry to its CHANGELOG.md
+git add packages/<name>/package.json packages/<name>/CHANGELOG.md
+git commit -m "release: <name> v<version>"
+git tag <name>-v<version>
+git push && git push origin <name>-v<version>
+```
+
+`<name>` is the package's directory name under `packages/` (`haystack-enterprise` or `haystack-enterprise-mcp`), which also doubles as the tag prefix.
+
+Before a package's very first release, it needs one-time npm publishing setup (OIDC trusted publishing, or an `NPM_TOKEN` repository secret) — see the comments at the top of `publish.yml` for the exact steps.
 
 ## License
 

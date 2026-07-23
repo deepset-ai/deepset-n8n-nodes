@@ -7,7 +7,7 @@ an n8n AI Agent.
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/) workflow automation platform.
 
 [Installation](#installation)
-[Local testing (pre-release)](#local-testing-pre-release)
+[Local development](#local-development)
 [Operations](#operations)
 [Credentials](#credentials)
 [Compatibility](#compatibility)
@@ -15,21 +15,20 @@ an n8n AI Agent.
 [Linting](#linting)
 [Testing](#testing)
 [Resources](#resources)
+[Releasing](#releasing)
 [Version history](#version-history)
 
 ## Installation
 
-Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n community nodes documentation.
+Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n community nodes documentation, and search for `n8n-nodes-haystack-enterprise-mcp`.
 
 **This node is only supported on self-hosted n8n.** It is not available on n8n
 Cloud and refuses to run there (the node checks n8n's own
 `N8N_DEPLOYMENT_TYPE` environment variable at runtime).
 
-> This package isn't published to npm yet. Until it is, use [Local testing (pre-release)](#local-testing-pre-release) below instead.
+## Local development
 
-## Local testing (pre-release)
-
-This section is for internal/colleague testing before the package is published to npm. Once it's published, use the [Installation](#installation) instructions above instead.
+Use this if you want to run the node from a local checkout — e.g. to test unreleased changes — instead of installing the published package.
 
 ### Prerequisites
 
@@ -167,6 +166,10 @@ Or from the repo root, to run tests for every package in the workspace: `npm run
 
 * [n8n community nodes documentation](https://docs.n8n.io/integrations/#community-nodes)
 * [Use your pipelines as MCP tools](https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool)
+
+## Releasing
+
+This package is released independently from its sibling package, gated by a `haystack-enterprise-mcp-v<version>` git tag. See the root [README's "Releasing" section](../../README.md#releasing) for the full process.
 
 ## Version history
 
