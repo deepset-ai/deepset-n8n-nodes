@@ -93,4 +93,94 @@ describe('executeIndex — get many', () => {
 			}),
 		);
 	});
+
+	it('passes the select option as a query param', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				workspaceName: 'ws',
+				returnAll: false,
+				limit: 50,
+				filters: { select: 'name, created_by/user_id' },
+				sort: {},
+			},
+			{ data: [], has_more: false, total: 0 },
+		);
+
+		await executeIndex.call(context, 'getAll', 0);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseApi',
+			expect.objectContaining({ qs: expect.objectContaining({ select: 'name, created_by/user_id' }) }),
+		);
+	});
+
+	it('queries by the before cursor instead of page_number when Return All is off', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				workspaceName: 'ws',
+				returnAll: false,
+				limit: 50,
+				filters: { before: 'idx-cursor-1' },
+				sort: {},
+			},
+			{ data: [{ name: 'a' }], has_more: false, total: 1 },
+		);
+
+		const result = await executeIndex.call(context, 'getAll', 0);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { qs: Record<string, unknown> }];
+		expect(options.qs).toMatchObject({ before: 'idx-cursor-1' });
+		expect(options.qs).not.toHaveProperty('page_number');
+		expect(result).toEqual([{ json: { name: 'a' } }]);
+	});
+
+	it('queries by the after cursor instead of page_number when Return All is off', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				workspaceName: 'ws',
+				returnAll: false,
+				limit: 50,
+				filters: { after: 'idx-cursor-2' },
+				sort: {},
+			},
+			{ data: [{ name: 'b' }], has_more: false, total: 1 },
+		);
+
+		await executeIndex.call(context, 'getAll', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { qs: Record<string, unknown> }];
+		expect(options.qs).toMatchObject({ after: 'idx-cursor-2' });
+		expect(options.qs).not.toHaveProperty('page_number');
+	});
+
+	it('ignores before/after and uses page_number pagination when Return All is on', async () => {
+		let call = 0;
+		const httpRequestWithAuthentication = vi.fn(async () => {
+			call += 1;
+			if (call === 1) {
+				return { data: [{ name: 'a' }], has_more: true, total: 2 };
+			}
+			return { data: [{ name: 'b' }], has_more: false, total: 2 };
+		});
+		const context = {
+			helpers: { httpRequestWithAuthentication },
+			getNode: () => ({ name: 'Haystack Enterprise AI' }),
+			getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) => {
+				const params: Record<string, unknown> = {
+					workspaceName: 'ws',
+					returnAll: true,
+					filters: { before: 'idx-cursor-1' },
+					sort: {},
+				};
+				return name in params ? params[name] : fallback;
+			},
+		} as unknown as IExecuteFunctions;
+
+		await executeIndex.call(context, 'getAll', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { qs: Record<string, unknown> }];
+		expect(options.qs).toHaveProperty('page_number');
+		expect(options.qs).not.toHaveProperty('before');
+	});
 });

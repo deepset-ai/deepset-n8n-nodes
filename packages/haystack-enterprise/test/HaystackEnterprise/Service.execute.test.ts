@@ -60,6 +60,117 @@ function createStreamContext({ params, streamRequestError, isStreaming }: Stream
 	return { context, stream, sendChunk, httpRequestWithAuthentication };
 }
 
+function createContext(params: Record<string, unknown>, response: Record<string, unknown>) {
+	const httpRequestWithAuthentication = vi.fn(async () => response);
+
+	const context = {
+		helpers: { httpRequestWithAuthentication },
+		getNode: () => ({ name: 'Haystack Enterprise AI' }),
+		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
+			name in params ? params[name] : fallback,
+	} as unknown as IExecuteFunctions;
+
+	return { context, httpRequestWithAuthentication };
+}
+
+describe('executeService — get many', () => {
+	it('returns each service as its own item', async () => {
+		const { context } = createContext(
+			{ workspaceName: 'ws', returnAll: false, limit: 50, filters: {}, sort: {} },
+			{ data: [{ deployment_id: 'a' }, { deployment_id: 'b' }], has_more: false, total: 2 },
+		);
+
+		const result = await executeService.call(context, 'getAll', 0);
+
+		expect(result).toEqual([{ json: { deployment_id: 'a' } }, { json: { deployment_id: 'b' } }]);
+	});
+
+	it('passes the group label, OData filter, and sort options as query params', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				workspaceName: 'ws',
+				returnAll: false,
+				limit: 50,
+				filters: { groupLabel: 'PRODUCTION', odataFilter: "status eq 'DEPLOYED'" },
+				sort: { field: 'pipeline_name', order: 'ASC' },
+			},
+			{ data: [], has_more: false, total: 0 },
+		);
+
+		await executeService.call(context, 'getAll', 0);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseApi',
+			expect.objectContaining({
+				qs: expect.objectContaining({
+					group_label: 'PRODUCTION',
+					filter: "status eq 'DEPLOYED'",
+					field: 'pipeline_name',
+					order: 'ASC',
+				}),
+			}),
+		);
+	});
+
+	it('queries by the before cursor instead of page_number when Return All is off', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{ workspaceName: 'ws', returnAll: false, limit: 50, filters: { before: 'service-cursor-1' }, sort: {} },
+			{ data: [{ deployment_id: 'a' }], has_more: false, total: 1 },
+		);
+
+		const result = await executeService.call(context, 'getAll', 0);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { qs: Record<string, unknown> }];
+		expect(options.qs).toMatchObject({ before: 'service-cursor-1' });
+		expect(options.qs).not.toHaveProperty('page_number');
+		expect(result).toEqual([{ json: { deployment_id: 'a' } }]);
+	});
+
+	it('queries by the after cursor instead of page_number when Return All is off', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{ workspaceName: 'ws', returnAll: false, limit: 50, filters: { after: 'service-cursor-2' }, sort: {} },
+			{ data: [{ deployment_id: 'b' }], has_more: false, total: 1 },
+		);
+
+		await executeService.call(context, 'getAll', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { qs: Record<string, unknown> }];
+		expect(options.qs).toMatchObject({ after: 'service-cursor-2' });
+		expect(options.qs).not.toHaveProperty('page_number');
+	});
+
+	it('ignores before/after and uses page_number pagination when Return All is on', async () => {
+		let call = 0;
+		const httpRequestWithAuthentication = vi.fn(async () => {
+			call += 1;
+			if (call === 1) {
+				return { data: [{ deployment_id: 'a' }], has_more: true, total: 2 };
+			}
+			return { data: [{ deployment_id: 'b' }], has_more: false, total: 2 };
+		});
+		const context = {
+			helpers: { httpRequestWithAuthentication },
+			getNode: () => ({ name: 'Haystack Enterprise AI' }),
+			getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) => {
+				const params: Record<string, unknown> = {
+					workspaceName: 'ws',
+					returnAll: true,
+					filters: { before: 'service-cursor-1' },
+					sort: {},
+				};
+				return name in params ? params[name] : fallback;
+			},
+		} as unknown as IExecuteFunctions;
+
+		await executeService.call(context, 'getAll', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { qs: Record<string, unknown> }];
+		expect(options.qs).toHaveProperty('page_number');
+		expect(options.qs).not.toHaveProperty('before');
+	});
+});
+
 describe('executeService — stream request error handling', () => {
 	it('preserves the underlying API error detail when re-wrapping a failed request', async () => {
 		// Regression test: a real HTTP failure caught by apiRequestStream() gets
@@ -338,39 +449,7 @@ describe('executeService — streaming (searchStream / chatStream)', () => {
 		expect(sendChunk).toHaveBeenCalledWith('error', 0, 'The stream returned an unknown error');
 	});
 
-	it('does not auto-create a search session for chatStream when none is provided', async () => {
-		const { context, stream, httpRequestWithAuthentication } = createStreamContext({
-			params: {
-				workspaceName: 'ws',
-				deploymentId: 'dep-1',
-				query: 'hello',
-				simplify: true,
-				additionalFields: {},
-				searchSessionId: '',
-				waitForActivation: false,
-				maxWaitMinutes: 5,
-			},
-		});
-
-		const resultPromise = executeService.call(context, 'chatStream', 0);
-		await flushMicrotasks();
-		stream.emit('data', sseRecord({ type: 'delta', delta: { text: 'Hi' } }));
-		stream.emit('end');
-
-		const result = await resultPromise;
-
-		const createCalls = httpRequestWithAuthentication.mock.calls.filter(([, options]: [unknown, { url: string }]) =>
-			options.url.endsWith('/search_sessions'),
-		);
-		expect(createCalls).toHaveLength(0);
-		const streamCall = httpRequestWithAuthentication.mock.calls.find(([, options]: [unknown, { url: string }]) =>
-			options.url.endsWith('/chat-stream'),
-		);
-		expect(streamCall?.[1].body).not.toHaveProperty('search_session_id');
-		expect(result).toEqual([{ json: { content: 'Hi' } }]);
-	});
-
-	it('includes a provided search session ID for chatStream in the request body and the aggregated output', async () => {
+	it('includes the search session ID for chatStream in the request body and the aggregated output', async () => {
 		const { context, stream, httpRequestWithAuthentication } = createStreamContext({
 			params: {
 				workspaceName: 'ws',
@@ -390,6 +469,11 @@ describe('executeService — streaming (searchStream / chatStream)', () => {
 		stream.emit('end');
 
 		const result = await resultPromise;
+
+		const createCalls = httpRequestWithAuthentication.mock.calls.filter(([, options]: [unknown, { url: string }]) =>
+			options.url.endsWith('/search_sessions'),
+		);
+		expect(createCalls).toHaveLength(0);
 
 		const streamCall = httpRequestWithAuthentication.mock.calls.find(([, options]: [unknown, { url: string }]) =>
 			options.url.endsWith('/chat-stream'),

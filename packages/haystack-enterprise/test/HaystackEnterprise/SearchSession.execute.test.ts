@@ -11,7 +11,7 @@ interface ContextOptions {
 
 function createContext({ params, deploymentResponse, createSessionResponse, listResponse }: ContextOptions) {
 	const httpRequestWithAuthentication = vi.fn(
-		async (_credentialType: string, requestOptions: { method: string; url: string }) => {
+		async (_credentialType: string, requestOptions: { method: string; url: string; qs?: Record<string, unknown> }) => {
 			if (requestOptions.method === 'GET' && /\/deployments\/[^/]+$/.test(requestOptions.url)) {
 				return deploymentResponse ?? {};
 			}
@@ -107,6 +107,77 @@ describe('executeSearchSession — get many', () => {
 
 		expect(result).toEqual([{ json: { search_session_id: 'a' } }, { json: { search_session_id: 'b' } }]);
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+	});
+
+	it('passes the OData filter as a query param', async () => {
+		const { context, httpRequestWithAuthentication } = createContext({
+			params: { workspaceName: 'ws', returnAll: false, limit: 50, filters: { odataFilter: "title eq 'Support chat'" } },
+			listResponse: { search_sessions: [], has_more: false, total: 0 },
+		});
+
+		await executeSearchSession.call(context, 'getAll', 0);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseApi',
+			expect.objectContaining({ qs: expect.objectContaining({ filter: "title eq 'Support chat'" }) }),
+		);
+	});
+
+	it('queries by the before cursor instead of page_number when Return All is off', async () => {
+		const { context, httpRequestWithAuthentication } = createContext({
+			params: { workspaceName: 'ws', returnAll: false, limit: 50, filters: { before: 'session-cursor-1' } },
+			listResponse: { search_sessions: [{ search_session_id: 'a' }], has_more: false, total: 1 },
+		});
+
+		const result = await executeSearchSession.call(context, 'getAll', 0);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { qs: Record<string, unknown> }];
+		expect(options.qs).toMatchObject({ before: 'session-cursor-1' });
+		expect(options.qs).not.toHaveProperty('page_number');
+		expect(result).toEqual([{ json: { search_session_id: 'a' } }]);
+	});
+
+	it('queries by the after cursor instead of page_number when Return All is off', async () => {
+		const { context, httpRequestWithAuthentication } = createContext({
+			params: { workspaceName: 'ws', returnAll: false, limit: 50, filters: { after: 'session-cursor-2' } },
+			listResponse: { search_sessions: [{ search_session_id: 'b' }], has_more: false, total: 1 },
+		});
+
+		await executeSearchSession.call(context, 'getAll', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { qs: Record<string, unknown> }];
+		expect(options.qs).toMatchObject({ after: 'session-cursor-2' });
+		expect(options.qs).not.toHaveProperty('page_number');
+	});
+
+	it('ignores before/after and uses page_number pagination when Return All is on', async () => {
+		let call = 0;
+		const httpRequestWithAuthentication = vi.fn(async () => {
+			call += 1;
+			if (call === 1) {
+				return { search_sessions: [{ search_session_id: 'a' }], has_more: true, total: 2 };
+			}
+			return { search_sessions: [{ search_session_id: 'b' }], has_more: false, total: 2 };
+		});
+		const context = {
+			helpers: { httpRequestWithAuthentication },
+			getNode: () => ({ name: 'Haystack Enterprise AI' }),
+			getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) => {
+				const params: Record<string, unknown> = {
+					workspaceName: 'ws',
+					returnAll: true,
+					filters: { before: 'session-cursor-1' },
+				};
+				return name in params ? params[name] : fallback;
+			},
+		} as unknown as IExecuteFunctions;
+
+		await executeSearchSession.call(context, 'getAll', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { qs: Record<string, unknown> }];
+		expect(options.qs).toHaveProperty('page_number');
+		expect(options.qs).not.toHaveProperty('before');
 	});
 });
 

@@ -1,0 +1,16 @@
+{
+	"name": "contract-tests",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Validates haystack-enterprise's nodes against the Haystack Enterprise Platform OpenAPI spec, either mocked (Prism) or against a real environment.",
+	"license": "MIT",
+	"scripts": {
+		"test:contract": "vitest run --config vitest.contract.config.ts"
+	},
+	"devDependencies": {
+		"@stoplight/prism-cli": "^5.0.0",
+		"n8n-workflow": "*",
+		"typescript": "5.9.2",
+		"vitest": "^3.0.0"
+	}
+}

@@ -9,8 +9,28 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
-export const API_BASE_URL = 'https://api.cloud.deepset.ai/api/v1';
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
+const PRODUCTION_API_BASE_URL = 'https://api.cloud.deepset.ai/api/v1';
+
+let apiBaseUrlOverride: string | undefined;
+
+/**
+ * Test-only escape hatch — lets the contract-tests package point requests at
+ * a local Prism mock or an ephemeral environment instead of production. Not
+ * `process.env`-based deliberately: reading `process.env` directly here would
+ * let any environment variable on the host process affect this cloud-eligible
+ * package's requests, which is exactly what
+ * `@n8n/community-nodes/no-restricted-globals` guards against. Only
+ * `contract-tests` (a private, non-published dev package with no cloud
+ * eligibility constraints) ever calls this, from its own `setupFiles` hook.
+ */
+export function setApiBaseUrlOverrideForTests(url: string | undefined): void {
+	apiBaseUrlOverride = url;
+}
+
+export function getApiBaseUrl(): string {
+	return apiBaseUrlOverride ?? PRODUCTION_API_BASE_URL;
+}
 
 /**
  * Haystack Enterprise's API reports errors as `{ "errors": string[] }` (and some
@@ -202,7 +222,7 @@ export async function apiRequest(
 ): Promise<unknown> {
 	const requestOptions: IHttpRequestOptions = {
 		method,
-		url: `${API_BASE_URL}${endpoint}`,
+		url: `${getApiBaseUrl()}${endpoint}`,
 		json: true,
 		...options,
 	};
@@ -261,7 +281,7 @@ export async function apiRequestStream(
 		async () =>
 			(await this.helpers.httpRequestWithAuthentication.call(this, CREDENTIAL_NAME, {
 				method,
-				url: `${API_BASE_URL}${endpoint}`,
+				url: `${getApiBaseUrl()}${endpoint}`,
 				json: true,
 				body,
 				encoding: 'stream',

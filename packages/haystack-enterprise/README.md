@@ -91,7 +91,7 @@ These were exported from a local dev setup where the node is loaded via n8n's `C
 
 The node exposes the following resources:
 
-- **File** — Upload, Get, Get Many, Get Meta, Update Meta, Update Meta Bulk, Delete, Delete Many, Search (OpenSearch DSL), Query (OpenSearch SQL)
+- **File** — Upload, Get, Get Many, Get Meta, Update Meta, Update Meta Bulk, Delete, Delete Many
 - **Index** — Get, Get Many
 - **Search Session** — Create, Get Many, Delete
 - **Service** — Get, Get Many, Search (Streaming), Chat (Streaming)

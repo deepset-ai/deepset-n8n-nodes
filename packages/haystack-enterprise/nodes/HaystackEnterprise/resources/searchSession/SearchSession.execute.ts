@@ -37,15 +37,21 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 		qs.filter = filters.odataFilter;
 	}
 
+	const endpoint = `/workspaces/${workspaceName}/search_sessions`;
 	const limit = returnAll ? 100 : (this.getNodeParameter('limit', itemIndex) as number);
-	return fetchPaginatedResults(
-		this,
-		`/workspaces/${workspaceName}/search_sessions`,
-		qs,
-		returnAll,
-		limit,
-		extractSearchSessionList,
-	);
+
+	if (!returnAll && (filters.before || filters.after)) {
+		// `before`/`after` are mutually exclusive with `page_number` per the API
+		// docs ("To use this option, clear the page_number parameter first") —
+		// bypass fetchPaginatedResults() (which always sends page_number) and
+		// query directly instead.
+		if (filters.before) qs.before = filters.before;
+		if (filters.after) qs.after = filters.after;
+		const response = await apiRequest.call(this, 'GET', endpoint, { qs: { ...qs, limit } });
+		return extractSearchSessionList(response);
+	}
+
+	return fetchPaginatedResults(this, endpoint, qs, returnAll, limit, extractSearchSessionList);
 }
 
 async function deleteSearchSession(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {

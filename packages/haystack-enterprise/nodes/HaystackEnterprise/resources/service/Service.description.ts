@@ -211,6 +211,33 @@ export const serviceFields: INodeProperties[] = [
 				default: '',
 				description: 'Filter services by group label, e.g. PRODUCTION or DEVELOPMENT',
 			},
+			{
+				displayName: 'OData Filter',
+				name: 'odataFilter',
+				type: 'string',
+				default: '',
+				placeholder: "e.g. status eq 'DEPLOYED' and pipeline_name eq 'my-pipeline'",
+				description:
+					'An OData filter expression, supporting exact match and AND. Supported fields: status (one of DEPLOYED, UNDEPLOYED, DEPLOYMENT_IN_PROGRESS, DEPLOYMENT_FAILED, or IDLE — IDLE is accepted but always returns 0 rows since it\'s derived at read time rather than persisted; any other value returns a 422 error) and pipeline_name. See the <a href="https://www.odata.org/getting-started/basic-tutorial/#queryData">OData filter syntax</a>.',
+			},
+			{
+				displayName: 'Before (Service ID)',
+				name: 'before',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6',
+				description:
+					'Only applies when Return All is off. Returns entries before this service ID (cursor-based pagination) instead of using Limit\'s page-number pagination. Not supported together with Sort Field "Pipeline Name" (returns a 422 error).',
+			},
+			{
+				displayName: 'After (Service ID)',
+				name: 'after',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6',
+				description:
+					'Only applies when Return All is off. Returns entries after this service ID (cursor-based pagination) instead of using Limit\'s page-number pagination. Not supported together with Sort Field "Pipeline Name" (returns a 422 error).',
+			},
 		],
 	},
 	{
@@ -234,8 +261,11 @@ export const serviceFields: INodeProperties[] = [
 					{ name: 'Updated At', value: 'updated_at' },
 					{ name: 'Created At', value: 'created_at' },
 					{ name: 'Name', value: 'name' },
+					{ name: 'Pipeline Name', value: 'pipeline_name' },
 				],
 				default: 'updated_at',
+				description:
+					'Not supported together with a Before/After cursor (returns a 422 error) when set to Pipeline Name',
 			},
 			{
 				displayName: 'Order',
@@ -325,9 +355,10 @@ export const serviceFields: INodeProperties[] = [
 		displayName: 'Search Session ID',
 		name: 'searchSessionId',
 		type: 'string',
+		required: true,
 		default: '',
 		description:
-			'The ID of an existing search session to continue, for chat history. Leave empty to chat without history. This node does not create search sessions automatically — creating a new one on every chat message would spam your workspace with sessions. Use the Search Session resource\'s Create operation to create one, and reuse its ID across calls in your workflow. See the package README for an example workflow.',
+			'The ID of an existing search session to continue, for chat history. This node does not create search sessions automatically — creating a new one on every chat message would spam your workspace with sessions. Use the Search Session resource\'s Create operation to create one first, and reuse its ID across calls in your workflow. See the package README for an example workflow.',
 		displayOptions: {
 			show: {
 				resource: ['service'],
