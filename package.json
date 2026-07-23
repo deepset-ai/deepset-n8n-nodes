@@ -11,6 +11,11 @@
 	"workspaces": [
 		"packages/*"
 	],
+	"overrides": {
+		"@modelcontextprotocol/sdk": {
+			"@hono/node-server": "^2.0.5"
+		}
+	},
 	"scripts": {
 		"build": "npm run build --workspaces --if-present",
 		"lint": "npm run lint --workspaces --if-present",
