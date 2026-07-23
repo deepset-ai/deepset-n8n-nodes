@@ -98,13 +98,18 @@ export async function setup(): Promise<void> {
 
 export async function teardown(): Promise<void> {
 	if (!prismProcess) return;
+	const proc = prismProcess;
 
 	await new Promise<void>((resolve) => {
-		prismProcess?.once('exit', () => resolve());
-		prismProcess?.kill('SIGTERM');
-		setTimeout(() => {
-			prismProcess?.kill('SIGKILL');
-			resolve();
+		const forceKillTimer = setTimeout(() => {
+			proc.kill('SIGKILL');
 		}, 3000);
+
+		proc.once('exit', () => {
+			clearTimeout(forceKillTimer);
+			resolve();
+		});
+
+		proc.kill('SIGTERM');
 	});
 }
