@@ -175,8 +175,7 @@ async function deleteMany(this: IExecuteFunctions, itemIndex: number): Promise<I
 		);
 	}
 
-	// The API's `names` field is required — an empty array (not an absent
-	// body) is what tells it to delete every file in the workspace.
+	// The API's `names` field is required — an empty array tells it to delete every file in the workspace.
 	await apiRequest.call(this, 'DELETE', `/workspaces/${workspaceName}/files`, { body: { names } });
 	return { deletedNames: names.length > 0 ? names : 'all', success: true };
 }
