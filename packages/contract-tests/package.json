@@ -8,9 +8,9 @@
 		"test:contract": "vitest run --config vitest.contract.config.ts"
 	},
 	"devDependencies": {
-		"@stoplight/prism-cli": "^5.0.0",
+		"@stoplight/prism-cli": "^5.16.0",
 		"n8n-workflow": "*",
-		"typescript": "5.9.2",
+		"typescript": "5.9.3",
 		"vitest": "^3.0.0"
 	}
 }
