@@ -38,18 +38,6 @@ export const fileOperations: INodeProperties[] = [
 			{ name: 'Get Many', value: 'getAll', description: 'List files in a workspace', action: 'Get many files' },
 			{ name: 'Get Meta', value: 'getMeta', description: 'Get the metadata of a file', action: 'Get file metadata' },
 			{
-				name: 'Query (SQL)',
-				value: 'query',
-				description: 'Run an OpenSearch SQL query against the file index',
-				action: 'Query files with SQL',
-			},
-			{
-				name: 'Search',
-				value: 'search',
-				description: 'Run an OpenSearch DSL query against the file index',
-				action: 'Search files',
-			},
-			{
 				name: 'Update Meta',
 				value: 'updateMeta',
 				description: 'Update the metadata of a file',
@@ -227,11 +215,22 @@ export const fileFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Name',
-				name: 'name',
+				displayName: 'After File ID',
+				name: 'afterFileId',
 				type: 'string',
 				default: '',
-				description: 'Filter by the exact file name',
+				placeholder: 'e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6',
+				description:
+					'Only applies when Return All is off. Returns files after this file ID — must be used together with After Value.',
+			},
+			{
+				displayName: 'After Value',
+				name: 'afterValue',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. 2023-04-25T07:37:58.326042+00:00',
+				description:
+					"Only applies when Return All is off. Returns files sorted after this value (matching the Sort field's type — e.g. a created_at datetime, or a name) — must be used together with After File ID.",
 			},
 			{
 				displayName: 'Content',
@@ -239,6 +238,13 @@ export const fileFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Filter by file content',
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'Filter by the exact file name',
 			},
 			{
 				displayName: 'OData Filter',
@@ -416,80 +422,5 @@ export const fileFields: INodeProperties[] = [
 				operation: ['deleteMany'],
 			},
 		},
-	},
-	// Search
-	apiDocsNotice('search', 'search-files-api-v-1-workspaces-workspace-name-files-search-post'),
-	{
-		displayName: 'Query (JSON)',
-		name: 'query',
-		type: 'json',
-		default: '',
-		required: true,
-		placeholder: '{\n  "query": {\n    "match": {\n      "name": "invoice"\n    }\n  }\n}',
-		description:
-			'An OpenSearch Query DSL query to run against the file index. See the <a href="https://opensearch.org/docs/latest/query-dsl/">OpenSearch Query DSL docs</a>.',
-		displayOptions: {
-			show: {
-				resource: ['file'],
-				operation: ['search'],
-			},
-		},
-	},
-	// Query (SQL)
-	apiDocsNotice('query', 'query-files-api-v-1-workspaces-workspace-name-files-sql-post'),
-	{
-		displayName: 'SQL Query',
-		name: 'sqlQuery',
-		type: 'string',
-		typeOptions: { rows: 3 },
-		default: '',
-		required: true,
-		placeholder: 'SELECT * FROM file WHERE name LIKE \'%invoice%\'',
-		description:
-			'An OpenSearch SQL query. The table must be called `file`. See the <a href="https://docs.opensearch.org/latest/search-plugins/sql/sql/index/">OpenSearch SQL syntax docs</a>.',
-		displayOptions: {
-			show: {
-				resource: ['file'],
-				operation: ['query'],
-			},
-		},
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['file'],
-				operation: ['query'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Cursor',
-				name: 'cursor',
-				type: 'string',
-				default: '',
-				description: 'A cursor from a previous response, to page through results',
-			},
-			{
-				displayName: 'Fetch Size',
-				name: 'fetchSize',
-				type: 'number',
-				typeOptions: { minValue: 1 },
-				default: 100,
-				description: 'Number of results to return per page',
-			},
-			{
-				displayName: 'Format',
-				name: 'format',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. jdbc, csv, raw',
-				description: 'The response format. See the OpenSearch response formats docs.',
-			},
-		],
 	},
 ];

@@ -53,6 +53,17 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 
 	if (!returnAll) {
 		const limit = this.getNodeParameter('limit', itemIndex) as number;
+		// Manual after_value/after_file_id only apply to a single query — Return
+		// All manages its own cursor internally (see the loop below), so these
+		// are left out of `qs` there to avoid fighting over the same params.
+		// The API only accepts them together — sending just one is likely to
+		// 422 — so only include either if both are actually set.
+		const hasAfterValue = filters.afterValue !== undefined && filters.afterValue !== '';
+		const hasAfterFileId = filters.afterFileId !== undefined && filters.afterFileId !== '';
+		if (hasAfterValue && hasAfterFileId) {
+			qs.after_value = filters.afterValue;
+			qs.after_file_id = filters.afterFileId;
+		}
 		const response = await apiRequest.call(this, 'GET', `/workspaces/${workspaceName}/files`, {
 			qs: { ...qs, limit },
 		});
@@ -166,36 +177,9 @@ async function deleteMany(this: IExecuteFunctions, itemIndex: number): Promise<I
 		);
 	}
 
-	const body: IDataObject = names.length > 0 ? { names } : {};
-	await apiRequest.call(this, 'DELETE', `/workspaces/${workspaceName}/files`, { body });
+	// The API's `names` field is required — an empty array tells it to delete every file in the workspace.
+	await apiRequest.call(this, 'DELETE', `/workspaces/${workspaceName}/files`, { body: { names } });
 	return { deletedNames: names.length > 0 ? names : 'all', success: true };
-}
-
-async function search(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
-	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
-	const query = parseJsonField.call(this, itemIndex, 'Query (JSON)', this.getNodeParameter('query', itemIndex)) ?? {};
-
-	return (await apiRequest.call(this, 'POST', `/workspaces/${workspaceName}/files/_search`, {
-		body: query,
-	})) as IDataObject;
-}
-
-async function querySql(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
-	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
-	const sqlQuery = this.getNodeParameter('sqlQuery', itemIndex) as string;
-	const additionalFields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
-
-	const body: IDataObject = { query: sqlQuery };
-	if (additionalFields.cursor) body.cursor = additionalFields.cursor;
-	if (additionalFields.fetchSize !== undefined) body.fetch_size = additionalFields.fetchSize;
-
-	const qs: IDataObject = {};
-	if (additionalFields.format) qs.format = additionalFields.format;
-
-	return (await apiRequest.call(this, 'POST', `/workspaces/${workspaceName}/files/_sql`, {
-		body,
-		qs,
-	})) as IDataObject;
 }
 
 export async function executeFile(
@@ -229,12 +213,6 @@ export async function executeFile(
 			break;
 		case 'deleteMany':
 			result = await deleteMany.call(this, itemIndex);
-			break;
-		case 'search':
-			result = await search.call(this, itemIndex);
-			break;
-		case 'query':
-			result = await querySql.call(this, itemIndex);
 			break;
 		default:
 			throw new Error(`Unknown File operation: ${operation}`);

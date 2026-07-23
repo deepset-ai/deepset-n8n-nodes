@@ -22,6 +22,9 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 	if (filters.odataFilter) {
 		qs.filter = filters.odataFilter;
 	}
+	if (filters.select) {
+		qs.select = filters.select;
+	}
 	if (sort.field) {
 		qs.field = sort.field;
 	}
@@ -29,8 +32,21 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 		qs.order = sort.order;
 	}
 
+	const endpoint = `/workspaces/${workspaceName}/indexes`;
 	const limit = returnAll ? 100 : (this.getNodeParameter('limit', itemIndex) as number);
-	return fetchPaginatedResults(this, `/workspaces/${workspaceName}/indexes`, qs, returnAll, limit, extractPaginatedList);
+
+	if (!returnAll && (filters.before || filters.after)) {
+		// `before`/`after` are mutually exclusive with `page_number` per the API
+		// docs ("To use this option, clear the page_number parameter first") —
+		// bypass fetchPaginatedResults() (which always sends page_number) and
+		// query directly instead.
+		if (filters.before) qs.before = filters.before;
+		if (filters.after) qs.after = filters.after;
+		const response = await apiRequest.call(this, 'GET', endpoint, { qs: { ...qs, limit } });
+		return extractPaginatedList(response);
+	}
+
+	return fetchPaginatedResults(this, endpoint, qs, returnAll, limit, extractPaginatedList);
 }
 
 export async function executeIndex(

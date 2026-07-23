@@ -113,6 +113,33 @@ export const indexFields: INodeProperties[] = [
 				description:
 					'An OData filter expression, supporting exact match and AND. See the <a href="https://www.odata.org/getting-started/basic-tutorial/#queryData">OData filter syntax</a>.',
 			},
+			{
+				displayName: 'Select',
+				name: 'select',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. name, created_by/user_id',
+				description:
+					"Partial implementation of the OData $select operator — comma-separated fields to return instead of the full object. Only supports selecting fields from the root entity or one level of child entity (e.g. created_by/user_id), not children's children.",
+			},
+			{
+				displayName: 'Before (Index ID)',
+				name: 'before',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6',
+				description:
+					"Only applies when Return All is off. Returns entries before this index ID (cursor-based pagination) instead of using Limit's page-number pagination.",
+			},
+			{
+				displayName: 'After (Index ID)',
+				name: 'after',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6',
+				description:
+					"Only applies when Return All is off. Returns entries after this index ID (cursor-based pagination) instead of using Limit's page-number pagination.",
+			},
 		],
 	},
 	{

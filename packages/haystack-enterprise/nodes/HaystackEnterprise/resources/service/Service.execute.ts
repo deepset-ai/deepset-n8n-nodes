@@ -21,6 +21,9 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 	if (filters.groupLabel) {
 		qs.group_label = filters.groupLabel;
 	}
+	if (filters.odataFilter) {
+		qs.filter = filters.odataFilter;
+	}
 	if (sort.field) {
 		qs.field = sort.field;
 	}
@@ -28,8 +31,22 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 		qs.order = sort.order;
 	}
 
+	const endpoint = `/workspaces/${workspaceName}/deployments`;
 	const limit = returnAll ? 100 : (this.getNodeParameter('limit', itemIndex) as number);
-	return fetchPaginatedResults(this, `/workspaces/${workspaceName}/deployments`, qs, returnAll, limit, extractPaginatedList);
+
+	if (!returnAll && (filters.before || filters.after)) {
+		// `before`/`after` are mutually exclusive with `page_number` (per
+		// deployment_controller.py's list_deployments docstring: "Pagination
+		// supports offset (page_number and limit) and keyset cursor (before /
+		// after) modes; use one at a time") — bypass fetchPaginatedResults()
+		// (which always sends page_number) and query directly instead.
+		if (filters.before) qs.before = filters.before;
+		if (filters.after) qs.after = filters.after;
+		const response = await apiRequest.call(this, 'GET', endpoint, { qs: { ...qs, limit } });
+		return extractPaginatedList(response);
+	}
+
+	return fetchPaginatedResults(this, endpoint, qs, returnAll, limit, extractPaginatedList);
 }
 
 async function get(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
@@ -87,10 +104,8 @@ async function runSearchStream(
 
 	let searchSessionId: string | undefined;
 	if (endpoint === 'chat-stream') {
-		searchSessionId = (this.getNodeParameter('searchSessionId', itemIndex, '') as string) || undefined;
-		if (searchSessionId) {
-			body.search_session_id = searchSessionId;
-		}
+		searchSessionId = this.getNodeParameter('searchSessionId', itemIndex) as string;
+		body.search_session_id = searchSessionId;
 		if (additionalFields.chatHistoryLimit !== undefined) {
 			body.chat_history_limit = additionalFields.chatHistoryLimit;
 		}

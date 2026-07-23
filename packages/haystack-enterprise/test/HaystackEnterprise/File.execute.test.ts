@@ -184,6 +184,69 @@ describe('executeFile — get many', () => {
 		await executeFile.call(context, 'getAll', 0);
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
 	});
+
+	it('passes a manual after_value/after_file_id cursor as query params when Return All is off', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				workspaceName: 'ws',
+				returnAll: false,
+				limit: 50,
+				filters: { afterValue: '2024-01-02', afterFileId: 'f2' },
+				sort: {},
+			},
+			async () => ({ data: [{ file_id: 'f3' }], has_more: false, total: 1 }),
+		);
+
+		const result = await executeFile.call(context, 'getAll', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as [string, { qs: Record<string, unknown> }];
+		expect(options.qs).toMatchObject({ after_value: '2024-01-02', after_file_id: 'f2' });
+		expect(result).toEqual([{ json: { file_id: 'f3' } }]);
+	});
+
+	it('omits after_value/after_file_id entirely when only one of the pair is provided', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				workspaceName: 'ws',
+				returnAll: false,
+				limit: 50,
+				filters: { afterValue: '2024-01-02' },
+				sort: {},
+			},
+			async () => ({ data: [{ file_id: 'f1' }], has_more: false, total: 1 }),
+		);
+
+		await executeFile.call(context, 'getAll', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as [string, { qs: Record<string, unknown> }];
+		expect(options.qs).not.toHaveProperty('after_value');
+		expect(options.qs).not.toHaveProperty('after_file_id');
+	});
+
+	it('ignores a manual after_value/after_file_id cursor when Return All is on', async () => {
+		let call = 0;
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				workspaceName: 'ws',
+				returnAll: true,
+				filters: { afterValue: 'manual-value', afterFileId: 'manual-id' },
+				sort: {},
+			},
+			async (_cred: string, options: { qs: Record<string, unknown> }) => {
+				call += 1;
+				if (call === 1) {
+					expect(options.qs).not.toHaveProperty('after_value');
+					expect(options.qs).not.toHaveProperty('after_file_id');
+					return { data: [{ file_id: 'f1', created_at: '2024-01-01' }], has_more: true, total: 2 };
+				}
+				expect(options.qs).toMatchObject({ after_value: '2024-01-01', after_file_id: 'f1' });
+				return { data: [{ file_id: 'f2', created_at: '2024-01-02' }], has_more: false, total: 2 };
+			},
+		);
+
+		await executeFile.call(context, 'getAll', 0);
+		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+	});
 });
 
 describe('executeFile — get', () => {
@@ -354,7 +417,7 @@ describe('executeFile — delete / delete many', () => {
 
 		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'haystackEnterpriseApi',
-			expect.objectContaining({ method: 'DELETE', body: {} }),
+			expect.objectContaining({ method: 'DELETE', body: { names: [] } }),
 		);
 		expect(result).toEqual([{ json: { deletedNames: 'all', success: true } }]);
 	});
@@ -363,66 +426,5 @@ describe('executeFile — delete / delete many', () => {
 		const { context } = createContext({ workspaceName: 'ws', names: '', deleteAll: false }, async () => ({}));
 
 		await expect(executeFile.call(context, 'deleteMany', 0)).rejects.toThrow(/Delete All Files/);
-	});
-});
-
-describe('executeFile — search / query', () => {
-	it('sends a parsed JSON search query', async () => {
-		const { context, httpRequestWithAuthentication } = createContext(
-			{ workspaceName: 'ws', query: '{"filters":{"field":"name"}}' },
-			async () => ({ results: [] }),
-		);
-
-		const result = await executeFile.call(context, 'search', 0);
-
-		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
-			'haystackEnterpriseApi',
-			expect.objectContaining({
-				method: 'POST',
-				url: expect.stringContaining('/workspaces/ws/files/_search'),
-				body: { filters: { field: 'name' } },
-			}),
-		);
-		expect(result).toEqual([{ json: { results: [] } }]);
-	});
-
-	it('runs a SQL query with only the query field when no additional fields are set', async () => {
-		const { context, httpRequestWithAuthentication } = createContext(
-			{ workspaceName: 'ws', sqlQuery: 'SELECT * FROM files', additionalFields: {} },
-			async () => ({ rows: [] }),
-		);
-
-		await executeFile.call(context, 'query', 0);
-
-		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
-			'haystackEnterpriseApi',
-			expect.objectContaining({
-				method: 'POST',
-				url: expect.stringContaining('/workspaces/ws/files/_sql'),
-				body: { query: 'SELECT * FROM files' },
-				qs: {},
-			}),
-		);
-	});
-
-	it('includes cursor, fetch size, and format when provided via Additional Fields', async () => {
-		const { context, httpRequestWithAuthentication } = createContext(
-			{
-				workspaceName: 'ws',
-				sqlQuery: 'SELECT * FROM files',
-				additionalFields: { cursor: 'abc', fetchSize: 100, format: 'json' },
-			},
-			async () => ({ rows: [] }),
-		);
-
-		await executeFile.call(context, 'query', 0);
-
-		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
-			'haystackEnterpriseApi',
-			expect.objectContaining({
-				body: { query: 'SELECT * FROM files', cursor: 'abc', fetch_size: 100 },
-				qs: { format: 'json' },
-			}),
-		);
 	});
 });

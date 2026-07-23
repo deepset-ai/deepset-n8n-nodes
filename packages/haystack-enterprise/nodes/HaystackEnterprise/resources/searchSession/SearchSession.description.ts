@@ -148,6 +148,24 @@ export const searchSessionFields: INodeProperties[] = [
 				description:
 					'An OData filter expression, supporting exact match and AND. See the <a href="https://www.odata.org/getting-started/basic-tutorial/#queryData">OData filter syntax</a>.',
 			},
+			{
+				displayName: 'Before (Search Session ID)',
+				name: 'before',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6',
+				description:
+					"Only applies when Return All is off. Returns entries before this search session ID (cursor-based pagination) instead of using Limit's page-number pagination.",
+			},
+			{
+				displayName: 'After (Search Session ID)',
+				name: 'after',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6',
+				description:
+					"Only applies when Return All is off. Returns entries after this search session ID (cursor-based pagination) instead of using Limit's page-number pagination.",
+			},
 		],
 	},
 ];
