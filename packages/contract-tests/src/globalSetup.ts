@@ -97,5 +97,14 @@ export async function setup(): Promise<void> {
 }
 
 export async function teardown(): Promise<void> {
-	prismProcess?.kill();
+	if (!prismProcess) return;
+
+	await new Promise<void>((resolve) => {
+		prismProcess?.once('exit', () => resolve());
+		prismProcess?.kill('SIGTERM');
+		setTimeout(() => {
+			prismProcess?.kill('SIGKILL');
+			resolve();
+		}, 3000);
+	});
 }
