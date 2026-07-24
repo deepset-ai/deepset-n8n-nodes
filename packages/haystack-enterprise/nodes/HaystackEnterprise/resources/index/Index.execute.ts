@@ -1,6 +1,6 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest, extractPaginatedList, fetchPaginatedResults } from '../../utils';
+import { apiRequest, extractPaginatedList, fetchListWithCursorOrPaging } from '../../utils';
 
 async function get(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
 	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
@@ -33,21 +33,17 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 		qs.order = sort.order;
 	}
 
-	const endpoint = `/workspaces/${workspaceName}/indexes`;
 	const limit = returnAll ? 100 : (this.getNodeParameter('limit', itemIndex) as number);
 
-	if (!returnAll && (filters.before || filters.after)) {
-		// `before`/`after` are mutually exclusive with `page_number` per the API
-		// docs ("To use this option, clear the page_number parameter first") —
-		// bypass fetchPaginatedResults() (which always sends page_number) and
-		// query directly instead.
-		if (filters.before) qs.before = filters.before;
-		if (filters.after) qs.after = filters.after;
-		const response = await apiRequest.call(this, 'GET', endpoint, { qs: { ...qs, limit } });
-		return extractPaginatedList(response);
-	}
-
-	return fetchPaginatedResults(this, endpoint, qs, returnAll, limit, extractPaginatedList);
+	return fetchListWithCursorOrPaging(
+		this,
+		`/workspaces/${workspaceName}/indexes`,
+		qs,
+		returnAll,
+		limit,
+		filters,
+		extractPaginatedList,
+	);
 }
 
 export async function executeIndex(

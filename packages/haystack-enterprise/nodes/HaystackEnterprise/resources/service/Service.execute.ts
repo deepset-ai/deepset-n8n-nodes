@@ -6,7 +6,8 @@ import {
 	consumeSseStream,
 	extractPaginatedList,
 	extractStreamErrorDetail,
-	fetchPaginatedResults,
+	fetchListWithCursorOrPaging,
+	parseCommaSeparatedList,
 	parseJsonField,
 	withServiceActivationRetry,
 } from '../../utils';
@@ -31,22 +32,22 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 		qs.order = sort.order;
 	}
 
-	const endpoint = `/workspaces/${workspaceName}/deployments`;
 	const limit = returnAll ? 100 : (this.getNodeParameter('limit', itemIndex) as number);
 
-	if (!returnAll && (filters.before || filters.after)) {
-		// `before`/`after` are mutually exclusive with `page_number` (per
-		// deployment_controller.py's list_deployments docstring: "Pagination
-		// supports offset (page_number and limit) and keyset cursor (before /
-		// after) modes; use one at a time") — bypass fetchPaginatedResults()
-		// (which always sends page_number) and query directly instead.
-		if (filters.before) qs.before = filters.before;
-		if (filters.after) qs.after = filters.after;
-		const response = await apiRequest.call(this, 'GET', endpoint, { qs: { ...qs, limit } });
-		return extractPaginatedList(response);
-	}
-
-	return fetchPaginatedResults(this, endpoint, qs, returnAll, limit, extractPaginatedList);
+	// `before`/`after` are mutually exclusive with `page_number` (per
+	// deployment_controller.py's list_deployments docstring: "Pagination
+	// supports offset (page_number and limit) and keyset cursor (before /
+	// after) modes; use one at a time") — see fetchListWithCursorOrPaging()'s
+	// own docstring for how that's handled.
+	return fetchListWithCursorOrPaging(
+		this,
+		`/workspaces/${workspaceName}/deployments`,
+		qs,
+		returnAll,
+		limit,
+		filters,
+		extractPaginatedList,
+	);
 }
 
 async function get(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
@@ -58,16 +59,6 @@ async function get(this: IExecuteFunctions, itemIndex: number): Promise<IDataObj
 		'GET',
 		`/workspaces/${workspaceName}/deployments/${deploymentId}`,
 	)) as IDataObject;
-}
-
-function parseFileIds(value: unknown): string[] | undefined {
-	if (typeof value !== 'string' || value.trim() === '') {
-		return undefined;
-	}
-	return value
-		.split(',')
-		.map((id) => id.trim())
-		.filter((id) => id.length > 0);
 }
 
 /**
@@ -99,8 +90,8 @@ async function runSearchStream(
 	if (filters) body.filters = filters;
 	const params = parseJsonField.call(this, itemIndex, 'Params (JSON)', additionalFields.params);
 	if (params) body.params = params;
-	const files = parseFileIds(additionalFields.files);
-	if (files) body.files = files;
+	const files = parseCommaSeparatedList(additionalFields.files);
+	if (files.length > 0) body.files = files;
 
 	let searchSessionId: string | undefined;
 	if (endpoint === 'chat-stream') {

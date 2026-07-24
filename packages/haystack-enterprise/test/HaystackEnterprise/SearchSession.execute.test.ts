@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import { describe, expect, it } from 'vitest';
 import { executeSearchSession } from '../../nodes/HaystackEnterprise/resources/searchSession/SearchSession.execute';
+import { createExecuteContext } from './testHelpers';
 
 interface ContextOptions {
 	params: Record<string, unknown>;
@@ -10,32 +10,22 @@ interface ContextOptions {
 }
 
 function createContext({ params, deploymentResponse, createSessionResponse, listResponse }: ContextOptions) {
-	const httpRequestWithAuthentication = vi.fn(
-		async (_credentialType: string, requestOptions: { method: string; url: string; qs?: Record<string, unknown> }) => {
-			if (requestOptions.method === 'GET' && /\/deployments\/[^/]+$/.test(requestOptions.url)) {
-				return deploymentResponse ?? {};
-			}
-			if (requestOptions.method === 'POST' && requestOptions.url.endsWith('/search_sessions')) {
-				return createSessionResponse ?? { search_session_id: 'created-session' };
-			}
-			if (requestOptions.method === 'GET' && requestOptions.url.includes('/search_sessions')) {
-				return listResponse ?? { search_sessions: [], has_more: false, total: 0 };
-			}
-			if (requestOptions.method === 'DELETE') {
-				return {};
-			}
-			throw new Error(`Unexpected request: ${requestOptions.method} ${requestOptions.url}`);
-		},
-	);
-
-	const context = {
-		helpers: { httpRequestWithAuthentication },
-		getNode: () => ({ name: 'Haystack Enterprise AI' }),
-		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-			name in params ? params[name] : fallback,
-	} as unknown as IExecuteFunctions;
-
-	return { context, httpRequestWithAuthentication };
+	return createExecuteContext(params, async (...args: unknown[]) => {
+		const requestOptions = args[1] as { method: string; url: string; qs?: Record<string, unknown> };
+		if (requestOptions.method === 'GET' && /\/deployments\/[^/]+$/.test(requestOptions.url)) {
+			return deploymentResponse ?? {};
+		}
+		if (requestOptions.method === 'POST' && requestOptions.url.endsWith('/search_sessions')) {
+			return createSessionResponse ?? { search_session_id: 'created-session' };
+		}
+		if (requestOptions.method === 'GET' && requestOptions.url.includes('/search_sessions')) {
+			return listResponse ?? { search_sessions: [], has_more: false, total: 0 };
+		}
+		if (requestOptions.method === 'DELETE') {
+			return {};
+		}
+		throw new Error(`Unexpected request: ${requestOptions.method} ${requestOptions.url}`);
+	});
 }
 
 describe('executeSearchSession — create', () => {
@@ -87,21 +77,16 @@ describe('executeSearchSession — get many', () => {
 
 	it('pages through results when Return All is enabled', async () => {
 		let call = 0;
-		const httpRequestWithAuthentication = vi.fn(async () => {
-			call += 1;
-			if (call === 1) {
-				return { search_sessions: [{ search_session_id: 'a' }], has_more: true, total: 2 };
-			}
-			return { search_sessions: [{ search_session_id: 'b' }], has_more: false, total: 2 };
-		});
-		const context = {
-			helpers: { httpRequestWithAuthentication },
-			getNode: () => ({ name: 'Haystack Enterprise AI' }),
-			getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) => {
-				const params: Record<string, unknown> = { workspaceName: 'ws', returnAll: true, filters: {} };
-				return name in params ? params[name] : fallback;
+		const { context, httpRequestWithAuthentication } = createExecuteContext(
+			{ workspaceName: 'ws', returnAll: true, filters: {} },
+			async () => {
+				call += 1;
+				if (call === 1) {
+					return { search_sessions: [{ search_session_id: 'a' }], has_more: true, total: 2 };
+				}
+				return { search_sessions: [{ search_session_id: 'b' }], has_more: false, total: 2 };
 			},
-		} as unknown as IExecuteFunctions;
+		);
 
 		const result = await executeSearchSession.call(context, 'getAll', 0);
 
@@ -153,25 +138,16 @@ describe('executeSearchSession — get many', () => {
 
 	it('ignores before/after and uses page_number pagination when Return All is on', async () => {
 		let call = 0;
-		const httpRequestWithAuthentication = vi.fn(async () => {
-			call += 1;
-			if (call === 1) {
-				return { search_sessions: [{ search_session_id: 'a' }], has_more: true, total: 2 };
-			}
-			return { search_sessions: [{ search_session_id: 'b' }], has_more: false, total: 2 };
-		});
-		const context = {
-			helpers: { httpRequestWithAuthentication },
-			getNode: () => ({ name: 'Haystack Enterprise AI' }),
-			getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) => {
-				const params: Record<string, unknown> = {
-					workspaceName: 'ws',
-					returnAll: true,
-					filters: { before: 'session-cursor-1' },
-				};
-				return name in params ? params[name] : fallback;
+		const { context, httpRequestWithAuthentication } = createExecuteContext(
+			{ workspaceName: 'ws', returnAll: true, filters: { before: 'session-cursor-1' } },
+			async () => {
+				call += 1;
+				if (call === 1) {
+					return { search_sessions: [{ search_session_id: 'a' }], has_more: true, total: 2 };
+				}
+				return { search_sessions: [{ search_session_id: 'b' }], has_more: false, total: 2 };
 			},
-		} as unknown as IExecuteFunctions;
+		);
 
 		await executeSearchSession.call(context, 'getAll', 0);
 

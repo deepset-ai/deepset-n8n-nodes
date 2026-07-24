@@ -1,24 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { executeFile } from '../../nodes/HaystackEnterprise/resources/file/File.execute';
-
-function createContext(
-	params: Record<string, unknown>,
-	httpRequestWithAuthentication: (...args: unknown[]) => unknown,
-	extraHelpers: Record<string, unknown> = {},
-) {
-	const httpRequestMock = vi.fn(httpRequestWithAuthentication);
-
-	const context = {
-		helpers: { httpRequestWithAuthentication: httpRequestMock, ...extraHelpers },
-		getNode: () => ({ name: 'Haystack Enterprise AI' }),
-		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-			name in params ? params[name] : fallback,
-	} as unknown as IExecuteFunctions;
-
-	return { context, httpRequestWithAuthentication: httpRequestMock };
-}
+import { createExecuteContext as createContext } from './testHelpers';
 
 describe('executeFile — upload', () => {
 	it('uploads text content, sending the file name and write mode as query params', async () => {

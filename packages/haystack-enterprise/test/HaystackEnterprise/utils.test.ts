@@ -19,30 +19,23 @@ import {
 	parseJsonField,
 	withServiceActivationRetry,
 } from '../../nodes/HaystackEnterprise/utils';
+import { FakeStream } from './testHelpers';
 
-/**
- * Minimal stand-in for a Node.js Readable in 'data'/'end'/'error' mode — all
- * consumeSseStream() actually relies on.
- */
-class FakeStream {
-	private listeners: Record<string, Array<(...args: unknown[]) => void>> = {};
-
-	on(event: string, callback: (...args: unknown[]) => void): this {
-		(this.listeners[event] ??= []).push(callback);
-		return this;
-	}
-
-	emit(event: string, ...args: unknown[]): void {
-		for (const callback of this.listeners[event] ?? []) {
-			callback(...args);
-		}
-	}
-}
-
-function createContext(httpRequestWithAuthentication: (...args: unknown[]) => unknown) {
+function createContext<T = ILoadOptionsFunctions>(httpRequestWithAuthentication: (...args: unknown[]) => unknown): T {
 	return {
 		helpers: { httpRequestWithAuthentication },
 		getNode: () => ({ name: 'Haystack Enterprise AI' }),
+	} as unknown as T;
+}
+
+function createLoadOptionsContext(
+	httpRequestWithAuthentication: (...args: unknown[]) => unknown,
+	workspaceName = 'ws',
+): ILoadOptionsFunctions {
+	return {
+		helpers: { httpRequestWithAuthentication },
+		getNode: () => ({ name: 'Haystack Enterprise AI' }),
+		getNodeParameter: (name: string) => (name === 'workspaceName' ? workspaceName : undefined),
 	} as unknown as ILoadOptionsFunctions;
 }
 
@@ -122,16 +115,6 @@ describe('loadWorkspaceOptions', () => {
 });
 
 describe('loadDeploymentOptions', () => {
-	function createLoadOptionsContext(
-		httpRequestWithAuthentication: (...args: unknown[]) => unknown,
-		workspaceName = 'ws',
-	) {
-		return {
-			helpers: { httpRequestWithAuthentication },
-			getNode: () => ({ name: 'Haystack Enterprise AI' }),
-			getNodeParameter: (name: string) => (name === 'workspaceName' ? workspaceName : undefined),
-		} as unknown as ILoadOptionsFunctions;
-	}
 
 	// The exact scenario reported: a workspace the API key has no access to
 	// selected in "Workspace Name or ID", then opening "Service Name or ID".
@@ -472,12 +455,8 @@ describe('extractStreamErrorDetail', () => {
 });
 
 describe('fetchDeployment', () => {
-	function createExecuteContext(httpRequestWithAuthentication: (...args: unknown[]) => unknown) {
-		return {
-			helpers: { httpRequestWithAuthentication },
-			getNode: () => ({ name: 'Haystack Enterprise AI' }),
-		} as unknown as IExecuteFunctions;
-	}
+	const createExecuteContext = (httpRequestWithAuthentication: (...args: unknown[]) => unknown) =>
+		createContext<IExecuteFunctions>(httpRequestWithAuthentication);
 
 	it('returns the deployment on success', async () => {
 		const context = createExecuteContext(async () => ({ output_type: 'generative', status: 'DEPLOYED' }));
@@ -540,16 +519,6 @@ describe('extractSearchSessionList', () => {
 });
 
 describe('loadSearchSessionOptions', () => {
-	function createLoadOptionsContext(
-		httpRequestWithAuthentication: (...args: unknown[]) => unknown,
-		workspaceName = 'ws',
-	) {
-		return {
-			helpers: { httpRequestWithAuthentication },
-			getNode: () => ({ name: 'Haystack Enterprise AI' }),
-			getNodeParameter: (name: string) => (name === 'workspaceName' ? workspaceName : undefined),
-		} as unknown as ILoadOptionsFunctions;
-	}
 
 	it('maps sessions to name/value options, preferring title over ID', async () => {
 		const context = createLoadOptionsContext(async () => ({
@@ -657,12 +626,8 @@ describe('extractPaginatedList', () => {
 });
 
 describe('fetchPaginatedResults', () => {
-	function createExecuteContext(httpRequestWithAuthentication: (...args: unknown[]) => unknown) {
-		return {
-			helpers: { httpRequestWithAuthentication },
-			getNode: () => ({ name: 'Haystack Enterprise AI' }),
-		} as unknown as IExecuteFunctions;
-	}
+	const createExecuteContext = (httpRequestWithAuthentication: (...args: unknown[]) => unknown) =>
+		createContext<IExecuteFunctions>(httpRequestWithAuthentication);
 
 	it('fetches a single page when returnAll is false, using the given limit and page_number 1', async () => {
 		const httpRequestWithAuthentication = vi.fn(async () => ({ data: [{ id: 'a' }], has_more: true, total: 5 }));
@@ -756,16 +721,6 @@ describe('fetchPaginatedResults', () => {
 });
 
 describe('loadFileOptions', () => {
-	function createLoadOptionsContext(
-		httpRequestWithAuthentication: (...args: unknown[]) => unknown,
-		workspaceName = 'ws',
-	) {
-		return {
-			helpers: { httpRequestWithAuthentication },
-			getNode: () => ({ name: 'Haystack Enterprise AI' }),
-			getNodeParameter: (name: string) => (name === 'workspaceName' ? workspaceName : undefined),
-		} as unknown as ILoadOptionsFunctions;
-	}
 
 	it('maps files to name/value options, preferring the file name over its ID', async () => {
 		const context = createLoadOptionsContext(async () => ({
@@ -800,17 +755,6 @@ describe('loadFileOptions', () => {
 });
 
 describe('loadIndexOptions', () => {
-	function createLoadOptionsContext(
-		httpRequestWithAuthentication: (...args: unknown[]) => unknown,
-		workspaceName = 'ws',
-	) {
-		return {
-			helpers: { httpRequestWithAuthentication },
-			getNode: () => ({ name: 'Haystack Enterprise AI' }),
-			getNodeParameter: (name: string) => (name === 'workspaceName' ? workspaceName : undefined),
-		} as unknown as ILoadOptionsFunctions;
-	}
-
 	it('maps indexes to name/value options, appending the desired status', async () => {
 		const context = createLoadOptionsContext(async () => ({
 			data: [{ name: 'my-index', desired_status: 'DEPLOYED' }],

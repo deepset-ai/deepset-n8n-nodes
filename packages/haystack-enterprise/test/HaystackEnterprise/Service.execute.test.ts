@@ -1,25 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { IExecuteFunctions } from 'n8n-workflow';
 import { executeService } from '../../nodes/HaystackEnterprise/resources/service/Service.execute';
-
-/**
- * Minimal stand-in for a Node.js Readable in 'data'/'end'/'error' mode — all
- * apiRequestStream()/consumeSseStream() actually rely on.
- */
-class FakeStream {
-	private listeners: Record<string, Array<(...args: unknown[]) => void>> = {};
-
-	on(event: string, callback: (...args: unknown[]) => void): this {
-		(this.listeners[event] ??= []).push(callback);
-		return this;
-	}
-
-	emit(event: string, ...args: unknown[]): void {
-		for (const callback of this.listeners[event] ?? []) {
-			callback(...args);
-		}
-	}
-}
+import { createExecuteContext as createContext, FakeStream } from './testHelpers';
 
 /** Lets queued promise continuations run before the test drives the fake stream further. */
 function flushMicrotasks(): Promise<void> {
@@ -40,44 +21,27 @@ function createStreamContext({ params, streamRequestError, isStreaming }: Stream
 	const stream = new FakeStream();
 	const sendChunk = vi.fn();
 
-	const httpRequestWithAuthentication = vi.fn(async () => {
-		// The *-stream endpoint: resolves immediately with the stream, same as
-		// the real encoding: 'stream' behavior — the body arrives later via
-		// 'data'/'end' events, not by awaiting this call any further.
-		if (streamRequestError) throw streamRequestError;
-		return stream;
-	});
-
-	const context = {
-		helpers: { httpRequestWithAuthentication },
-		getNode: () => ({ name: 'Haystack Enterprise AI' }),
-		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-			name in params ? params[name] : fallback,
-		isStreaming: () => isStreaming ?? false,
-		sendChunk,
-	} as unknown as IExecuteFunctions;
+	const { context, httpRequestWithAuthentication } = createContext(
+		params,
+		async () => {
+			// The *-stream endpoint: resolves immediately with the stream, same as
+			// the real encoding: 'stream' behavior — the body arrives later via
+			// 'data'/'end' events, not by awaiting this call any further.
+			if (streamRequestError) throw streamRequestError;
+			return stream;
+		},
+		{},
+		{ isStreaming: () => isStreaming ?? false, sendChunk },
+	);
 
 	return { context, stream, sendChunk, httpRequestWithAuthentication };
-}
-
-function createContext(params: Record<string, unknown>, response: Record<string, unknown>) {
-	const httpRequestWithAuthentication = vi.fn(async () => response);
-
-	const context = {
-		helpers: { httpRequestWithAuthentication },
-		getNode: () => ({ name: 'Haystack Enterprise AI' }),
-		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-			name in params ? params[name] : fallback,
-	} as unknown as IExecuteFunctions;
-
-	return { context, httpRequestWithAuthentication };
 }
 
 describe('executeService — get many', () => {
 	it('returns each service as its own item', async () => {
 		const { context } = createContext(
 			{ workspaceName: 'ws', returnAll: false, limit: 50, filters: {}, sort: {} },
-			{ data: [{ deployment_id: 'a' }, { deployment_id: 'b' }], has_more: false, total: 2 },
+			async () => ({ data: [{ deployment_id: 'a' }, { deployment_id: 'b' }], has_more: false, total: 2 }),
 		);
 
 		const result = await executeService.call(context, 'getAll', 0);
@@ -94,7 +58,7 @@ describe('executeService — get many', () => {
 				filters: { groupLabel: 'PRODUCTION', odataFilter: "status eq 'DEPLOYED'" },
 				sort: { field: 'pipeline_name', order: 'ASC' },
 			},
-			{ data: [], has_more: false, total: 0 },
+			async () => ({ data: [], has_more: false, total: 0 }),
 		);
 
 		await executeService.call(context, 'getAll', 0);
@@ -115,7 +79,7 @@ describe('executeService — get many', () => {
 	it('queries by the before cursor instead of page_number when Return All is off', async () => {
 		const { context, httpRequestWithAuthentication } = createContext(
 			{ workspaceName: 'ws', returnAll: false, limit: 50, filters: { before: 'service-cursor-1' }, sort: {} },
-			{ data: [{ deployment_id: 'a' }], has_more: false, total: 1 },
+			async () => ({ data: [{ deployment_id: 'a' }], has_more: false, total: 1 }),
 		);
 
 		const result = await executeService.call(context, 'getAll', 0);
@@ -130,7 +94,7 @@ describe('executeService — get many', () => {
 	it('queries by the after cursor instead of page_number when Return All is off', async () => {
 		const { context, httpRequestWithAuthentication } = createContext(
 			{ workspaceName: 'ws', returnAll: false, limit: 50, filters: { after: 'service-cursor-2' }, sort: {} },
-			{ data: [{ deployment_id: 'b' }], has_more: false, total: 1 },
+			async () => ({ data: [{ deployment_id: 'b' }], has_more: false, total: 1 }),
 		);
 
 		await executeService.call(context, 'getAll', 0);
@@ -142,26 +106,16 @@ describe('executeService — get many', () => {
 
 	it('ignores before/after and uses page_number pagination when Return All is on', async () => {
 		let call = 0;
-		const httpRequestWithAuthentication = vi.fn(async () => {
-			call += 1;
-			if (call === 1) {
-				return { data: [{ deployment_id: 'a' }], has_more: true, total: 2 };
-			}
-			return { data: [{ deployment_id: 'b' }], has_more: false, total: 2 };
-		});
-		const context = {
-			helpers: { httpRequestWithAuthentication },
-			getNode: () => ({ name: 'Haystack Enterprise AI' }),
-			getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) => {
-				const params: Record<string, unknown> = {
-					workspaceName: 'ws',
-					returnAll: true,
-					filters: { before: 'service-cursor-1' },
-					sort: {},
-				};
-				return name in params ? params[name] : fallback;
+		const { context, httpRequestWithAuthentication } = createContext(
+			{ workspaceName: 'ws', returnAll: true, filters: { before: 'service-cursor-1' }, sort: {} },
+			async () => {
+				call += 1;
+				if (call === 1) {
+					return { data: [{ deployment_id: 'a' }], has_more: true, total: 2 };
+				}
+				return { data: [{ deployment_id: 'b' }], has_more: false, total: 2 };
 			},
-		} as unknown as IExecuteFunctions;
+		);
 
 		await executeService.call(context, 'getAll', 0);
 
@@ -470,14 +424,11 @@ describe('executeService — streaming (searchStream / chatStream)', () => {
 
 		const result = await resultPromise;
 
-		const createCalls = httpRequestWithAuthentication.mock.calls.filter(([, options]: [unknown, { url: string }]) =>
-			options.url.endsWith('/search_sessions'),
-		);
+		const calls = httpRequestWithAuthentication.mock.calls as unknown as Array<[string, { url: string }]>;
+		const createCalls = calls.filter(([, options]) => options.url.endsWith('/search_sessions'));
 		expect(createCalls).toHaveLength(0);
 
-		const streamCall = httpRequestWithAuthentication.mock.calls.find(([, options]: [unknown, { url: string }]) =>
-			options.url.endsWith('/chat-stream'),
-		);
+		const streamCall = calls.find(([, options]) => options.url.endsWith('/chat-stream'));
 		expect(streamCall?.[1]).toMatchObject({ body: { query: 'hello', search_session_id: 'existing-session' } });
 		expect(result).toEqual([{ json: { content: 'Hi', search_session_id: 'existing-session' } }]);
 	});

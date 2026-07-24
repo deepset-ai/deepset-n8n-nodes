@@ -1,7 +1,8 @@
 import { executeFile } from '../../../haystack-enterprise/nodes/HaystackEnterprise/resources/file/File.execute';
 import type { ContractResourceSuite } from './types';
+import { CONTRACT_TEST_UUID } from './caseFactories';
 
-const CONTRACT_TEST_FILE_ID = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+const CONTRACT_TEST_FILE_ID = CONTRACT_TEST_UUID;
 
 /**
  * `get` (the arraybuffer file download) isn't in this registry — and can't be

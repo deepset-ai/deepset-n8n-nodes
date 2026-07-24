@@ -448,62 +448,94 @@ export async function fetchPaginatedResults<T>(
 	return items;
 }
 
-export async function loadDeploymentOptions(
+/**
+ * Wraps fetchPaginatedResults() with the before/after cursor bypass shared
+ * identically by the Index, Service, and Search Session resources'
+ * `getAll()`: `before`/`after` are mutually exclusive with `page_number` per
+ * the API ("To use this option, clear the page_number parameter first"), so
+ * a single direct GET is used instead of the page_number-based pagination
+ * loop whenever either is set. Only applies when Return All is off — Return
+ * All always manages its own page_number cursor internally.
+ */
+export async function fetchListWithCursorOrPaging<T>(
+	context: IExecuteFunctions,
+	endpoint: string,
+	qs: IDataObject,
+	returnAll: boolean,
+	limit: number,
+	filters: IDataObject,
+	extractList: (response: unknown) => T[],
+): Promise<T[]> {
+	if (!returnAll && (filters.before || filters.after)) {
+		const cursorQs: IDataObject = { ...qs, limit };
+		if (filters.before) cursorQs.before = filters.before;
+		if (filters.after) cursorQs.after = filters.after;
+		const response = await apiRequest.call(context, 'GET', endpoint, { qs: cursorQs });
+		return extractList(response);
+	}
+
+	return fetchPaginatedResults(context, endpoint, qs, returnAll, limit, extractList);
+}
+
+/**
+ * Runs the "populate a workspace-scoped dropdown" pattern shared identically
+ * by the Deployment/File/Index/Search Session loadOptions methods: resolve
+ * the selected workspace (returning no options if none is selected yet), GET
+ * a listing endpoint under it, then map each list entry to a dropdown option
+ * — `toOption` returns `undefined` to skip entries missing their ID field.
+ */
+async function loadResourceOptions(
 	context: ILoadOptionsFunctions,
+	resourcePath: string,
+	extractList: (response: unknown) => IDataObject[],
+	toOption: (item: IDataObject) => INodePropertyOptions | undefined,
+	qs: IDataObject = { limit: 100, page_number: 1 },
 ): Promise<INodePropertyOptions[]> {
 	const workspaceName = context.getNodeParameter('workspaceName') as string;
 	if (!workspaceName) {
 		return [];
 	}
 
-	const response = await loadOptionsApiRequest(context, 'GET', `/workspaces/${workspaceName}/deployments`, {
-		qs: { limit: 100, page_number: 1 },
+	const response = await loadOptionsApiRequest(context, 'GET', `/workspaces/${workspaceName}/${resourcePath}`, {
+		qs,
 	});
 
-	return extractPaginatedList(response)
-		.filter((deployment) => typeof deployment.deployment_id === 'string')
-		.map((deployment) => {
-			const name = typeof deployment.name === 'string' ? deployment.name : (deployment.deployment_id as string);
-			const status = typeof deployment.status === 'string' ? ` (${deployment.status})` : '';
-			return { name: `${name}${status}`, value: deployment.deployment_id as string };
-		});
+	return extractList(response)
+		.map(toOption)
+		.filter((option): option is INodePropertyOptions => option !== undefined);
+}
+
+export async function loadDeploymentOptions(
+	context: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	return loadResourceOptions(context, 'deployments', extractPaginatedList, (deployment) => {
+		if (typeof deployment.deployment_id !== 'string') return undefined;
+		const name = typeof deployment.name === 'string' ? deployment.name : deployment.deployment_id;
+		const status = typeof deployment.status === 'string' ? ` (${deployment.status})` : '';
+		return { name: `${name}${status}`, value: deployment.deployment_id };
+	});
 }
 
 export async function loadFileOptions(context: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const workspaceName = context.getNodeParameter('workspaceName') as string;
-	if (!workspaceName) {
-		return [];
-	}
-
-	const response = await loadOptionsApiRequest(context, 'GET', `/workspaces/${workspaceName}/files`, {
-		qs: { limit: 100 },
-	});
-
-	return extractPaginatedList(response)
-		.filter((file) => typeof file.file_id === 'string')
-		.map((file) => {
-			const name = typeof file.name === 'string' ? file.name : (file.file_id as string);
-			return { name, value: file.file_id as string };
-		});
+	return loadResourceOptions(
+		context,
+		'files',
+		extractPaginatedList,
+		(file) => {
+			if (typeof file.file_id !== 'string') return undefined;
+			const name = typeof file.name === 'string' ? file.name : file.file_id;
+			return { name, value: file.file_id };
+		},
+		{ limit: 100 },
+	);
 }
 
 export async function loadIndexOptions(context: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const workspaceName = context.getNodeParameter('workspaceName') as string;
-	if (!workspaceName) {
-		return [];
-	}
-
-	const response = await loadOptionsApiRequest(context, 'GET', `/workspaces/${workspaceName}/indexes`, {
-		qs: { limit: 100, page_number: 1 },
+	return loadResourceOptions(context, 'indexes', extractPaginatedList, (index) => {
+		if (typeof index.name !== 'string') return undefined;
+		const status = typeof index.desired_status === 'string' ? ` (${index.desired_status})` : '';
+		return { name: `${index.name}${status}`, value: index.name };
 	});
-
-	return extractPaginatedList(response)
-		.filter((index) => typeof index.name === 'string')
-		.map((index) => {
-			const name = index.name as string;
-			const status = typeof index.desired_status === 'string' ? ` (${index.desired_status})` : '';
-			return { name: `${name}${status}`, value: name };
-		});
 }
 
 const INITIAL_RETRY_DELAY_MS = 2000;
@@ -611,22 +643,27 @@ export async function createSearchSession(
 export async function loadSearchSessionOptions(
 	context: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const workspaceName = context.getNodeParameter('workspaceName') as string;
-	if (!workspaceName) {
+	return loadResourceOptions(context, 'search_sessions', extractSearchSessionList, (session) => {
+		if (typeof session.search_session_id !== 'string') return undefined;
+		const id = session.search_session_id;
+		const title = typeof session.title === 'string' && session.title.trim() !== '' ? session.title : id;
+		return { name: title, value: id };
+	});
+}
+
+/**
+ * Splits a user-supplied comma-separated string parameter (e.g. "File Names")
+ * into trimmed, non-empty items. Shared by File's `deleteMany` and Service's
+ * stream operations' `files` field.
+ */
+export function parseCommaSeparatedList(value: unknown): string[] {
+	if (typeof value !== 'string' || value.trim() === '') {
 		return [];
 	}
-
-	const response = await loadOptionsApiRequest(context, 'GET', `/workspaces/${workspaceName}/search_sessions`, {
-		qs: { limit: 100, page_number: 1 },
-	});
-
-	return extractSearchSessionList(response)
-		.filter((session) => typeof session.search_session_id === 'string')
-		.map((session) => {
-			const id = session.search_session_id as string;
-			const title = typeof session.title === 'string' && session.title.trim() !== '' ? session.title : id;
-			return { name: title, value: id };
-		});
+	return value
+		.split(',')
+		.map((item) => item.trim())
+		.filter((item) => item.length > 0);
 }
 
 /**

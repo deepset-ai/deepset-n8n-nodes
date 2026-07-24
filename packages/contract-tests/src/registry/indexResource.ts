@@ -1,5 +1,6 @@
 import { executeIndex } from '../../../haystack-enterprise/nodes/HaystackEnterprise/resources/index/Index.execute';
 import type { ContractResourceSuite } from './types';
+import { cursorPaginationCases } from './caseFactories';
 
 export const indexSuite: ContractResourceSuite = {
 	resource: 'index',
@@ -39,29 +40,6 @@ export const indexSuite: ContractResourceSuite = {
 				sort: { field: 'name', order: 'ASC' },
 			},
 		},
-		{
-			// `before`/`after` are UUID-formatted and mutually exclusive with
-			// page_number per the spec — Index.execute.ts's getAll() bypasses the
-			// shared page_number-based pagination helper for this case, so this
-			// also validates that branch actually omits page_number.
-			operation: 'getAll',
-			description: 'GET /indexes (with before cursor)',
-			params: {
-				workspaceName: 'contract-test-workspace',
-				returnAll: false,
-				limit: 5,
-				filters: { before: '3fa85f64-5717-4562-b3fc-2c963f66afa6' },
-			},
-		},
-		{
-			operation: 'getAll',
-			description: 'GET /indexes (with after cursor)',
-			params: {
-				workspaceName: 'contract-test-workspace',
-				returnAll: false,
-				limit: 5,
-				filters: { after: '3fa85f64-5717-4562-b3fc-2c963f66afa6' },
-			},
-		},
+		...cursorPaginationCases('/indexes'),
 	],
 };

@@ -14,13 +14,12 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import { StructuredToolkit } from 'n8n-core';
 import { z } from 'zod';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import {
-	API_BASE_URL_V2,
 	buildMcpToolName,
 	contentToString,
+	createMcpTransport,
 	describeToolCallErrorHint,
 	describeTransportErrorHint,
 	getSelectedTools,
@@ -76,15 +75,7 @@ async function connectAndListFilteredTools(
 		);
 	}
 
-	const mcpUrl = `${API_BASE_URL_V2}/workspaces/${workspaceId}/mcp`;
-
-	const client = new Client({ name: 'n8n-nodes-haystack-enterprise-mcp', version: '0.1.0' });
-	const transport = new StreamableHTTPClientTransport(new URL(mcpUrl), {
-		requestInit: {
-			headers: { Authorization: `Bearer ${apiKey}` },
-			signal,
-		},
-	});
+	const { client, transport, mcpUrl } = createMcpTransport(workspaceId, apiKey, signal);
 
 	try {
 		await client.connect(transport);
