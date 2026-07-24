@@ -215,7 +215,7 @@ export async function executeFile(
 			result = await deleteMany.call(this, itemIndex);
 			break;
 		default:
-			throw new Error(`Unknown File operation: ${operation}`);
+			throw new NodeOperationError(this.getNode(), `Unknown File operation: ${operation}`, { itemIndex });
 	}
 
 	const items = Array.isArray(result) ? result : [result];

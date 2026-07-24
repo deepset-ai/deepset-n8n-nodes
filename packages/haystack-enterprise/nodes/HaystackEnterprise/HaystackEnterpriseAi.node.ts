@@ -147,19 +147,27 @@ export class HaystackEnterpriseAi implements INodeType {
 				for (const item of resultItems) {
 					returnData.push({ ...item, pairedItem: item.pairedItem ?? { item: i } });
 				}
-			} catch (error) {
+			} catch (caught) {
 				if (this.continueOnFail()) {
 					returnData.push({
-						json: { error: (error as Error).message },
+						json: { error: (caught as Error).message },
 						pairedItem: { item: i },
 					});
 					continue;
 				}
 
-				if (error instanceof NodeOperationError) {
-					throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });
+				if (caught instanceof NodeOperationError) {
+					throw new NodeOperationError(this.getNode(), caught.message, { itemIndex: i });
 				}
-				throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
+				// NodeApiError's constructor is a no-op passthrough when given an existing
+				// NodeApiError (see utils.ts's withApiErrorWrapping for the same gotcha), so
+				// mutating .context.itemIndex directly is the only way to attach it here.
+				if (caught instanceof NodeApiError) {
+					const error = caught;
+					error.context.itemIndex = i;
+					throw error;
+				}
+				throw new NodeApiError(this.getNode(), caught as JsonObject, { itemIndex: i });
 			}
 		}
 

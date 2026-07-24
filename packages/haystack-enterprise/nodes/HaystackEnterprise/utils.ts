@@ -547,9 +547,12 @@ export async function withServiceActivationRetry<T>(
 
 /**
  * Best-effort: fetches a deployment, returning `undefined` instead of throwing
- * if the lookup fails. Used to resolve the deployment's underlying pipeline
- * for search-session auto-creation — callers decide how to handle a missing
- * result (fail loud when the pipeline ID is actually required).
+ * only when the deployment genuinely doesn't exist (404). Used to resolve the
+ * deployment's underlying pipeline for search-session auto-creation — callers
+ * decide how to handle a missing result (fail loud when the pipeline ID is
+ * actually required). Any other failure (403, network error, 5xx, ...) is
+ * rethrown as-is so its real cause isn't masked behind a misleading
+ * "no active revision" message.
  */
 export async function fetchDeployment(
 	this: IExecuteFunctions,
@@ -562,8 +565,12 @@ export async function fetchDeployment(
 			'GET',
 			`/workspaces/${workspaceName}/deployments/${deploymentId}`,
 		)) as IDataObject;
-	} catch {
-		return undefined;
+	} catch (caught) {
+		if (caught instanceof NodeApiError && caught.httpCode === '404') {
+			return undefined;
+		}
+		const error = caught;
+		throw error;
 	}
 }
 

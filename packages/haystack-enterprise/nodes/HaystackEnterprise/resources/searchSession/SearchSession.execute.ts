@@ -79,7 +79,7 @@ export async function executeSearchSession(
 			result = await deleteSearchSession.call(this, itemIndex);
 			break;
 		default:
-			throw new Error(`Unknown Search Session operation: ${operation}`);
+			throw new NodeOperationError(this.getNode(), `Unknown Search Session operation: ${operation}`, { itemIndex });
 	}
 
 	const items = Array.isArray(result) ? result : [result];

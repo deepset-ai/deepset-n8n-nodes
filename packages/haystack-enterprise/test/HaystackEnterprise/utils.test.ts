@@ -487,12 +487,24 @@ describe('fetchDeployment', () => {
 		expect(deployment).toEqual({ output_type: 'generative', status: 'DEPLOYED' });
 	});
 
-	it('never throws, and returns undefined, when the lookup fails', async () => {
+	it('returns undefined when the deployment does not exist (404)', async () => {
 		const context = createExecuteContext(async () => {
-			throw new Error('not found');
+			const error = new Error('not found') as Error & { httpCode: string };
+			error.httpCode = '404';
+			throw error;
 		});
 
 		await expect(fetchDeployment.call(context, 'ws', 'dep-1')).resolves.toBeUndefined();
+	});
+
+	it('rethrows other failures instead of masking them as a missing deployment', async () => {
+		const context = createExecuteContext(async () => {
+			const error = new Error('forbidden') as Error & { httpCode: string };
+			error.httpCode = '403';
+			throw error;
+		});
+
+		await expect(fetchDeployment.call(context, 'ws', 'dep-1')).rejects.toMatchObject({ httpCode: '403' });
 	});
 });
 

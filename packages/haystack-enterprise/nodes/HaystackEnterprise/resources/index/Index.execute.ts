@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { apiRequest, extractPaginatedList, fetchPaginatedResults } from '../../utils';
 
 async function get(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
@@ -63,7 +64,7 @@ export async function executeIndex(
 			result = await getAll.call(this, itemIndex);
 			break;
 		default:
-			throw new Error(`Unknown Index operation: ${operation}`);
+			throw new NodeOperationError(this.getNode(), `Unknown Index operation: ${operation}`, { itemIndex });
 	}
 
 	const items = Array.isArray(result) ? result : [result];

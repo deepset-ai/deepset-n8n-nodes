@@ -20,7 +20,6 @@ export function normalizeMcpInputSchema(raw: unknown): Record<string, unknown> {
 		return { type: 'object', properties: {} };
 	}
 	const schema = raw as Record<string, unknown>;
-	if (schema.type === 'object') return schema;
 	return {
 		...schema,
 		type: 'object',

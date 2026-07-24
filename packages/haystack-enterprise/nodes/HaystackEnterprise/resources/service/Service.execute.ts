@@ -207,7 +207,7 @@ export async function executeService(
 			result = await runSearchStream.call(this, itemIndex, 'chat-stream');
 			break;
 		default:
-			throw new Error(`Unknown Service operation: ${operation}`);
+			throw new NodeOperationError(this.getNode(), `Unknown Service operation: ${operation}`, { itemIndex });
 	}
 
 	const items = Array.isArray(result) ? result : [result];
