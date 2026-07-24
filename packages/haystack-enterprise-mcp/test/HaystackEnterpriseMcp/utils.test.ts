@@ -66,6 +66,13 @@ describe('normalizeMcpInputSchema', () => {
 			properties: { foo: { type: 'string' } },
 		});
 	});
+
+	it('defaults properties to {} when type is already "object" but properties is the Python "None" string', () => {
+		expect(normalizeMcpInputSchema({ type: 'object', properties: 'None' })).toEqual({
+			type: 'object',
+			properties: {},
+		});
+	});
 });
 
 describe('buildMcpToolName', () => {

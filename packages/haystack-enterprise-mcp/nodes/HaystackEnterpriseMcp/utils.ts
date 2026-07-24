@@ -8,6 +8,28 @@ import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.j
 export const API_BASE_URL_V1 = 'https://api.cloud.deepset.ai/api/v1';
 export const API_BASE_URL_V2 = 'https://api.cloud.deepset.ai/api/v2';
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
+const MCP_CLIENT_NAME = 'n8n-nodes-haystack-enterprise-mcp';
+const MCP_CLIENT_VERSION = '0.1.0';
+
+/**
+ * Builds the MCP client + transport pointed at a workspace's MCP server —
+ * shared by loadMcpToolOptions() below and HaystackEnterpriseMcp.node.ts's
+ * connectAndListFilteredTools(). Doesn't call `client.connect()` itself since
+ * the two callers wrap that call in slightly different error handling
+ * (one has an itemIndex to attach, the other doesn't).
+ */
+export function createMcpTransport(
+	workspaceId: string,
+	apiKey: string,
+	signal?: AbortSignal,
+): { client: Client; transport: StreamableHTTPClientTransport; mcpUrl: string } {
+	const mcpUrl = `${API_BASE_URL_V2}/workspaces/${workspaceId}/mcp`;
+	const client = new Client({ name: MCP_CLIENT_NAME, version: MCP_CLIENT_VERSION });
+	const transport = new StreamableHTTPClientTransport(new URL(mcpUrl), {
+		requestInit: { headers: { Authorization: `Bearer ${apiKey}` }, signal },
+	});
+	return { client, transport, mcpUrl };
+}
 
 /**
  * Normalises a raw MCP inputSchema to always be a valid JSON Schema object.
@@ -20,7 +42,6 @@ export function normalizeMcpInputSchema(raw: unknown): Record<string, unknown> {
 		return { type: 'object', properties: {} };
 	}
 	const schema = raw as Record<string, unknown>;
-	if (schema.type === 'object') return schema;
 	return {
 		...schema,
 		type: 'object',
@@ -274,11 +295,7 @@ export async function loadMcpToolOptions(
 	workspaceId: string,
 	apiKey: string,
 ): Promise<INodePropertyOptions[]> {
-	const mcpUrl = `${API_BASE_URL_V2}/workspaces/${workspaceId}/mcp`;
-	const client = new Client({ name: 'n8n-nodes-haystack-enterprise-mcp', version: '0.1.0' });
-	const transport = new StreamableHTTPClientTransport(new URL(mcpUrl), {
-		requestInit: { headers: { Authorization: `Bearer ${apiKey}` } },
-	});
+	const { client, transport } = createMcpTransport(workspaceId, apiKey);
 
 	try {
 		await client.connect(transport);

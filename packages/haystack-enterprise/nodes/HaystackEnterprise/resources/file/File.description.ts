@@ -1,19 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { createApiDocsNotice } from '../shared';
 
-const DOCS_BASE_URL = 'https://docs.cloud.deepset.ai/docs/api/main';
-
-const apiDocsNotice = (operation: string, urlSlug: string): INodeProperties => ({
-	displayName: `See the <a href="${DOCS_BASE_URL}/${urlSlug}" target="_blank">Haystack Enterprise API docs</a> for this endpoint`,
-	name: `apiDocsNotice_${operation}`,
-	type: 'notice',
-	default: '',
-	displayOptions: {
-		show: {
-			resource: ['file'],
-			operation: [operation],
-		},
-	},
-});
+const apiDocsNotice = createApiDocsNotice('file');
 
 export const fileOperations: INodeProperties[] = [
 	{

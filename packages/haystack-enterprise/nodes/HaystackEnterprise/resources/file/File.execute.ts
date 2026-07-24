@@ -1,6 +1,6 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest, extractPaginatedList, parseJsonField } from '../../utils';
+import { apiRequest, extractPaginatedList, parseCommaSeparatedList, parseJsonField } from '../../utils';
 
 async function upload(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
 	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
@@ -164,10 +164,7 @@ async function deleteMany(this: IExecuteFunctions, itemIndex: number): Promise<I
 	const namesInput = this.getNodeParameter('names', itemIndex, '') as string;
 	const deleteAll = this.getNodeParameter('deleteAll', itemIndex) as boolean;
 
-	const names = namesInput
-		.split(',')
-		.map((name) => name.trim())
-		.filter((name) => name.length > 0);
+	const names = parseCommaSeparatedList(namesInput);
 
 	if (names.length === 0 && !deleteAll) {
 		throw new NodeOperationError(
@@ -215,7 +212,7 @@ export async function executeFile(
 			result = await deleteMany.call(this, itemIndex);
 			break;
 		default:
-			throw new Error(`Unknown File operation: ${operation}`);
+			throw new NodeOperationError(this.getNode(), `Unknown File operation: ${operation}`, { itemIndex });
 	}
 
 	const items = Array.isArray(result) ? result : [result];

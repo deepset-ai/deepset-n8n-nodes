@@ -1,5 +1,8 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+// TODO: unlike File/Index/SearchSession, none of this resource's operations
+// have an apiDocsNotice() (see resources/shared.ts) linking the Haystack
+// Enterprise API docs. Add these before release.
 export const serviceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',

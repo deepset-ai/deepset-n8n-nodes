@@ -1,5 +1,6 @@
 import { executeSearchSession } from '../../../haystack-enterprise/nodes/HaystackEnterprise/resources/searchSession/SearchSession.execute';
 import type { ContractResourceSuite } from './types';
+import { CONTRACT_TEST_UUID, cursorPaginationCases } from './caseFactories';
 
 /**
  * TODO:`SearchSession create` isn't in this registry — it first fetches the deployment
@@ -34,37 +35,13 @@ export const searchSessionSuite: ContractResourceSuite = {
 				filters: { odataFilter: "title eq 'contract-test'" },
 			},
 		},
-		{
-			// `before`/`after` are UUID-formatted and mutually exclusive with
-			// page_number per the spec — SearchSession.execute.ts's getAll()
-			// bypasses the shared page_number-based pagination helper for this
-			// case, so this also validates that branch actually omits page_number
-			// (see the analogous Index cases in `indexResource.ts`).
-			operation: 'getAll',
-			description: 'GET /search_sessions (with before cursor)',
-			params: {
-				workspaceName: 'contract-test-workspace',
-				returnAll: false,
-				limit: 5,
-				filters: { before: '3fa85f64-5717-4562-b3fc-2c963f66afa6' },
-			},
-		},
-		{
-			operation: 'getAll',
-			description: 'GET /search_sessions (with after cursor)',
-			params: {
-				workspaceName: 'contract-test-workspace',
-				returnAll: false,
-				limit: 5,
-				filters: { after: '3fa85f64-5717-4562-b3fc-2c963f66afa6' },
-			},
-		},
+		...cursorPaginationCases('/search_sessions'),
 		{
 			operation: 'delete',
 			description: 'DELETE /search_sessions/{search_session_id}',
 			params: {
 				workspaceName: 'contract-test-workspace',
-				searchSessionId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+				searchSessionId: CONTRACT_TEST_UUID,
 			},
 		},
 	],

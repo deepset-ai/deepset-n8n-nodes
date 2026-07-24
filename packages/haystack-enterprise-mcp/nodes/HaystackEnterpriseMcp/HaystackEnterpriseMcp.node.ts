@@ -14,13 +14,12 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import { StructuredToolkit } from 'n8n-core';
 import { z } from 'zod';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import {
-	API_BASE_URL_V2,
 	buildMcpToolName,
 	contentToString,
+	createMcpTransport,
 	describeToolCallErrorHint,
 	describeTransportErrorHint,
 	getSelectedTools,
@@ -76,15 +75,7 @@ async function connectAndListFilteredTools(
 		);
 	}
 
-	const mcpUrl = `${API_BASE_URL_V2}/workspaces/${workspaceId}/mcp`;
-
-	const client = new Client({ name: 'n8n-nodes-haystack-enterprise-mcp', version: '0.1.0' });
-	const transport = new StreamableHTTPClientTransport(new URL(mcpUrl), {
-		requestInit: {
-			headers: { Authorization: `Bearer ${apiKey}` },
-			signal,
-		},
-	});
+	const { client, transport, mcpUrl } = createMcpTransport(workspaceId, apiKey, signal);
 
 	try {
 		await client.connect(transport);
@@ -195,7 +186,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 			},
 			{
 				displayName:
-					'Make sure you have created an MCP server and enabled at least one pipeline as a tool in Haystack Enterprise Platform under Settings → Workspace → MCP. See the <a href="https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool/" target="_blank">docs on using a pipeline as an MCP tool</a>.',
+					'Make sure you have created an MCP server and enabled at least one pipeline as a tool in Haystack Enterprise Platform under Settings → Workspace → MCP. See the <a href="https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool/" target="_blank" rel="noopener noreferrer">docs on using a pipeline as an MCP tool</a>.',
 				name: 'mcpServerNotice',
 				type: 'notice',
 				default: '',
@@ -213,7 +204,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 				default: '',
 				required: true,
 				description:
-					'Select your <a href="https://docs.cloud.deepset.ai/docs/basic-concepts#workspace" target="_blank">workspace</a>, populated from your Haystack Enterprise Platform account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Select your <a href="https://docs.cloud.deepset.ai/docs/basic-concepts#workspace" target="_blank" rel="noopener noreferrer">workspace</a>, populated from your Haystack Enterprise Platform account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Tools to Include',
@@ -221,7 +212,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 				type: 'options',
 				default: 'all',
 				description:
-						'How to select the <a href="https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool/" target="_blank">tools</a> you want to be exposed to the AI Agent',
+						'How to select the <a href="https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool/" target="_blank" rel="noopener noreferrer">tools</a> you want to be exposed to the AI Agent',
 				options: [
 					{
 						name: 'All',
@@ -247,7 +238,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 				typeOptions: { loadOptionsMethod: 'getAvailableMcpTools', loadOptionsDependsOn: ['workspaceId'] },
 				default: [],
 				description:
-					'The <a href="https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool/" target="_blank">tools</a> currently available from your Haystack Enterprise Platform MCP server. Click the refresh icon to load the list. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The <a href="https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool/" target="_blank" rel="noopener noreferrer">tools</a> currently available from your Haystack Enterprise Platform MCP server. Click the refresh icon to load the list. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				displayOptions: { show: { include: ['selected'] } },
 			},
 			{
@@ -257,7 +248,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 				typeOptions: { loadOptionsMethod: 'getAvailableMcpTools', loadOptionsDependsOn: ['workspaceId'] },
 				default: [],
 				description:
-					'The <a href="https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool/" target="_blank">tools</a> currently available from your Haystack Enterprise Platform MCP server. Click the refresh icon to load the list. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The <a href="https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool/" target="_blank" rel="noopener noreferrer">tools</a> currently available from your Haystack Enterprise Platform MCP server. Click the refresh icon to load the list. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				displayOptions: { show: { include: ['except'] } },
 			},
 			{

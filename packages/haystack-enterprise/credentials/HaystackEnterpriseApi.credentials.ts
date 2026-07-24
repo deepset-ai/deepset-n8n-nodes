@@ -29,7 +29,7 @@ export class HaystackEnterpriseApi implements ICredentialType {
 			default: '',
 			required: true,
 			description:
-				'Your Haystack Enterprise <a href="https://docs.cloud.deepset.ai/docs/generate-api-key/" target="_blank">API key</a>. Generate one in Haystack Enterprise Platform under Settings → API Keys.',
+				'Your Haystack Enterprise <a href="https://docs.cloud.deepset.ai/docs/generate-api-key/" target="_blank" rel="noopener noreferrer">API key</a>. Generate one in Haystack Enterprise Platform under Settings → API Keys.',
 		},
 	];
 
