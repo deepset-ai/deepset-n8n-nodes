@@ -76,7 +76,7 @@ export class HaystackEnterpriseAi implements INodeType {
 				default: '',
 				required: true,
 				description:
-					'Select your <a href="https://docs.cloud.deepset.ai/docs/basic-concepts#workspace" target="_blank">workspace</a>, populated from your Haystack Enterprise Platform account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Select your <a href="https://docs.cloud.deepset.ai/docs/basic-concepts#workspace" target="_blank" rel="noopener noreferrer">workspace</a>, populated from your Haystack Enterprise Platform account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Resource',

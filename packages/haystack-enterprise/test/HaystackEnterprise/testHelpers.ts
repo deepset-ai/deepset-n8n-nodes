@@ -23,7 +23,7 @@ export function createExecuteContext(
 		helpers: { httpRequestWithAuthentication: httpRequestMock, ...extraHelpers },
 		getNode: () => ({ name: 'Haystack Enterprise AI' }),
 		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-			name in params ? params[name] : fallback,
+			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
 		...extraContext,
 	} as unknown as IExecuteFunctions;
 

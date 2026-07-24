@@ -90,7 +90,7 @@ export function buildContractTestContext({ params }: ContractTestContextOptions)
 	return {
 		getNode: () => ({ name: 'Haystack Enterprise AI (contract test)' }),
 		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-			name in params ? params[name] : fallback,
+			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
 		helpers: { httpRequestWithAuthentication },
 		isStreaming: () => false,
 		sendChunk: () => undefined,

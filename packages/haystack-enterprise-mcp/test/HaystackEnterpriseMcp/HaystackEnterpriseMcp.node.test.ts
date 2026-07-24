@@ -52,7 +52,7 @@ function createSupplyDataContext(
 		getNode: () => ({ name: NODE_NAME }),
 		getCredentials: async () => credentials,
 		getNodeParameter: vi.fn((name: string, _itemIndex: number, fallback?: unknown) =>
-			name in params ? params[name] : fallback,
+			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
 		),
 		getExecutionCancelSignal: () => signal,
 		addInputData: vi.fn().mockReturnValue({ index: 0 }),
@@ -72,7 +72,7 @@ function createExecuteContext(
 		getNode: () => ({ name: NODE_NAME }),
 		getCredentials: async () => credentials,
 		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-			name in params ? params[name] : fallback,
+			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
 		getExecutionCancelSignal: () => signal,
 		getInputData: () => items.map((json) => ({ json })),
 		continueOnFail: () => continueOnFail,

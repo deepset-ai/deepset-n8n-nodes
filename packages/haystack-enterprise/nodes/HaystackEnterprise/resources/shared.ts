@@ -10,7 +10,7 @@ export const DOCS_BASE_URL = 'https://docs.cloud.deepset.ai/docs/api/main';
  */
 export function createApiDocsNotice(resource: string) {
 	return (operation: string, urlSlug: string): INodeProperties => ({
-		displayName: `See the <a href="${DOCS_BASE_URL}/${urlSlug}" target="_blank">Haystack Enterprise API docs</a> for this endpoint`,
+		displayName: `See the <a href="${DOCS_BASE_URL}/${urlSlug}" target="_blank" rel="noopener noreferrer">Haystack Enterprise API docs</a> for this endpoint`,
 		name: `apiDocsNotice_${operation}`,
 		type: 'notice',
 		default: '',

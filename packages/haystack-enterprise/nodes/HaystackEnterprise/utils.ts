@@ -468,6 +468,9 @@ export async function fetchListWithCursorOrPaging<T>(
 ): Promise<T[]> {
 	if (!returnAll && (filters.before || filters.after)) {
 		const cursorQs: IDataObject = { ...qs, limit };
+		// before/after and page_number are mutually exclusive per the API — strip
+		// page_number defensively in case a future caller's `qs` already has one.
+		delete cursorQs.page_number;
 		if (filters.before) cursorQs.before = filters.before;
 		if (filters.after) cursorQs.after = filters.after;
 		const response = await apiRequest.call(context, 'GET', endpoint, { qs: cursorQs });
