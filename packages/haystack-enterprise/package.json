@@ -47,10 +47,10 @@
     "devDependencies": {
         "@n8n/node-cli": "*",
         "@n8n/scan-community-package": "*",
-        "eslint": "9.32.0",
-        "prettier": "3.6.2",
+        "eslint": "9.39.5",
+        "prettier": "3.9.6",
         "release-it": "^20.2.1",
-        "typescript": "5.9.2",
+        "typescript": "5.9.3",
         "vitest": "^3.0.0"
     },
     "peerDependencies": {
