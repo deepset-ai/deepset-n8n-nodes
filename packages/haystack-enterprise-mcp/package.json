@@ -45,11 +45,11 @@
 	},
 	"dependencies": {
 		"@langchain/core": ">=0.3.0",
-		"@modelcontextprotocol/sdk": "^1.0.0",
+		"@modelcontextprotocol/sdk": "^1.30.0",
 		"zod": "^3.22.0"
 	},
 	"devDependencies": {
-		"@n8n/node-cli": "*",
+		"@n8n/node-cli": "^0.41.2",
 		"eslint": "9.39.5",
 		"prettier": "3.9.6",
 		"release-it": "^20.2.1",

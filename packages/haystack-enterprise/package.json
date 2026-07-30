@@ -45,7 +45,7 @@
         ]
     },
     "devDependencies": {
-        "@n8n/node-cli": "*",
+        "@n8n/node-cli": "^0.41.2",
         "@n8n/scan-community-package": "*",
         "eslint": "9.39.5",
         "prettier": "3.9.6",
