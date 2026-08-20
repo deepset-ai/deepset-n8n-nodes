@@ -4,8 +4,8 @@ import { CONTRACT_TEST_UUID, cursorPaginationCases } from './caseFactories';
 
 /**
  * TODO: `SearchSession create` isn't in this registry — it now calls the
- * deployment-scoped `POST /workspaces/{workspace}/deployments/{deployment_id}/
- * search_sessions` endpoint, which lives under the same undocumented
+ * deployment-scoped `POST /workspaces/{workspace}/deployments/{deployment_id}/`
+ * `search_sessions` endpoint, which lives under the same undocumented
  * `/deployments` path as the Service resource (see `service.ts`): the whole
  * deployment router is registered with `include_in_schema=False` in
  * haystack-hub-api, so Prism has no spec entry to validate a request
