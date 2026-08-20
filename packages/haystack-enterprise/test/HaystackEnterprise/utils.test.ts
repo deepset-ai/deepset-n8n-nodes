@@ -8,9 +8,7 @@ import {
 	extractSearchSessionList,
 	extractStreamErrorDetail,
 	extractWorkspaceList,
-	fetchDeployment,
 	fetchPaginatedResults,
-	getSourcePipelineId,
 	loadDeploymentOptions,
 	loadFileOptions,
 	loadIndexOptions,
@@ -451,57 +449,6 @@ describe('extractStreamErrorDetail', () => {
 			message: 'The stream returned an unknown error',
 			data: undefined,
 		});
-	});
-});
-
-describe('fetchDeployment', () => {
-	const createExecuteContext = (httpRequestWithAuthentication: (...args: unknown[]) => unknown) =>
-		createContext<IExecuteFunctions>(httpRequestWithAuthentication);
-
-	it('returns the deployment on success', async () => {
-		const context = createExecuteContext(async () => ({ output_type: 'generative', status: 'DEPLOYED' }));
-
-		const deployment = await fetchDeployment.call(context, 'ws', 'dep-1');
-
-		expect(deployment).toEqual({ output_type: 'generative', status: 'DEPLOYED' });
-	});
-
-	it('returns undefined when the deployment does not exist (404)', async () => {
-		const context = createExecuteContext(async () => {
-			const error = new Error('not found') as Error & { httpCode: string };
-			error.httpCode = '404';
-			throw error;
-		});
-
-		await expect(fetchDeployment.call(context, 'ws', 'dep-1')).resolves.toBeUndefined();
-	});
-
-	it('rethrows other failures instead of masking them as a missing deployment', async () => {
-		const context = createExecuteContext(async () => {
-			const error = new Error('forbidden') as Error & { httpCode: string };
-			error.httpCode = '403';
-			throw error;
-		});
-
-		await expect(fetchDeployment.call(context, 'ws', 'dep-1')).rejects.toMatchObject({ httpCode: '403' });
-	});
-});
-
-describe('getSourcePipelineId', () => {
-	it('extracts the pipeline ID from the active revision', () => {
-		const deployment = { active_revision: { source_pipeline_id: 'pipeline-1' } };
-		expect(getSourcePipelineId(deployment)).toBe('pipeline-1');
-	});
-
-	it('returns undefined when there is no active revision', () => {
-		expect(getSourcePipelineId({})).toBeUndefined();
-		expect(getSourcePipelineId(undefined)).toBeUndefined();
-		expect(getSourcePipelineId({ active_revision: null })).toBeUndefined();
-	});
-
-	it('returns undefined when source_pipeline_id is missing or not a string', () => {
-		expect(getSourcePipelineId({ active_revision: {} })).toBeUndefined();
-		expect(getSourcePipelineId({ active_revision: { source_pipeline_id: 123 } })).toBeUndefined();
 	});
 });
 

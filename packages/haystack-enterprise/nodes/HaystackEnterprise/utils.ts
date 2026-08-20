@@ -581,47 +581,6 @@ export async function withServiceActivationRetry<T>(
 }
 
 /**
- * Best-effort: fetches a deployment, returning `undefined` instead of throwing
- * only when the deployment genuinely doesn't exist (404). Used to resolve the
- * deployment's underlying pipeline for search-session auto-creation — callers
- * decide how to handle a missing result (fail loud when the pipeline ID is
- * actually required). Any other failure (403, network error, 5xx, ...) is
- * rethrown as-is so its real cause isn't masked behind a misleading
- * "no active revision" message.
- */
-export async function fetchDeployment(
-	this: IExecuteFunctions,
-	workspaceName: string,
-	deploymentId: string,
-): Promise<IDataObject | undefined> {
-	try {
-		return (await apiRequest.call(
-			this,
-			'GET',
-			`/workspaces/${workspaceName}/deployments/${deploymentId}`,
-		)) as IDataObject;
-	} catch (caught) {
-		if (caught instanceof NodeApiError && caught.httpCode === '404') {
-			return undefined;
-		}
-		const error = caught;
-		throw error;
-	}
-}
-
-/**
- * A deployment's active revision points at the pipeline it was built from —
- * that pipeline ID is what the search-sessions API needs (sessions belong to
- * a pipeline, not a deployment). Returns `undefined` if the deployment has no
- * active revision (e.g. never activated).
- */
-export function getSourcePipelineId(deployment: IDataObject | undefined): string | undefined {
-	const activeRevision = deployment?.active_revision as IDataObject | undefined;
-	const pipelineId = activeRevision?.source_pipeline_id;
-	return typeof pipelineId === 'string' ? pipelineId : undefined;
-}
-
-/**
  * List/paginated endpoints keyed by a name other than `data` (search sessions
  * respond with `{ search_sessions: [...], has_more, total }`).
  */
@@ -635,11 +594,13 @@ export function extractSearchSessionList(response: unknown): IDataObject[] {
 export async function createSearchSession(
 	this: IExecuteFunctions,
 	workspaceName: string,
-	pipelineId: string,
+	deploymentId: string,
 ): Promise<string> {
-	const response = (await apiRequest.call(this, 'POST', `/workspaces/${workspaceName}/search_sessions`, {
-		body: { pipeline_id: pipelineId },
-	})) as IDataObject;
+	const response = (await apiRequest.call(
+		this,
+		'POST',
+		`/workspaces/${workspaceName}/deployments/${deploymentId}/search_sessions`,
+	)) as IDataObject;
 	return response.search_session_id as string;
 }
 

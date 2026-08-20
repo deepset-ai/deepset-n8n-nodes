@@ -39,8 +39,9 @@ export const searchSessionOperations: INodeProperties[] = [
 ];
 
 export const searchSessionFields: INodeProperties[] = [
-	// Create
-	apiDocsNotice('create', 'create-search-session-api-v-1-workspaces-workspace-name-search-sessions-post'),
+	// TODO: unlike Delete/Get Many, Create has no apiDocsNotice() (see
+	// resources/shared.ts) linking the Haystack Enterprise API docs. The
+	// deployment path is currently excluded from the OpenAPI schema
 	{
 		displayName: 'Service Name or ID',
 		name: 'deploymentId',
@@ -52,7 +53,7 @@ export const searchSessionFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		description:
-			'The service to create a search session for. The session belongs to the pipeline behind this service\'s active revision. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			'The service to create a search session for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: ['searchSession'],
