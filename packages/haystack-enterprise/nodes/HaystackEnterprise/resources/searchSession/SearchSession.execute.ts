@@ -19,7 +19,7 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 	const qs: IDataObject = {
 		filter: filters.odataFilter ? `deployment_id ne null and (${filters.odataFilter})` : 'deployment_id ne null',
 	};
-git a
+
 	const limit = returnAll ? 100 : (this.getNodeParameter('limit', itemIndex) as number);
 
 	return fetchListWithCursorOrPaging(
