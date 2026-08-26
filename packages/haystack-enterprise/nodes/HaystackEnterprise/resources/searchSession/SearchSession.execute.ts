@@ -15,10 +15,12 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 	const returnAll = this.getNodeParameter('returnAll', itemIndex) as boolean;
 	const filters = this.getNodeParameter('filters', itemIndex, {}) as IDataObject;
 
-	const qs: IDataObject = {};
-	if (filters.odataFilter) {
-		qs.filter = filters.odataFilter;
-	}
+	// Sessions can still be owned by a pipeline instead of a service/deployment
+	// (search_session.deployment_id is nullable). Create only makes deployment-owned
+	// sessions now, so Get Many hides the pipeline-owned leftovers by default.
+	const qs: IDataObject = {
+		filter: filters.odataFilter ? `deployment_id ne null and (${filters.odataFilter})` : 'deployment_id ne null',
+	};
 
 	const limit = returnAll ? 100 : (this.getNodeParameter('limit', itemIndex) as number);
 

@@ -607,12 +607,19 @@ export async function createSearchSession(
 export async function loadSearchSessionOptions(
 	context: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	return loadResourceOptions(context, 'search_sessions', extractSearchSessionList, (session) => {
-		if (typeof session.search_session_id !== 'string') return undefined;
-		const id = session.search_session_id;
-		const title = typeof session.title === 'string' && session.title.trim() !== '' ? session.title : id;
-		return { name: title, value: id };
-	});
+	return loadResourceOptions(
+		context,
+		'search_sessions',
+		extractSearchSessionList,
+		(session) => {
+			if (typeof session.search_session_id !== 'string') return undefined;
+			const id = session.search_session_id;
+			const title = typeof session.title === 'string' && session.title.trim() !== '' ? session.title : id;
+			return { name: title, value: id };
+		},
+		// Same deployment-only scoping as SearchSession's getAll() — see the comment there.
+		{ limit: 100, page_number: 1, filter: 'deployment_id ne null' },
+	);
 }
 
 /**

@@ -135,7 +135,7 @@ export const searchSessionFields: INodeProperties[] = [
 				default: '',
 				placeholder: "e.g. title eq 'Support chat'",
 				description:
-					'An OData filter expression, supporting exact match and AND. See the <a href="https://www.odata.org/getting-started/basic-tutorial/#queryData">OData filter syntax</a>.',
+					'An OData filter expression, supporting exact match and AND. See the <a href="https://www.odata.org/getting-started/basic-tutorial/#queryData">OData filter syntax</a>. Only search sessions belonging to a service are ever returned, regardless of this filter.',
 			},
 			{
 				displayName: 'Before (Search Session ID)',
