@@ -4,17 +4,13 @@ import { createExecuteContext } from './testHelpers';
 
 interface ContextOptions {
 	params: Record<string, unknown>;
-	deploymentResponse?: Record<string, unknown>;
 	createSessionResponse?: Record<string, unknown>;
 	listResponse?: Record<string, unknown>;
 }
 
-function createContext({ params, deploymentResponse, createSessionResponse, listResponse }: ContextOptions) {
+function createContext({ params, createSessionResponse, listResponse }: ContextOptions) {
 	return createExecuteContext(params, async (...args: unknown[]) => {
 		const requestOptions = args[1] as { method: string; url: string; qs?: Record<string, unknown> };
-		if (requestOptions.method === 'GET' && /\/deployments\/[^/]+$/.test(requestOptions.url)) {
-			return deploymentResponse ?? {};
-		}
 		if (requestOptions.method === 'POST' && requestOptions.url.endsWith('/search_sessions')) {
 			return createSessionResponse ?? { search_session_id: 'created-session' };
 		}
@@ -29,33 +25,23 @@ function createContext({ params, deploymentResponse, createSessionResponse, list
 }
 
 describe('executeSearchSession — create', () => {
-	it('resolves the pipeline ID from the selected service and creates a session', async () => {
+	it('creates a session directly against the selected service (deployment)', async () => {
 		const { context, httpRequestWithAuthentication } = createContext({
 			params: { workspaceName: 'ws', deploymentId: 'dep-1' },
-			deploymentResponse: { active_revision: { source_pipeline_id: 'pipeline-1' } },
 			createSessionResponse: { search_session_id: 'created-session' },
 		});
 
 		const result = await executeSearchSession.call(context, 'create', 0);
 
+		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'haystackEnterpriseApi',
 			expect.objectContaining({
 				method: 'POST',
-				url: expect.stringContaining('/search_sessions'),
-				body: { pipeline_id: 'pipeline-1' },
+				url: expect.stringContaining('/workspaces/ws/deployments/dep-1/search_sessions'),
 			}),
 		);
 		expect(result).toEqual([{ json: { search_session_id: 'created-session' } }]);
-	});
-
-	it('throws a clear error when the service has no active revision', async () => {
-		const { context } = createContext({
-			params: { workspaceName: 'ws', deploymentId: 'dep-1' },
-			deploymentResponse: {},
-		});
-
-		await expect(executeSearchSession.call(context, 'create', 0)).rejects.toThrow(/active revision/);
 	});
 });
 

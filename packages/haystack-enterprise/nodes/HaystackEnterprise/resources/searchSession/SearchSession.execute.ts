@@ -1,29 +1,12 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import {
-	apiRequest,
-	createSearchSession,
-	extractSearchSessionList,
-	fetchDeployment,
-	fetchListWithCursorOrPaging,
-	getSourcePipelineId,
-} from '../../utils';
+import { apiRequest, createSearchSession, extractSearchSessionList, fetchListWithCursorOrPaging } from '../../utils';
 
 async function create(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
 	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
 	const deploymentId = this.getNodeParameter('deploymentId', itemIndex) as string;
 
-	const deployment = await fetchDeployment.call(this, workspaceName, deploymentId);
-	const pipelineId = getSourcePipelineId(deployment);
-	if (!pipelineId) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'This service has no active revision, so its underlying pipeline could not be determined.',
-			{ itemIndex },
-		);
-	}
-
-	const searchSessionId = await createSearchSession.call(this, workspaceName, pipelineId);
+	const searchSessionId = await createSearchSession.call(this, workspaceName, deploymentId);
 	return { search_session_id: searchSessionId };
 }
 
