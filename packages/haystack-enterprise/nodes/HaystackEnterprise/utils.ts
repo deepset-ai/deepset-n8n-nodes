@@ -298,13 +298,17 @@ export async function apiRequestStream(
 
 /**
  * Response headers come back with whatever casing the HTTP client normalized
- * them to, so look up `name`
- * case-insensitively rather than assuming lowercase.
+ * them to, so look up `name` case-insensitively rather than assuming
+ * lowercase. A repeated header (e.g. Node's `IncomingHttpHeaders`) can arrive
+ * as a `string[]` instead of a `string` — take the first value in that case
+ * rather than dropping it.
  */
 export function getResponseHeader(headers: IDataObject, name: string): string | undefined {
 	const key = Object.keys(headers).find((k) => k.toLowerCase() === name.toLowerCase());
 	const value = key ? headers[key] : undefined;
-	return typeof value === 'string' ? value : undefined;
+	if (typeof value === 'string') return value;
+	if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
+	return undefined;
 }
 
 /**
