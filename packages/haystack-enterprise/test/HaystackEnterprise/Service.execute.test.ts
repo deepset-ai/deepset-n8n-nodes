@@ -15,20 +15,22 @@ interface StreamContextOptions {
 	params: Record<string, unknown>;
 	streamRequestError?: Error;
 	isStreaming?: boolean;
+	responseHeaders?: Record<string, string>;
 }
 
-function createStreamContext({ params, streamRequestError, isStreaming }: StreamContextOptions) {
+function createStreamContext({ params, streamRequestError, isStreaming, responseHeaders }: StreamContextOptions) {
 	const stream = new FakeStream();
 	const sendChunk = vi.fn();
 
 	const { context, httpRequestWithAuthentication } = createContext(
 		params,
 		async () => {
-			// The *-stream endpoint: resolves immediately with the stream, same as
-			// the real encoding: 'stream' behavior — the body arrives later via
-			// 'data'/'end' events, not by awaiting this call any further.
+			// The *-stream endpoint: resolves immediately with the full response
+			// (returnFullResponse: true), same as the real encoding: 'stream'
+			// behavior — the body arrives later via 'data'/'end' events, not by
+			// awaiting this call any further.
 			if (streamRequestError) throw streamRequestError;
-			return stream;
+			return { body: stream, headers: responseHeaders ?? {} };
 		},
 		{},
 		{ isStreaming: () => isStreaming ?? false, sendChunk },
@@ -273,8 +275,11 @@ describe('executeService — streaming (searchStream / chatStream)', () => {
 		stream.emit('end');
 		await resultPromise;
 
+		// Only the plain delta text is relayed live, not the raw event object —
+		// sendChunk() JSON.stringifies non-string content before showing it in
+		// the chat UI, so forwarding the raw event would leak its full JSON.
 		expect(sendChunk).toHaveBeenNthCalledWith(1, 'begin', 0);
-		expect(sendChunk).toHaveBeenNthCalledWith(2, 'item', 0, event);
+		expect(sendChunk).toHaveBeenNthCalledWith(2, 'item', 0, 'Hi');
 		expect(sendChunk).toHaveBeenNthCalledWith(3, 'end', 0);
 	});
 
@@ -431,5 +436,57 @@ describe('executeService — streaming (searchStream / chatStream)', () => {
 		const streamCall = calls.find(([, options]) => options.url.endsWith('/chat-stream'));
 		expect(streamCall?.[1]).toMatchObject({ body: { query: 'hello', search_session_id: 'existing-session' } });
 		expect(result).toEqual([{ json: { content: 'Hi', search_session_id: 'existing-session' } }]);
+	});
+
+	it('omits search_session_id from the request body when none is supplied, and reads the auto-created one back from the response header', async () => {
+		const { context, stream, httpRequestWithAuthentication } = createStreamContext({
+			params: {
+				workspaceName: 'ws',
+				deploymentId: 'dep-1',
+				query: 'hello',
+				simplify: true,
+				additionalFields: {},
+				searchSessionId: '',
+				waitForActivation: false,
+				maxWaitMinutes: 5,
+			},
+			responseHeaders: { 'X-Search-Session-Id': 'auto-created-session' },
+		});
+
+		const resultPromise = executeService.call(context, 'chatStream', 0);
+		await flushMicrotasks();
+		stream.emit('data', sseRecord({ type: 'delta', delta: { text: 'Hi' } }));
+		stream.emit('end');
+
+		const result = await resultPromise;
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { body: Record<string, unknown> }];
+		expect(options.body).not.toHaveProperty('search_session_id');
+		expect(result).toEqual([{ json: { content: 'Hi', search_session_id: 'auto-created-session' } }]);
+	});
+
+	it('stamps the auto-created search session ID onto every raw event when Simplify Output is off', async () => {
+		const { context, stream } = createStreamContext({
+			params: {
+				workspaceName: 'ws',
+				deploymentId: 'dep-1',
+				query: 'hello',
+				simplify: false,
+				additionalFields: {},
+				searchSessionId: '',
+				waitForActivation: false,
+				maxWaitMinutes: 5,
+			},
+			responseHeaders: { 'X-Search-Session-Id': 'auto-created-session' },
+		});
+
+		const resultPromise = executeService.call(context, 'chatStream', 0);
+		await flushMicrotasks();
+		stream.emit('data', sseRecord({ type: 'delta', delta: { text: 'Hi' } }));
+		stream.emit('end');
+
+		expect(await resultPromise).toEqual([
+			{ json: { type: 'delta', delta: { text: 'Hi' }, search_session_id: 'auto-created-session' } },
+		]);
 	});
 });

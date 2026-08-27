@@ -262,7 +262,10 @@ async function loadOptionsApiRequest(
 /**
  * Like apiRequest(), but for the *-stream endpoints: requests the response as
  * a raw Node.js stream instead of buffering and JSON-parsing the body, so the
- * caller can read Server-Sent Events off it as they arrive.
+ * caller can read Server-Sent Events off it as they arrive. Also returns the
+ * response headers (`returnFullResponse: true`) — chat-stream reports the
+ * search session ID via an `X-Search-Session-Id` header when one wasn't
+ * passed in the request, since it's created automatically in that case.
  *
  * Uses `firstErrorOnly` (rather than apiRequest()'s join-all-messages
  * description) so the NodeApiError's description surfaces a single readable
@@ -274,20 +277,34 @@ export async function apiRequestStream(
 	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
-): Promise<NodeJS.ReadableStream> {
+): Promise<{ stream: NodeJS.ReadableStream; headers: IDataObject }> {
 	return withApiErrorWrapping(
 		this,
 		endpoint,
-		async () =>
-			(await this.helpers.httpRequestWithAuthentication.call(this, CREDENTIAL_NAME, {
+		async () => {
+			const response = (await this.helpers.httpRequestWithAuthentication.call(this, CREDENTIAL_NAME, {
 				method,
 				url: `${getApiBaseUrl()}${endpoint}`,
 				json: true,
 				body,
 				encoding: 'stream',
-			})) as NodeJS.ReadableStream,
+				returnFullResponse: true,
+			})) as { body: NodeJS.ReadableStream; headers: IDataObject };
+			return { stream: response.body, headers: response.headers };
+		},
 		{ firstErrorOnly: true },
 	);
+}
+
+/**
+ * Response headers come back with whatever casing the HTTP client normalized
+ * them to, so look up `name`
+ * case-insensitively rather than assuming lowercase.
+ */
+export function getResponseHeader(headers: IDataObject, name: string): string | undefined {
+	const key = Object.keys(headers).find((k) => k.toLowerCase() === name.toLowerCase());
+	const value = key ? headers[key] : undefined;
+	return typeof value === 'string' ? value : undefined;
 }
 
 /**

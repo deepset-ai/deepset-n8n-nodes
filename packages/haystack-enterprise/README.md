@@ -79,7 +79,8 @@ N8N_DEV_RELOAD=true N8N_USER_FOLDER=~/.n8n-node-cli n8n start
 [`test/examples/`](./test/examples) has ready-made workflows for trying out the node once it's loaded into your n8n instance:
 
 - [`search-stream-example.json`](./test/examples/search-stream-example.json) — a form-triggered workflow that submits a question straight to **Search (Streaming)** and shows the answer. The simplest example to start with.
-- [`chat-with-search-session-example.json`](./test/examples/chat-with-search-session-example.json) — a chat workflow that looks up (or creates) a **Search Session** before calling **Chat (Streaming)**, so conversation history persists across messages.
+- [`chat-with-auto-created-search-session-example.json`](./test/examples/chat-with-auto-created-search-session-example.json) — the simplest chat workflow: leaves **Search Session ID** empty and lets **Chat (Streaming)** create one automatically, remembering the returned ID for the rest of the conversation.
+- [`chat-with-search-session-example.json`](./test/examples/chat-with-search-session-example.json) — the same conversation-history pattern, but managing the **Search Session** explicitly (create/list/delete) instead of relying on auto-creation.
 - [`agent-with-chat-and-search-tools-example.json`](./test/examples/agent-with-chat-and-search-tools-example.json) — an AI Agent with two separate tool instances of this node, one running **Search (Streaming)** against a search-tuned service and one running **Chat (Streaming)** against a chat-tuned service, so it can pick whichever fits the user's request.
 - [`mirror-files-in-google-drive-example.json`](./test/examples/mirror-files-in-google-drive-example.json) — a nightly scheduled workflow that diffs a Google Drive folder against files already indexed in Haystack Enterprise, uploading new files, updating changed ones, deleting removed ones, and waiting for indexing to finish before reporting.
 
@@ -117,7 +118,7 @@ is self-hosted-only — see that package's README.
 
 ### Chat and search sessions
 
-The Chat (Streaming) operation takes a **Search Session ID**, used for chat history. To keep history across messages, create a search session explicitly with the **Search Session** resource's **Create** operation, and pass its ID into **Search Session ID** on subsequent Chat calls.
+The Chat (Streaming) operation takes an optional **Search Session ID**, used to store a chat history. Leave it empty on the first message and the node starts a session automatically, returning its ID in the output's `search_session_id` field — feed that back into **Search Session ID** on the next Chat call to continue the conversation. To manage sessions explicitly instead (e.g. to list or delete them later), create one with the **Search Session** resource's **Create** operation and pass its ID in from the start.
 
 ### One-off answers with Search (Streaming)
 
