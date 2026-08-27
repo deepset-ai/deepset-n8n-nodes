@@ -94,6 +94,17 @@ describe('executeSearchSession — get many', () => {
 		);
 	});
 
+	it('throws a clear NodeOperationError when the Service expression resolves to a non-string', async () => {
+		const { context } = createContext({
+			params: { workspaceName: 'ws', returnAll: false, limit: 50, deploymentId: 42, filters: {} },
+			listResponse: { search_sessions: [], has_more: false, total: 0 },
+		});
+
+		await expect(executeSearchSession.call(context, 'getAll', 0)).rejects.toThrow(
+			'"Service Name or ID" must resolve to a string',
+		);
+	});
+
 	it('scopes to one service instead of the deployment-owned baseline when a service is selected', async () => {
 		const { context, httpRequestWithAuthentication } = createContext({
 			params: { workspaceName: 'ws', returnAll: false, limit: 50, deploymentId: 'dep-1', filters: {} },
