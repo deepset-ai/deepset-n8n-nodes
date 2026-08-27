@@ -10,6 +10,7 @@ import {
 	extractWorkspaceList,
 	fetchPaginatedResults,
 	loadDeploymentOptions,
+	loadDeploymentOptionsWithAllOption,
 	loadFileOptions,
 	loadIndexOptions,
 	loadSearchSessionOptions,
@@ -136,6 +137,19 @@ describe('loadDeploymentOptions', () => {
 		const context = createLoadOptionsContext(async () => ({ data: [] }), '');
 
 		expect(await loadDeploymentOptions(context)).toEqual([]);
+	});
+});
+
+describe('loadDeploymentOptionsWithAllOption', () => {
+	it('prepends an "All Services" option ahead of the real deployments', async () => {
+		const context = createLoadOptionsContext(async () => ({
+			data: [{ deployment_id: 'dep-1', name: 'My Service', status: 'DEPLOYED' }],
+		}));
+
+		expect(await loadDeploymentOptionsWithAllOption(context)).toEqual([
+			{ name: 'All Services', value: '' },
+			{ name: 'My Service (DEPLOYED)', value: 'dep-1' },
+		]);
 	});
 });
 

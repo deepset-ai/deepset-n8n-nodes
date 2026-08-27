@@ -116,6 +116,24 @@ export const searchSessionFields: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Service Name or ID',
+		name: 'deploymentId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDeploymentsWithAllOption',
+			loadOptionsDependsOn: ['workspaceName'],
+		},
+		default: '',
+		description:
+			'Only return search sessions for this service; choose "All Services" to return sessions for every service. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		displayOptions: {
+			show: {
+				resource: ['searchSession'],
+				operation: ['getAll'],
+			},
+		},
+	},
+	{
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',

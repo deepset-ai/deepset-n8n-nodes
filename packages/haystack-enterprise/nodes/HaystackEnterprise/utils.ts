@@ -519,6 +519,16 @@ export async function loadDeploymentOptions(
 	});
 }
 
+/**
+ * Same as loadDeploymentOptions(), but with a leading pseudo-option (empty value) for
+ * clearing the field back to "no service selected" to show values for all services
+ */
+export async function loadDeploymentOptionsWithAllOption(
+	context: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	return [{ name: 'All Services', value: '' }, ...(await loadDeploymentOptions(context))];
+}
+
 export async function loadFileOptions(context: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	return loadResourceOptions(
 		context,
