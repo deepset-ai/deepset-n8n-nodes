@@ -80,7 +80,60 @@ describe('executeSearchSession — get many', () => {
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
 	});
 
-	it('passes the OData filter as a query param', async () => {
+	it('always scopes to deployment-owned sessions, even with no user filter', async () => {
+		const { context, httpRequestWithAuthentication } = createContext({
+			params: { workspaceName: 'ws', returnAll: false, limit: 50, filters: {} },
+			listResponse: { search_sessions: [], has_more: false, total: 0 },
+		});
+
+		await executeSearchSession.call(context, 'getAll', 0);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseApi',
+			expect.objectContaining({ qs: expect.objectContaining({ filter: 'deployment_id ne null' }) }),
+		);
+	});
+
+	it('throws a clear NodeOperationError when the Service expression resolves to a non-string', async () => {
+		const { context } = createContext({
+			params: { workspaceName: 'ws', returnAll: false, limit: 50, deploymentId: 42, filters: {} },
+			listResponse: { search_sessions: [], has_more: false, total: 0 },
+		});
+
+		await expect(executeSearchSession.call(context, 'getAll', 0)).rejects.toThrow(
+			'"Service Name or ID" must resolve to a string',
+		);
+	});
+
+	it('scopes to one service instead of the deployment-owned baseline when a service is selected', async () => {
+		const { context, httpRequestWithAuthentication } = createContext({
+			params: { workspaceName: 'ws', returnAll: false, limit: 50, deploymentId: 'dep-1', filters: {} },
+			listResponse: { search_sessions: [], has_more: false, total: 0 },
+		});
+
+		await executeSearchSession.call(context, 'getAll', 0);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseApi',
+			expect.objectContaining({ qs: expect.objectContaining({ filter: "deployment_id eq 'dep-1'" }) }),
+		);
+	});
+
+	it("escapes a single quote in the selected service's ID for the OData filter", async () => {
+		const { context, httpRequestWithAuthentication } = createContext({
+			params: { workspaceName: 'ws', returnAll: false, limit: 50, deploymentId: "dep-1'", filters: {} },
+			listResponse: { search_sessions: [], has_more: false, total: 0 },
+		});
+
+		await executeSearchSession.call(context, 'getAll', 0);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseApi',
+			expect.objectContaining({ qs: expect.objectContaining({ filter: "deployment_id eq 'dep-1'''" }) }),
+		);
+	});
+
+	it('ANDs the user OData filter onto the deployment-owned scoping', async () => {
 		const { context, httpRequestWithAuthentication } = createContext({
 			params: { workspaceName: 'ws', returnAll: false, limit: 50, filters: { odataFilter: "title eq 'Support chat'" } },
 			listResponse: { search_sessions: [], has_more: false, total: 0 },
@@ -90,7 +143,9 @@ describe('executeSearchSession — get many', () => {
 
 		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'haystackEnterpriseApi',
-			expect.objectContaining({ qs: expect.objectContaining({ filter: "title eq 'Support chat'" }) }),
+			expect.objectContaining({
+				qs: expect.objectContaining({ filter: "deployment_id ne null and (title eq 'Support chat')" }),
+			}),
 		);
 	});
 

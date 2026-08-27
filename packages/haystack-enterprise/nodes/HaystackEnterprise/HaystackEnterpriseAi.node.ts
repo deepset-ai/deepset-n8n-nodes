@@ -10,6 +10,7 @@ import type {
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import {
 	loadDeploymentOptions,
+	loadDeploymentOptionsWithAllOption,
 	loadFileOptions,
 	loadIndexOptions,
 	loadSearchSessionOptions,
@@ -109,6 +110,9 @@ export class HaystackEnterpriseAi implements INodeType {
 			},
 			async getDeployments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return loadDeploymentOptions(this);
+			},
+			async getDeploymentsWithAllOption(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return loadDeploymentOptionsWithAllOption(this);
 			},
 			async getFiles(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return loadFileOptions(this);

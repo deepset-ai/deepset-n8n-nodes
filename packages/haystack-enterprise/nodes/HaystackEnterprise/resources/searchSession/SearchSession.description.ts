@@ -116,6 +116,24 @@ export const searchSessionFields: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Service Name or ID',
+		name: 'deploymentId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDeploymentsWithAllOption',
+			loadOptionsDependsOn: ['workspaceName'],
+		},
+		default: '',
+		description:
+			'Only return search sessions for this service; choose "All Services" to return sessions for every service. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		displayOptions: {
+			show: {
+				resource: ['searchSession'],
+				operation: ['getAll'],
+			},
+		},
+	},
+	{
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
@@ -135,7 +153,7 @@ export const searchSessionFields: INodeProperties[] = [
 				default: '',
 				placeholder: "e.g. title eq 'Support chat'",
 				description:
-					'An OData filter expression, supporting exact match and AND. See the <a href="https://www.odata.org/getting-started/basic-tutorial/#queryData">OData filter syntax</a>.',
+					'An OData filter expression, supporting exact match and AND. See the <a href="https://www.odata.org/getting-started/basic-tutorial/#queryData">OData filter syntax</a>. Only search sessions belonging to a service are ever returned, regardless of this filter.',
 			},
 			{
 				displayName: 'Before (Search Session ID)',
