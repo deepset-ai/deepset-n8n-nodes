@@ -19,8 +19,10 @@ function toErrorLike(status: number, data: unknown): Error {
  * ephemeral environment) for validation. Handles only what
  * `haystack-enterprise/nodes/HaystackEnterprise/utils.ts`'s `apiRequest`/
  * `apiRequestStream` actually send: JSON method/url/qs/body, `FormData` bodies
- * (File's `upload`), and the `encoding: 'stream'` case for the *-stream
- * endpoints. Does NOT handle `encoding: 'arraybuffer'`/`returnFullResponse`
+ * (File's `upload`), the `encoding: 'stream'` case for the *-stream
+ * endpoints, and `returnFullResponse` alongside it (`apiRequestStream()`
+ * reads the search session ID off the response headers). Does NOT handle
+ * `encoding: 'arraybuffer'`/`returnFullResponse` for a non-streamed response
  * (File's `get`) — see the comment on that case in `src/registry/file.ts` for
  * why that's not just a missing feature here.
  */
@@ -66,7 +68,11 @@ async function realHttpRequestWithAuthentication(requestOptions: IHttpRequestOpt
 		if (!response.body) {
 			throw new Error('Expected a response body to stream, got none.');
 		}
-		return Readable.fromWeb(response.body as never);
+		const stream = Readable.fromWeb(response.body as never);
+		if (requestOptions.returnFullResponse) {
+			return { body: stream, headers: Object.fromEntries(response.headers.entries()) };
+		}
+		return stream;
 	}
 
 	const text = await response.text();

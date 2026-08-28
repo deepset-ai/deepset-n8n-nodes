@@ -325,17 +325,7 @@ export const serviceFields: INodeProperties[] = [
 				operation: ['searchStream'],
 			},
 		},
-		options: [
-			...commonAdditionalFields,
-			{
-				displayName: 'Search Session ID',
-				name: 'searchSessionId',
-				type: 'string',
-				default: '',
-				description: 'The ID of an existing search session to associate this query with',
-			},
-			...streamingAdditionalFields,
-		],
+		options: [...commonAdditionalFields, ...streamingAdditionalFields],
 	},
 	// Chat (Streaming)
 	{
@@ -358,10 +348,9 @@ export const serviceFields: INodeProperties[] = [
 		displayName: 'Search Session ID',
 		name: 'searchSessionId',
 		type: 'string',
-		required: true,
 		default: '',
 		description:
-			'The ID of an existing search session to continue, for chat history. This node does not create search sessions automatically — creating a new one on every chat message would spam your workspace with sessions. Use the Search Session resource\'s Create operation to create one first, and reuse its ID across calls in your workflow. See the package README for an example workflow.',
+			'The ID of an existing search session to continue, for chat history. Leave empty to start a new session automatically — its ID is returned in the output\'s search_session_id field, ready to reuse on the next call to continue the conversation.',
 		displayOptions: {
 			show: {
 				resource: ['service'],

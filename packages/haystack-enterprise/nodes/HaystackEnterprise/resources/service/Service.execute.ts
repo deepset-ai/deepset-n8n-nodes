@@ -7,6 +7,7 @@ import {
 	extractPaginatedList,
 	extractStreamErrorDetail,
 	fetchListWithCursorOrPaging,
+	getResponseHeader,
 	parseCommaSeparatedList,
 	parseJsonField,
 	withServiceActivationRetry,
@@ -93,15 +94,18 @@ async function runSearchStream(
 	const files = parseCommaSeparatedList(additionalFields.files);
 	if (files.length > 0) body.files = files;
 
+	// search-stream is a one-off, historyless request — it has no concept of a
+	// search session. Only chat-stream takes one, and only optionally: when
+	// omitted, Haystack Enterprise creates one on the fly and reports its ID
+	// back via the X-Search-Session-Id response header (read below, once the
+	// stream request has been made).
 	let searchSessionId: string | undefined;
 	if (endpoint === 'chat-stream') {
-		searchSessionId = this.getNodeParameter('searchSessionId', itemIndex) as string;
-		body.search_session_id = searchSessionId;
+		searchSessionId = this.getNodeParameter('searchSessionId', itemIndex, '') as string;
+		if (searchSessionId) body.search_session_id = searchSessionId;
 		if (additionalFields.chatHistoryLimit !== undefined) {
 			body.chat_history_limit = additionalFields.chatHistoryLimit;
 		}
-	} else if (additionalFields.searchSessionId) {
-		body.search_session_id = additionalFields.searchSessionId;
 	}
 
 	const waitForActivation = this.getNodeParameter('waitForActivation', itemIndex, false) as boolean;
@@ -118,7 +122,10 @@ async function runSearchStream(
 
 	let stream: NodeJS.ReadableStream;
 	try {
-		stream = (await withServiceActivationRetry.call(
+		// withServiceActivationRetry is generic; calling it via .call() erases its
+		// type parameter to `unknown` (same rationale as withApiErrorWrapping()'s
+		// own docstring in utils.ts), hence the cast.
+		const response = (await withServiceActivationRetry.call(
 			this,
 			() =>
 				apiRequestStream.call(
@@ -129,7 +136,13 @@ async function runSearchStream(
 				),
 			waitForActivation,
 			maxWaitMinutes * 60_000,
-		)) as NodeJS.ReadableStream;
+		)) as { stream: NodeJS.ReadableStream; headers: IDataObject };
+		stream = response.stream;
+		// Only relevant for chat-stream when searchSessionId wasn't supplied —
+		// echoes back the ID of the session Haystack Enterprise just created.
+		if (endpoint === 'chat-stream') {
+			searchSessionId ||= getResponseHeader(response.headers, 'X-Search-Session-Id');
+		}
 	} catch (error) {
 		if (relayLive) this.sendChunk('error', itemIndex, error instanceof Error ? error.message : 'Request failed');
 		// eslint-disable-next-line @n8n/community-nodes/require-node-api-error -- already a NodeApiError (apiRequestStream/withServiceActivationRetry always throw one); rethrowing in place preserves .context.data (see apiRequest()'s docstring in utils.ts)
@@ -143,11 +156,19 @@ async function runSearchStream(
 
 	await consumeSseStream(stream, (event) => {
 		events.push(event);
-		if (relayLive) this.sendChunk('item', itemIndex, event);
 
 		if (event.type === 'delta') {
 			const delta = event.delta as IDataObject | undefined;
-			if (typeof delta?.text === 'string') textContent += delta.text;
+			const text = typeof delta?.text === 'string' ? delta.text : undefined;
+			if (text) {
+				textContent += text;
+				// sendChunk() JSON.stringifies any non-string content as-is before
+				// relaying it to the chat UI, so passing the raw event here (like
+				// every other event type below) would dump its full JSON into the
+				// chat instead of the plain answer text — only the text piece itself
+				// is meant to be shown live.
+				if (relayLive) this.sendChunk('item', itemIndex, text);
+			}
 		} else if (event.type === 'result') {
 			finalResult = event.result as IDataObject | undefined;
 		} else if (event.type === 'error') {
@@ -169,12 +190,16 @@ async function runSearchStream(
 	if (relayLive) this.sendChunk('end', itemIndex);
 
 	if (!simplify) {
+		// Not part of the SSE payload itself (it only ever arrives via the
+		// response header), so stamp it onto every event or raw-mode callers
+		// relying on a freshly auto-created session would have no way to see it.
+		if (searchSessionId) events.forEach((event) => (event.search_session_id = searchSessionId));
 		return events;
 	}
 
 	const aggregated: IDataObject = { content: textContent };
 	if (finalResult) aggregated.result = finalResult;
-	if (endpoint === 'chat-stream' && searchSessionId) aggregated.search_session_id = searchSessionId;
+	if (searchSessionId) aggregated.search_session_id = searchSessionId;
 	return [aggregated];
 }
 
