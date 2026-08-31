@@ -10,7 +10,19 @@ import type {
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
+const OAUTH2_CREDENTIAL_NAME = 'haystackEnterpriseOAuth2Api';
 const PRODUCTION_API_BASE_URL = 'https://api.cloud.deepset.ai/api/v1';
+
+/**
+ * The node offers API Key and OAuth2 as alternate credential types, picked via the
+ * "Authentication" node parameter (see HaystackEnterpriseAi.node.ts) — this resolves that choice
+ * to the credential type name httpRequestWithAuthentication() should authenticate with. Read at
+ * item index 0: "Authentication" is a static top-level dropdown, not a per-item expression.
+ */
+function getCredentialType(context: IExecuteFunctions | ILoadOptionsFunctions): string {
+	const authentication = context.getNodeParameter('authentication', 0, 'apiKey') as string;
+	return authentication === 'oAuth2' ? OAUTH2_CREDENTIAL_NAME : CREDENTIAL_NAME;
+}
 
 let apiBaseUrlOverride: string | undefined;
 
@@ -136,14 +148,14 @@ function describeApiAuthErrorHint(httpCode: string | null, endpoint: string, des
 	const isForbidden = httpCode === '403' || normalizedDescription.includes('forbidden');
 
 	if (isUnauthorized) {
-		return 'Check that the API key in this credential is valid.';
+		return 'Check that the credential above (API key or OAuth2) is valid.';
 	}
 	if (isForbidden) {
 		const gatedResource = RESOURCE_PERMISSION_ENDPOINTS.find(({ pattern }) => pattern.test(endpoint))?.resource;
 		if (gatedResource) {
-			return `This API key either can't access this workspace, or lacks permission for this ${gatedResource}. Check both in Haystack Enterprise Platform.`;
+			return `This credential either can't access this workspace, or lacks permission for this ${gatedResource}. Check both in Haystack Enterprise Platform.`;
 		}
-		return "This API key doesn't have access to this workspace. Use a workspace-level key for it, or an org-wide key.";
+		return "This credential doesn't have access to this workspace. Use a workspace-level key/user for it, or an org-wide one.";
 	}
 	return '';
 }
@@ -228,7 +240,7 @@ export async function apiRequest(
 	};
 
 	return withApiErrorWrapping(this, endpoint, () =>
-		this.helpers.httpRequestWithAuthentication.call(this, CREDENTIAL_NAME, requestOptions),
+		this.helpers.httpRequestWithAuthentication.call(this, getCredentialType(this), requestOptions),
 	);
 }
 
@@ -282,7 +294,7 @@ export async function apiRequestStream(
 		this,
 		endpoint,
 		async () => {
-			const response = (await this.helpers.httpRequestWithAuthentication.call(this, CREDENTIAL_NAME, {
+			const response = (await this.helpers.httpRequestWithAuthentication.call(this, getCredentialType(this), {
 				method,
 				url: `${getApiBaseUrl()}${endpoint}`,
 				json: true,

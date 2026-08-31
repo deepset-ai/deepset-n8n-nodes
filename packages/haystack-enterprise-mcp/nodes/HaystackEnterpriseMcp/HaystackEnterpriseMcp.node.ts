@@ -22,6 +22,7 @@ import {
 	createMcpTransport,
 	describeToolCallErrorHint,
 	describeTransportErrorHint,
+	getBearerToken,
 	getSelectedTools,
 	isStructuredContent,
 	listAllMcpTools,
@@ -62,20 +63,19 @@ async function connectAndListFilteredTools(
 		throw new NodeOperationError(ctx.getNode(), 'Execution was cancelled', { itemIndex });
 	}
 
-	const credentials = await ctx.getCredentials('haystackEnterpriseApi');
 	const workspaceId = ctx.getNodeParameter('workspaceId', itemIndex) as string;
-	const apiKey = credentials.apiKey as string;
+	const bearerToken = await getBearerToken(ctx, itemIndex);
 	const timeout = ctx.getNodeParameter('options.timeout', itemIndex, 60000) as number;
 
-	if (!workspaceId || !apiKey) {
+	if (!workspaceId || !bearerToken) {
 		throw new NodeOperationError(
 			ctx.getNode(),
-			'A workspace and an API key are required. Select a workspace above and make sure the Haystack Enterprise MCP API credential has a valid API key.',
+			'A workspace and a valid credential (API key or OAuth2) are required. Select a workspace above and make sure the Haystack Enterprise MCP credential is set up correctly.',
 			{ itemIndex },
 		);
 	}
 
-	const { client, transport, mcpUrl } = createMcpTransport(workspaceId, apiKey, signal);
+	const { client, transport, mcpUrl } = createMcpTransport(workspaceId, bearerToken, signal);
 
 	try {
 		await client.connect(transport);
@@ -175,6 +175,12 @@ export class HaystackEnterpriseMcp implements INodeType {
 			{
 				name: 'haystackEnterpriseApi',
 				required: true,
+				displayOptions: { show: { authentication: ['apiKey'] } },
+			},
+			{
+				name: 'haystackEnterpriseOAuth2Api',
+				required: true,
+				displayOptions: { show: { authentication: ['oAuth2'] } },
 			},
 		],
 		properties: [
@@ -183,6 +189,16 @@ export class HaystackEnterpriseMcp implements INodeType {
 				name: 'selfHostedNotice',
 				type: 'notice',
 				default: '',
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{ name: 'API Key', value: 'apiKey' },
+					{ name: 'OAuth2', value: 'oAuth2' },
+				],
+				default: 'apiKey',
 			},
 			{
 				displayName:
@@ -286,8 +302,8 @@ export class HaystackEnterpriseMcp implements INodeType {
 					return [];
 				}
 
-				const credentials = await this.getCredentials('haystackEnterpriseApi');
-				return loadMcpToolOptions(this, workspaceId, credentials.apiKey as string);
+				const bearerToken = await getBearerToken(this, 0);
+				return loadMcpToolOptions(this, workspaceId, bearerToken);
 			},
 		},
 	};

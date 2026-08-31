@@ -1,4 +1,11 @@
-import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions, JsonObject } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	ISupplyDataFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport, StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -8,8 +15,60 @@ import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.j
 export const API_BASE_URL_V1 = 'https://api.cloud.deepset.ai/api/v1';
 export const API_BASE_URL_V2 = 'https://api.cloud.deepset.ai/api/v2';
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
+const OAUTH2_CREDENTIAL_NAME = 'haystackEnterpriseOAuth2Api';
 const MCP_CLIENT_NAME = 'n8n-nodes-haystack-enterprise-mcp';
 const MCP_CLIENT_VERSION = '0.1.0';
+
+/**
+ * The node offers API Key and OAuth2 as alternate credential types, picked via the
+ * "Authentication" node parameter (see HaystackEnterpriseMcp.node.ts). Resolves that choice to a
+ * raw bearer token string, since the MCP SDK's transport takes a plain Authorization header,
+ * bypassing n8n's own HTTP helper — unlike the declarative haystack-enterprise package, which
+ * just names the OAuth2 credential type in httpRequestWithAuthentication() and lets n8n handle
+ * auth end to end, we need the actual access token here.
+ *
+ * For OAuth2, httpRequestWithAuthentication() is what actually knows how to refresh an expired
+ * token and persist the refreshed one — a direct getCredentials() call would return a stale one
+ * — so this makes one cheap authenticated call to force that refresh, then reads the (now
+ * current) token back off the credential.
+ * ponytail: one extra request per MCP connect; refresh-on-401 instead if that overhead matters.
+ */
+function getAuthenticationMode(
+	context: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
+	itemIndex: number,
+): string {
+	// ILoadOptionsFunctions.getNodeParameter() has no itemIndex parameter (there's only ever one
+	// "item" in a loadOptions call) — cast to IExecuteFunctions's shape to call it uniformly here
+	// with the other two contexts, which do take one.
+	return (context as IExecuteFunctions).getNodeParameter('authentication', itemIndex, 'apiKey') as string;
+}
+
+export async function getBearerToken(
+	context: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
+	itemIndex: number,
+): Promise<string> {
+	const authentication = getAuthenticationMode(context, itemIndex);
+
+	if (authentication !== 'oAuth2') {
+		const credentials = await context.getCredentials(CREDENTIAL_NAME);
+		return credentials.apiKey as string;
+	}
+
+	await context.helpers.httpRequestWithAuthentication.call(context, OAUTH2_CREDENTIAL_NAME, {
+		method: 'GET',
+		url: `${API_BASE_URL_V1}/workspaces`,
+		json: true,
+	});
+	const oauthCredentials = await context.getCredentials(OAUTH2_CREDENTIAL_NAME);
+	const accessToken = (oauthCredentials.oauthTokenData as { access_token?: string } | undefined)?.access_token;
+	if (!accessToken) {
+		throw new NodeOperationError(
+			context.getNode(),
+			'Failed to obtain an OAuth2 access token from the Haystack Enterprise OAuth2 API credential.',
+		);
+	}
+	return accessToken;
+}
 
 /**
  * Builds the MCP client + transport pointed at a workspace's MCP server —
@@ -20,13 +79,13 @@ const MCP_CLIENT_VERSION = '0.1.0';
  */
 export function createMcpTransport(
 	workspaceId: string,
-	apiKey: string,
+	bearerToken: string,
 	signal?: AbortSignal,
 ): { client: Client; transport: StreamableHTTPClientTransport; mcpUrl: string } {
 	const mcpUrl = `${API_BASE_URL_V2}/workspaces/${workspaceId}/mcp`;
 	const client = new Client({ name: MCP_CLIENT_NAME, version: MCP_CLIENT_VERSION });
 	const transport = new StreamableHTTPClientTransport(new URL(mcpUrl), {
-		requestInit: { headers: { Authorization: `Bearer ${apiKey}` }, signal },
+		requestInit: { headers: { Authorization: `Bearer ${bearerToken}` }, signal },
 	});
 	return { client, transport, mcpUrl };
 }
@@ -69,10 +128,10 @@ export function normalizeMcpInputSchema(raw: unknown): Record<string, unknown> {
 export function describeTransportErrorHint(error: unknown): string {
 	if (error instanceof StreamableHTTPError) {
 		if (error.code === 401) {
-			return 'Check that the API key in this credential is valid.';
+			return 'Check that the credential (API key or OAuth2) is valid.';
 		}
 		if (error.code === 403) {
-			return "This API key doesn't have access to this workspace. Use a workspace-level key for it, or an org-wide key.";
+			return "This credential doesn't have access to this workspace. Use a workspace-level one for it, or an org-wide one.";
 		}
 	}
 	return '';
@@ -224,10 +283,10 @@ export async function listAllMcpTools(client: Client, options?: RequestOptions):
  */
 function describeWorkspaceListErrorHint(httpCode: string | null): string {
 	if (httpCode === '401') {
-		return 'Check that the API key in this credential is valid.';
+		return 'Check that the credential (API key or OAuth2) is valid.';
 	}
 	if (httpCode === '403') {
-		return "This API key doesn't have permission to list workspaces. Use a key that has both workspace access and permission to list workspaces.";
+		return "This credential doesn't have permission to list workspaces. Use one that has both workspace access and permission to list workspaces.";
 	}
 	return '';
 }
@@ -249,9 +308,15 @@ function describeWorkspaceListErrorHint(httpCode: string | null): string {
 export async function loadWorkspaceOptions(
 	context: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
+	// This hits the v1 REST API through n8n's own HTTP helper (unlike the MCP transport in
+	// getBearerToken() above), so naming either credential type here is enough —
+	// httpRequestWithAuthentication() handles OAuth2 end to end, including refresh.
+	const authentication = getAuthenticationMode(context, 0);
+	const credentialType = authentication === 'oAuth2' ? OAUTH2_CREDENTIAL_NAME : CREDENTIAL_NAME;
+
 	let response: unknown;
 	try {
-		response = await context.helpers.httpRequestWithAuthentication.call(context, CREDENTIAL_NAME, {
+		response = await context.helpers.httpRequestWithAuthentication.call(context, credentialType, {
 			method: 'GET',
 			url: `${API_BASE_URL_V1}/workspaces`,
 			json: true,

@@ -40,6 +40,10 @@ function createLoadOptionsContext(httpRequestWithAuthentication: (...args: unkno
 	return {
 		helpers: { httpRequestWithAuthentication },
 		getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+		// Only 'authentication' (read by getAuthenticationMode()) is ever looked up on this
+		// fake — always falls back to the default 'apiKey', same as real n8n does for an unset
+		// parameter.
+		getNodeParameter: (_name: string, _itemIndex: number, fallback?: unknown) => fallback,
 	} as unknown as ILoadOptionsFunctions;
 }
 
@@ -222,6 +226,7 @@ describe('loadWorkspaceOptions', () => {
 				},
 			},
 			getNode: () => node,
+			getNodeParameter: (_name: string, _itemIndex: number, fallback?: unknown) => fallback,
 		} as unknown as ILoadOptionsFunctions;
 
 		const error = await loadWorkspaceOptions(context).catch((caught: unknown) => caught);
@@ -247,6 +252,7 @@ describe('loadWorkspaceOptions', () => {
 				},
 			},
 			getNode: () => node,
+			getNodeParameter: (_name: string, _itemIndex: number, fallback?: unknown) => fallback,
 		} as unknown as ILoadOptionsFunctions;
 
 		await expect(loadWorkspaceOptions(context)).rejects.toMatchObject({
@@ -275,6 +281,7 @@ describe('loadWorkspaceOptions', () => {
 				},
 			},
 			getNode: () => node,
+			getNodeParameter: (_name: string, _itemIndex: number, fallback?: unknown) => fallback,
 		} as unknown as ILoadOptionsFunctions;
 
 		const error = await loadWorkspaceOptions(context).catch((caught: unknown) => caught);
@@ -352,7 +359,7 @@ describe('loadMcpToolOptions', () => {
 		mockConnect.mockRejectedValue(new StreamableHTTPError(403, 'Forbidden'));
 
 		await expect(loadMcpToolOptions(context, 'workspace-1', 'secret-key')).rejects.toThrow(
-			/doesn't have access to this workspace.*org-wide key/s,
+			/doesn't have access to this workspace.*org-wide one/s,
 		);
 	});
 
@@ -407,7 +414,7 @@ describe('describeTransportErrorHint', () => {
 
 	it('returns a workspace-access hint for a 403 StreamableHTTPError', () => {
 		expect(describeTransportErrorHint(new StreamableHTTPError(403, 'Forbidden'))).toMatch(
-			/doesn't have access to this workspace.*org-wide key/,
+			/doesn't have access to this workspace.*org-wide one/,
 		);
 	});
 

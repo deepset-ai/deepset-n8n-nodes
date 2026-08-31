@@ -54,9 +54,25 @@ export class HaystackEnterpriseAi implements INodeType {
 			{
 				name: 'haystackEnterpriseApi',
 				required: true,
+				displayOptions: { show: { authentication: ['apiKey'] } },
+			},
+			{
+				name: 'haystackEnterpriseOAuth2Api',
+				required: true,
+				displayOptions: { show: { authentication: ['oAuth2'] } },
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{ name: 'API Key', value: 'apiKey' },
+					{ name: 'OAuth2', value: 'oAuth2' },
+				],
+				default: 'apiKey',
+			},
 			{
 				displayName:
 					'Set up your Haystack Enterprise API credentials above first, then select your workspace below.',

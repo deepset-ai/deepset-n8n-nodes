@@ -24,6 +24,10 @@ function createContext<T = ILoadOptionsFunctions>(httpRequestWithAuthentication:
 	return {
 		helpers: { httpRequestWithAuthentication },
 		getNode: () => ({ name: 'Haystack Enterprise AI' }),
+		// Only 'authentication' (read by getCredentialType()) is ever looked up on this
+		// fake — always falls back to the default 'apiKey', same as real n8n does for an unset
+		// parameter.
+		getNodeParameter: (_name: string, _itemIndex: number, fallback?: unknown) => fallback,
 	} as unknown as T;
 }
 
@@ -108,7 +112,7 @@ describe('loadWorkspaceOptions', () => {
 		expect(error).toBeInstanceOf(NodeOperationError);
 		expect(error).not.toBeInstanceOf(NodeApiError);
 		expect((error as NodeOperationError).message).toMatch(
-			/doesn't have access to this workspace.*org-wide key/s,
+			/doesn't have access to this workspace.*org-wide one/s,
 		);
 	});
 });
@@ -285,7 +289,7 @@ describe('apiRequest', () => {
 		Object.assign(context, { getNode: () => node });
 
 		await expect(apiRequest.call(context, 'GET', '/workspaces')).rejects.toMatchObject({
-			message: expect.stringMatching(/doesn't have access to this workspace.*org-wide key/s),
+			message: expect.stringMatching(/doesn't have access to this workspace.*org-wide one/s),
 		});
 	});
 

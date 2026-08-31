@@ -125,7 +125,7 @@ describe('HaystackEnterpriseMcp', () => {
 		it('requires a workspace and an API key', async () => {
 			const context = createSupplyDataContext({ workspaceId: '' });
 
-			await expect(node.supplyData.call(context, 0)).rejects.toThrow(/workspace and an API key/);
+			await expect(node.supplyData.call(context, 0)).rejects.toThrow(/workspace and a valid credential/);
 		});
 
 		it('refuses to run if the execution was already cancelled', async () => {
@@ -191,7 +191,7 @@ describe('HaystackEnterpriseMcp', () => {
 			const error = await node.supplyData.call(context, 0).catch((caught: unknown) => caught);
 
 			expect((error as NodeOperationError).message).toMatch(
-				/doesn't have access to this workspace.*org-wide key/s,
+				/doesn't have access to this workspace.*org-wide one/s,
 			);
 		});
 
@@ -714,7 +714,7 @@ describe('HaystackEnterpriseMcp', () => {
 
 			expect(error).toBeInstanceOf(NodeOperationError);
 			expect((error as NodeOperationError).message).toMatch(
-				/doesn't have access to this workspace.*org-wide key/s,
+				/doesn't have access to this workspace.*org-wide one/s,
 			);
 		});
 
