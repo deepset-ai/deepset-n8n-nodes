@@ -203,6 +203,307 @@ async function runSearchStream(
 	return [aggregated];
 }
 
+/**
+ * `type: 'json'` parameters arrive as a string or already-parsed value depending
+ * on whether the user typed JSON or used an expression. parseJsonField() only
+ * accepts strings and only returns objects, so this also covers arrays (messages,
+ * tools) and already-parsed values.
+ */
+function parseJsonValue(
+	this: IExecuteFunctions,
+	itemIndex: number,
+	fieldName: string,
+	value: unknown,
+): unknown {
+	if (value === undefined || value === null || value === '') {
+		return undefined;
+	}
+	if (typeof value !== 'string') {
+		return value;
+	}
+	if (value.trim() === '') {
+		return undefined;
+	}
+	try {
+		return JSON.parse(value);
+	} catch {
+		throw new NodeOperationError(this.getNode(), `"${fieldName}" is not valid JSON`, { itemIndex });
+	}
+}
+
+function readMessages(this: IExecuteFunctions, itemIndex: number): IDataObject[] {
+	const messagesInput = this.getNodeParameter('messagesInput', itemIndex, 'fields') as string;
+	if (messagesInput === 'json') {
+		const parsed = parseJsonValue.call(
+			this,
+			itemIndex,
+			'Messages',
+			this.getNodeParameter('messagesJson', itemIndex),
+		);
+		if (!Array.isArray(parsed) || parsed.length === 0) {
+			throw new NodeOperationError(this.getNode(), 'Messages must be a non-empty JSON array', { itemIndex });
+		}
+		return parsed as IDataObject[];
+	}
+
+	const collection = this.getNodeParameter('messages', itemIndex, {}) as IDataObject;
+	const rows = (collection.message as IDataObject[]) ?? [];
+	if (rows.length === 0) {
+		throw new NodeOperationError(this.getNode(), 'Messages cannot be empty', { itemIndex });
+	}
+
+	return rows.map((row, index) => {
+		const role = row.role as string;
+		const content = row.content;
+		const message: IDataObject = { role };
+		if (content !== undefined && content !== '') {
+			message.content = content;
+		}
+		if (role === 'tool') {
+			const toolCallId = typeof row.toolCallId === 'string' ? row.toolCallId.trim() : '';
+			if (!toolCallId) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Message ${index + 1}: "Tool Call ID" is required on tool messages`,
+					{ itemIndex },
+				);
+			}
+			message.tool_call_id = toolCallId;
+		}
+		if (message.content === undefined) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Message ${index + 1}: content is required. For tool-call-only assistant messages, use JSON input.`,
+				{ itemIndex },
+			);
+		}
+		return message;
+	});
+}
+
+function applyChatCompletionExtras(
+	this: IExecuteFunctions,
+	itemIndex: number,
+	body: IDataObject,
+	additionalFields: IDataObject,
+): void {
+	if (additionalFields.temperature !== undefined) body.temperature = additionalFields.temperature;
+	if (additionalFields.maxTokens !== undefined) body.max_tokens = additionalFields.maxTokens;
+	if (additionalFields.topP !== undefined) body.top_p = additionalFields.topP;
+
+	const tools = parseJsonValue.call(this, itemIndex, 'Tools (JSON)', additionalFields.tools);
+	if (tools !== undefined) {
+		if (!Array.isArray(tools)) {
+			throw new NodeOperationError(this.getNode(), '"Tools (JSON)" must be a JSON array', { itemIndex });
+		}
+		if (tools.length > 0) body.tools = tools as IDataObject[];
+	}
+
+	const toolChoice = additionalFields.toolChoice;
+	if (typeof toolChoice === 'string' && toolChoice.trim() !== '') {
+		const trimmed = toolChoice.trim();
+		body.tool_choice = trimmed.startsWith('{')
+			? (parseJsonValue.call(this, itemIndex, 'Tool Choice', trimmed) as IDataObject)
+			: trimmed;
+	}
+
+	const extra = parseJsonValue.call(this, itemIndex, 'Extra Parameters (JSON)', additionalFields.extraParameters);
+	if (extra !== undefined) {
+		if (!extra || typeof extra !== 'object' || Array.isArray(extra)) {
+			throw new NodeOperationError(this.getNode(), '"Extra Parameters (JSON)" must be a JSON object', {
+				itemIndex,
+			});
+		}
+		const extras = { ...(extra as IDataObject) };
+		delete extras.messages;
+		delete extras.model;
+		delete extras.stream;
+		Object.assign(body, extras);
+	}
+}
+
+function deltaContent(chunk: IDataObject): string | undefined {
+	const choices = chunk.choices;
+	if (!Array.isArray(choices) || choices.length === 0 || typeof choices[0] !== 'object' || !choices[0]) {
+		return undefined;
+	}
+	const delta = (choices[0] as IDataObject).delta as IDataObject | undefined;
+	return typeof delta?.content === 'string' ? delta.content : undefined;
+}
+
+function aggregateChatCompletionChunks(chunks: IDataObject[]): IDataObject {
+	const contentParts: string[] = [];
+	const toolCallsByIndex = new Map<number, IDataObject>();
+	let finishReason = 'stop';
+	let id: IDataObject['id'];
+	let model: IDataObject['model'];
+	let created: IDataObject['created'];
+
+	for (const chunk of chunks) {
+		if (chunk.id !== undefined) id = chunk.id;
+		if (chunk.model !== undefined) model = chunk.model;
+		if (chunk.created !== undefined) created = chunk.created;
+
+		const choices = chunk.choices;
+		if (!Array.isArray(choices) || typeof choices[0] !== 'object' || !choices[0]) {
+			continue;
+		}
+		const choice = choices[0] as IDataObject;
+		if (typeof choice.finish_reason === 'string') {
+			finishReason = choice.finish_reason;
+		}
+		const delta = choice.delta as IDataObject | undefined;
+		if (!delta) continue;
+		if (typeof delta.content === 'string') contentParts.push(delta.content);
+
+		const toolCalls = delta.tool_calls;
+		if (!Array.isArray(toolCalls)) continue;
+		for (const toolCall of toolCalls) {
+			if (typeof toolCall !== 'object' || !toolCall) continue;
+			const entry = toolCall as IDataObject;
+			const index = typeof entry.index === 'number' ? entry.index : 0;
+			const current = toolCallsByIndex.get(index) ?? {
+				type: 'function',
+				function: { name: '', arguments: '' },
+			};
+			if (typeof entry.id === 'string') current.id = entry.id;
+			if (typeof entry.type === 'string') current.type = entry.type;
+			const fn = entry.function as IDataObject | undefined;
+			const currentFn = current.function as IDataObject;
+			if (typeof fn?.name === 'string') currentFn.name = fn.name;
+			if (typeof fn?.arguments === 'string') {
+				currentFn.arguments = `${currentFn.arguments as string}${fn.arguments}`;
+			}
+			toolCallsByIndex.set(index, current);
+		}
+	}
+
+	const message: IDataObject = {
+		role: 'assistant',
+		content: contentParts.length > 0 ? contentParts.join('') : null,
+	};
+	if (toolCallsByIndex.size > 0) {
+		message.tool_calls = [...toolCallsByIndex.entries()]
+			.sort(([left], [right]) => left - right)
+			.map(([, toolCall]) => toolCall);
+	}
+
+	return {
+		id,
+		object: 'chat.completion',
+		created,
+		model,
+		choices: [{ index: 0, message, finish_reason: finishReason }],
+	};
+}
+
+function simplifyChatCompletion(completion: IDataObject): IDataObject {
+	const choices = completion.choices;
+	const choice =
+		Array.isArray(choices) && typeof choices[0] === 'object' && choices[0] ? (choices[0] as IDataObject) : {};
+	const message = (choice.message as IDataObject) ?? {};
+	const simplified: IDataObject = {
+		content: message.content ?? '',
+		role: message.role ?? 'assistant',
+		finish_reason: choice.finish_reason ?? 'stop',
+	};
+	if (message.tool_calls) simplified.tool_calls = message.tool_calls;
+	if (completion.id !== undefined) simplified.id = completion.id;
+	if (completion.model !== undefined) simplified.model = completion.model;
+	return simplified;
+}
+
+/**
+ * POST /workspaces/{workspace}/deployments/v1/chat/completions — the deployment
+ * is selected by `model: "{workspace}/{deployment_id}"` in the body, not a path
+ * segment. `stream: false` (default) returns one OpenAI `chat.completion` JSON
+ * object; `stream: true` returns OpenAI `chat.completion.chunk` SSE (not the
+ * Haystack-native delta/result events that chat-stream uses).
+ */
+async function runChatCompletions(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject[]> {
+	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
+	const deploymentId = this.getNodeParameter('deploymentId', itemIndex) as string;
+	const stream = this.getNodeParameter('stream', itemIndex, false) as boolean;
+	const simplify = this.getNodeParameter('simplify', itemIndex, true) as boolean;
+	const additionalFields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
+
+	const body: IDataObject = {
+		model: `${workspaceName}/${deploymentId}`,
+		messages: readMessages.call(this, itemIndex),
+		stream,
+	};
+	applyChatCompletionExtras.call(this, itemIndex, body, additionalFields);
+
+	const waitForActivation = this.getNodeParameter('waitForActivation', itemIndex, false) as boolean;
+	const maxWaitMinutes = this.getNodeParameter('maxWaitMinutes', itemIndex, 5) as number;
+	const endpoint = `/workspaces/${workspaceName}/deployments/v1/chat/completions`;
+	const relayLive = typeof this.isStreaming === 'function' && this.isStreaming();
+
+	if (!stream) {
+		const completion = (await withServiceActivationRetry.call(
+			this,
+			() => apiRequest.call(this, 'POST', endpoint, { body }),
+			waitForActivation,
+			maxWaitMinutes * 60_000,
+		)) as IDataObject;
+		if (relayLive) {
+			this.sendChunk('begin', itemIndex);
+			const content = simplifyChatCompletion(completion).content;
+			if (typeof content === 'string' && content) this.sendChunk('item', itemIndex, content);
+			this.sendChunk('end', itemIndex);
+		}
+		return [simplify ? simplifyChatCompletion(completion) : completion];
+	}
+
+	if (relayLive) this.sendChunk('begin', itemIndex);
+
+	let responseStream: NodeJS.ReadableStream;
+	try {
+		const response = (await withServiceActivationRetry.call(
+			this,
+			() => apiRequestStream.call(this, 'POST', endpoint, body),
+			waitForActivation,
+			maxWaitMinutes * 60_000,
+		)) as { stream: NodeJS.ReadableStream; headers: IDataObject };
+		responseStream = response.stream;
+	} catch (error) {
+		if (relayLive) this.sendChunk('error', itemIndex, error instanceof Error ? error.message : 'Request failed');
+		// eslint-disable-next-line @n8n/community-nodes/require-node-api-error -- already a NodeApiError (apiRequestStream/withServiceActivationRetry always throw one); rethrowing in place preserves .context.data (see apiRequest()'s docstring in utils.ts)
+		throw error;
+	}
+
+	const chunks: IDataObject[] = [];
+	let streamError: { message: string; data: IDataObject[string] } | undefined;
+
+	await consumeSseStream(responseStream, (event) => {
+		if (event.error !== undefined) {
+			streamError = extractStreamErrorDetail(event.error);
+			return;
+		}
+		chunks.push(event);
+		const text = deltaContent(event);
+		if (text && relayLive) this.sendChunk('item', itemIndex, text);
+	});
+
+	if (streamError) {
+		if (relayLive) this.sendChunk('error', itemIndex, streamError.message);
+		const error = new NodeOperationError(
+			this.getNode(),
+			`The stream returned an error: ${streamError.message}`,
+			{ itemIndex },
+		);
+		error.context.data = streamError.data;
+		throw error;
+	}
+
+	if (relayLive) this.sendChunk('end', itemIndex);
+
+	if (!simplify) {
+		return chunks;
+	}
+	return [simplifyChatCompletion(aggregateChatCompletionChunks(chunks))];
+}
+
 export async function executeService(
 	this: IExecuteFunctions,
 	operation: string,
@@ -221,6 +522,9 @@ export async function executeService(
 			break;
 		case 'chatStream':
 			result = await runSearchStream.call(this, itemIndex, 'chat-stream');
+			break;
+		case 'chatCompletions':
+			result = await runChatCompletions.call(this, itemIndex);
 			break;
 		default:
 			throw new NodeOperationError(this.getNode(), `Unknown Service operation: ${operation}`, { itemIndex });

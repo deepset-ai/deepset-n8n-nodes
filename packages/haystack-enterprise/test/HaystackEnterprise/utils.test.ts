@@ -454,6 +454,15 @@ describe('extractStreamErrorDetail', () => {
 		});
 	});
 
+	it('uses an OpenAI-style `{ message }` payload as the message, keeping the full payload as data', () => {
+		expect(
+			extractStreamErrorDetail({ message: 'Upstream pipeline failed', type: 'server_error' }),
+		).toEqual({
+			message: 'Upstream pipeline failed',
+			data: { message: 'Upstream pipeline failed', type: 'server_error' },
+		});
+	});
+
 	it('falls back to a generic message when there is no recognizable `errors` array, while still keeping the raw payload as data', () => {
 		expect(extractStreamErrorDetail({ detail: 'something else' })).toEqual({
 			message: 'The stream returned an unknown error',

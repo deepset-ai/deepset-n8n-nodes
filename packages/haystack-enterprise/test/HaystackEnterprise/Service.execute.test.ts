@@ -490,3 +490,295 @@ describe('executeService — streaming (searchStream / chatStream)', () => {
 		]);
 	});
 });
+
+const CHAT_COMPLETIONS_PARAMS = {
+	workspaceName: 'ws',
+	deploymentId: 'dep-1',
+	messagesInput: 'fields',
+	messages: { message: [{ role: 'user', content: 'hello' }] },
+	stream: false,
+	simplify: true,
+	additionalFields: {},
+	waitForActivation: false,
+	maxWaitMinutes: 5,
+};
+
+const CHAT_COMPLETION_RESPONSE = {
+	id: 'chatcmpl-1',
+	object: 'chat.completion',
+	created: 1730000000,
+	model: 'ws/dep-1',
+	choices: [
+		{
+			index: 0,
+			message: { role: 'assistant', content: 'Hello' },
+			finish_reason: 'stop',
+		},
+	],
+};
+
+function openaiChunk(delta: Record<string, unknown>, finishReason: string | null = null) {
+	return {
+		id: 'chatcmpl-1',
+		object: 'chat.completion.chunk',
+		created: 1730000000,
+		model: 'ws/dep-1',
+		choices: [{ index: 0, delta, finish_reason: finishReason }],
+	};
+}
+
+describe('executeService — chatCompletions', () => {
+	it('posts to the deployment-scoped endpoint with model workspace/deployment_id', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			CHAT_COMPLETIONS_PARAMS,
+			async () => CHAT_COMPLETION_RESPONSE,
+		);
+
+		const result = await executeService.call(context, 'chatCompletions', 0);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseApi',
+			expect.objectContaining({
+				method: 'POST',
+				url: expect.stringMatching(/\/workspaces\/ws\/deployments\/v1\/chat\/completions$/),
+				body: {
+					model: 'ws/dep-1',
+					messages: [{ role: 'user', content: 'hello' }],
+					stream: false,
+				},
+			}),
+		);
+		expect(result).toEqual([
+			{
+				json: {
+					content: 'Hello',
+					role: 'assistant',
+					finish_reason: 'stop',
+					id: 'chatcmpl-1',
+					model: 'ws/dep-1',
+				},
+			},
+		]);
+	});
+
+	it('returns the raw chat completion object when Simplify Output is off', async () => {
+		const { context } = createContext(
+			{ ...CHAT_COMPLETIONS_PARAMS, simplify: false },
+			async () => CHAT_COMPLETION_RESPONSE,
+		);
+
+		expect(await executeService.call(context, 'chatCompletions', 0)).toEqual([
+			{ json: CHAT_COMPLETION_RESPONSE },
+		]);
+	});
+
+	it('accepts a messages JSON array, including an already-parsed value', async () => {
+		const messages = [
+			{ role: 'system', content: 'be nice' },
+			{ role: 'user', content: 'hi' },
+		];
+		const { context, httpRequestWithAuthentication } = createContext(
+			{ ...CHAT_COMPLETIONS_PARAMS, messagesInput: 'json', messagesJson: messages },
+			async () => CHAT_COMPLETION_RESPONSE,
+		);
+
+		await executeService.call(context, 'chatCompletions', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
+			string,
+			{ body: { messages: unknown } },
+		];
+		expect(options.body.messages).toEqual(messages);
+	});
+
+	it('throws when messages are empty', async () => {
+		const { context } = createContext(
+			{ ...CHAT_COMPLETIONS_PARAMS, messages: { message: [] } },
+			async () => CHAT_COMPLETION_RESPONSE,
+		);
+
+		await expect(executeService.call(context, 'chatCompletions', 0)).rejects.toThrow(/Messages cannot be empty/);
+	});
+
+	it('includes tool_call_id on tool messages and forwards generation extras', async () => {
+		const tools = [{ type: 'function', function: { name: 'get_weather' } }];
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				...CHAT_COMPLETIONS_PARAMS,
+				messages: {
+					message: [
+						{ role: 'user', content: "What's the weather?" },
+						{ role: 'tool', content: '18°C', toolCallId: 'call_1' },
+					],
+				},
+				additionalFields: {
+					temperature: 0.2,
+					maxTokens: 256,
+					topP: 0.9,
+					tools: JSON.stringify(tools),
+					toolChoice: 'auto',
+					extraParameters: '{"presence_penalty": 0.1}',
+				},
+			},
+			async () => CHAT_COMPLETION_RESPONSE,
+		);
+
+		await executeService.call(context, 'chatCompletions', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
+			string,
+			{ body: Record<string, unknown> },
+		];
+		expect(options.body).toMatchObject({
+			messages: [
+				{ role: 'user', content: "What's the weather?" },
+				{ role: 'tool', content: '18°C', tool_call_id: 'call_1' },
+			],
+			temperature: 0.2,
+			max_tokens: 256,
+			top_p: 0.9,
+			tools,
+			tool_choice: 'auto',
+			presence_penalty: 0.1,
+		});
+	});
+
+	it('does not let extra parameters overwrite model, messages, or stream', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				...CHAT_COMPLETIONS_PARAMS,
+				additionalFields: {
+					extraParameters: '{"model": "other/id", "messages": [], "stream": true, "temperature": 0.5}',
+				},
+			},
+			async () => CHAT_COMPLETION_RESPONSE,
+		);
+
+		await executeService.call(context, 'chatCompletions', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
+			string,
+			{ body: Record<string, unknown> },
+		];
+		expect(options.body.model).toBe('ws/dep-1');
+		expect(options.body.messages).toEqual([{ role: 'user', content: 'hello' }]);
+		expect(options.body.stream).toBe(false);
+		expect(options.body.temperature).toBe(0.5);
+	});
+
+	it('parses a JSON object tool_choice', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				...CHAT_COMPLETIONS_PARAMS,
+				additionalFields: { toolChoice: '{"type":"function","function":{"name":"get_weather"}}' },
+			},
+			async () => CHAT_COMPLETION_RESPONSE,
+		);
+
+		await executeService.call(context, 'chatCompletions', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
+			string,
+			{ body: Record<string, unknown> },
+		];
+		expect(options.body.tool_choice).toEqual({ type: 'function', function: { name: 'get_weather' } });
+	});
+
+	it('aggregates streamed content and tool-call deltas when Simplify Output is on', async () => {
+		const { context, stream } = createStreamContext({
+			params: { ...CHAT_COMPLETIONS_PARAMS, stream: true },
+		});
+
+		const resultPromise = executeService.call(context, 'chatCompletions', 0);
+		await flushMicrotasks();
+		stream.emit(
+			'data',
+			sseRecord(
+				openaiChunk({
+					tool_calls: [{ index: 0, id: 'call_1', type: 'function', function: { name: 'get_weather', arguments: '' } }],
+				}),
+			),
+		);
+		stream.emit(
+			'data',
+			sseRecord(openaiChunk({ tool_calls: [{ index: 0, function: { arguments: '{"city":' } }] })),
+		);
+		stream.emit(
+			'data',
+			sseRecord(openaiChunk({ tool_calls: [{ index: 0, function: { arguments: '"Berlin"}' } }] })),
+		);
+		stream.emit('data', sseRecord(openaiChunk({ role: 'assistant' }, 'tool_calls')));
+		stream.emit('end');
+
+		expect(await resultPromise).toEqual([
+			{
+				json: {
+					content: '',
+					role: 'assistant',
+					finish_reason: 'tool_calls',
+					id: 'chatcmpl-1',
+					model: 'ws/dep-1',
+					tool_calls: [
+						{
+							id: 'call_1',
+							type: 'function',
+							function: { name: 'get_weather', arguments: '{"city":"Berlin"}' },
+						},
+					],
+				},
+			},
+		]);
+	});
+
+	it('returns one item per OpenAI chunk when Stream is on and Simplify Output is off', async () => {
+		const { context, stream } = createStreamContext({
+			params: { ...CHAT_COMPLETIONS_PARAMS, stream: true, simplify: false },
+		});
+
+		const first = openaiChunk({ role: 'assistant', content: 'Hi' });
+		const resultPromise = executeService.call(context, 'chatCompletions', 0);
+		await flushMicrotasks();
+		stream.emit('data', sseRecord(first));
+		stream.emit('end');
+
+		expect(await resultPromise).toEqual([{ json: first }]);
+	});
+
+	it('relays streamed delta text via sendChunk and skips the [DONE] sentinel', async () => {
+		const { context, stream, sendChunk } = createStreamContext({
+			params: { ...CHAT_COMPLETIONS_PARAMS, stream: true },
+			isStreaming: true,
+		});
+
+		const resultPromise = executeService.call(context, 'chatCompletions', 0);
+		await flushMicrotasks();
+		stream.emit('data', sseRecord(openaiChunk({ role: 'assistant', content: 'Hel' })));
+		stream.emit('data', sseRecord(openaiChunk({ content: 'lo' })));
+		stream.emit('data', 'data: [DONE]\n\n');
+		stream.emit('end');
+		await resultPromise;
+
+		expect(sendChunk).toHaveBeenNthCalledWith(1, 'begin', 0);
+		expect(sendChunk).toHaveBeenNthCalledWith(2, 'item', 0, 'Hel');
+		expect(sendChunk).toHaveBeenNthCalledWith(3, 'item', 0, 'lo');
+		expect(sendChunk).toHaveBeenNthCalledWith(4, 'end', 0);
+	});
+
+	it('throws when the stream reports an OpenAI error object', async () => {
+		const { context, stream, sendChunk } = createStreamContext({
+			params: { ...CHAT_COMPLETIONS_PARAMS, stream: true },
+			isStreaming: true,
+		});
+
+		const resultPromise = executeService.call(context, 'chatCompletions', 0);
+		await flushMicrotasks();
+		stream.emit(
+			'data',
+			sseRecord({ error: { message: 'Upstream pipeline failed', type: 'server_error' } }),
+		);
+		stream.emit('end');
+
+		await expect(resultPromise).rejects.toThrow(/Upstream pipeline failed/);
+		expect(sendChunk).toHaveBeenCalledWith('error', 0, 'Upstream pipeline failed');
+	});
+});

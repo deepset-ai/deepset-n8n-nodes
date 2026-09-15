@@ -366,9 +366,10 @@ export async function consumeSseStream(
 
 /**
  * A mid-stream SSE `error` event's `error` field arrives either as a plain
- * string or as Haystack Enterprise's `{ errors: string[] }` shape (see
- * extractApiErrorDetail() above) — never both, and not always the latter, so
- * this falls back to a generic message when neither shape yields one. `data`
+ * string, as Haystack Enterprise's `{ errors: string[] }` shape (see
+ * extractApiErrorDetail() above), or as an OpenAI `{ message }` object on
+ * chat-completions streams — never more than one of those, and not always
+ * present, so this falls back to a generic message when none yields one. `data`
  * is whatever raw payload was passed in, for callers to attach to
  * `NodeApiError`/`NodeOperationError`'s `.context.data` (n8n's "Error data"
  * section) so the full event is still visible even when the message had to
@@ -382,12 +383,16 @@ export function extractStreamErrorDetail(
 	}
 
 	if (error && typeof error === 'object') {
-		const errors = (error as IDataObject).errors;
+		const payload = error as IDataObject;
+		const errors = payload.errors;
 		if (Array.isArray(errors)) {
 			const message = errors.find((item): item is string => typeof item === 'string');
 			if (message) {
 				return { message, data: error };
 			}
+		}
+		if (typeof payload.message === 'string') {
+			return { message: payload.message, data: error };
 		}
 	}
 
