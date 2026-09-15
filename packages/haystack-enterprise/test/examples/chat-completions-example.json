@@ -1,0 +1,119 @@
+{
+  "name": "Haystack Enterprise AI – chat completions with client-owned history",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "streaming"
+        }
+      },
+      "id": "f7a8b9c0-0001-4f7f-9f7f-000000000001",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [-900, 0],
+      "webhookId": "f7a8b9c0-0001-4f7f-9f7f-000000000099"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Chat Completions has no search session: the client sends the full\n// conversation as `messages` on every request. This looks up prior turns\n// already stored for this n8n chat session and appends the new user message.\n//\n// Static data is per-workflow, in-memory-backed storage that n8n persists to\n// the database after each execution. It's fine for demos/small deployments,\n// but it resets if you clear it manually, and it isn't shared across workers\n// in a scaled/queue-mode setup. For production, replace this lookup/store\n// pair with a real data store (a Data Table node, a database, Redis, etc.)\n// keyed the same way.\nconst staticData = $getWorkflowStaticData('global');\nstaticData.conversations = staticData.conversations || {};\n\nconst n8nSessionId = $json.sessionId;\nconst history = staticData.conversations[n8nSessionId] || [];\nconst messages = [...history, { role: 'user', content: $json.chatInput }];\n\nreturn [\n  {\n    json: {\n      ...$json,\n      messages,\n    },\n  },\n];"
+      },
+      "id": "f7a8b9c0-0002-4f7f-9f7f-000000000002",
+      "name": "Look Up Conversation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-680, 0]
+    },
+    {
+      "parameters": {
+        "workspaceName": "my-workspace-name",
+        "resource": "service",
+        "operation": "chatCompletions",
+        "deploymentId": "my-service-name",
+        "messagesInput": "json",
+        "messagesJson": "={{ $json.messages }}",
+        "stream": true,
+        "simplify": true,
+        "waitForActivation": true,
+        "additionalFields": {}
+      },
+      "id": "f7a8b9c0-0003-4f7f-9f7f-000000000003",
+      "name": "Haystack Enterprise AI",
+      "type": "CUSTOM.haystackEnterpriseAi",
+      "typeVersion": 1,
+      "position": [-460, 0],
+      "credentials": {
+        "haystackEnterpriseApi": {
+          "name": "Haystack Enterprise API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Appends the assistant reply to the messages just sent, so the next\n// message in this n8n chat session includes the full conversation.\nconst staticData = $getWorkflowStaticData('global');\nstaticData.conversations = staticData.conversations || {};\n\nconst triggerData = $('When chat message received').item.json;\nconst sent = $('Look Up Conversation').item.json.messages;\nstaticData.conversations[triggerData.sessionId] = [\n  ...sent,\n  { role: 'assistant', content: $json.content },\n];\n\nreturn [\n  {\n    json: {\n      ...triggerData,\n      content: $json.content,\n    },\n  },\n];"
+      },
+      "id": "f7a8b9c0-0004-4f7f-9f7f-000000000004",
+      "name": "Remember Conversation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-240, 0]
+    },
+    {
+      "parameters": {
+        "content": "### Chat Completions with client-owned history\n\n**Chat Completions** is the OpenAI-compatible alternative to **Chat (Streaming)**. There is no search session — you send the full conversation as `messages` on every request, and get a `chat.completion` back.\n\n1. **Look Up Conversation** loads prior turns for this n8n chat session (empty on the first message) and appends the new user message.\n2. **Haystack Enterprise AI** runs Chat Completions with that `messages` array. **Stream** is on so tokens relay into the chat UI.\n3. **Remember Conversation** stores the assistant reply, so the next message continues the conversation.\n\n**Testing tip:** n8n only saves static data for production runs. In the canvas's Chat test panel, each message runs in manual mode, so history resets every time — activate the workflow first to see it persist.\n\nWant the platform to store history instead? See [`chat-with-auto-created-search-session-example.json`](./chat-with-auto-created-search-session-example.json). For client-side tool calling, add Additional Fields → Tools (JSON) and send a `role: \"tool\"` follow-up on the next request.",
+        "height": 500,
+        "width": 460
+      },
+      "id": "f7a8b9c0-0005-4f7f-9f7f-000000000005",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-900, 200]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Look Up Conversation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Look Up Conversation": {
+      "main": [
+        [
+          {
+            "node": "Haystack Enterprise AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Haystack Enterprise AI": {
+      "main": [
+        [
+          {
+            "node": "Remember Conversation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "Haystack Enterprise"
+    }
+  ]
+}
