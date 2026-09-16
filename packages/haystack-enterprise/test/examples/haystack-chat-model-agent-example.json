@@ -64,15 +64,15 @@
     },
     {
       "parameters": {
-        "content": "### Haystack Enterprise Chat Model on an AI Agent\n\nn8n already provides the **AI Agent**. This workflow plugs **Haystack Enterprise Chat Model** into that Agent's Model port. The Chat Model runs Chat Completions on your Haystack Enterprise service. The Agent builds `messages` from chat input plus Simple Memory — no Code node, no messages array.\n\nThe left-to-right line is only two nodes: **Chat Trigger → AI Agent**. Everything else hangs *under* the Agent:\n\n- **Haystack Enterprise Chat Model** → Agent **Model** port. Pick workspace and service.\n- **Simple Memory** → Agent **Memory** port, and the Chat Trigger so the widget can reload history.\n- **Calculator** → Agent **Tool** port. The Agent node expects at least one tool. Swap it for Haystack Enterprise AI (`usableAsTool`) or MCP tools when you want the Agent to call pipelines.\n\nCompare with [`chat-completions-example.json`](./chat-completions-example.json), where Haystack Enterprise AI sits on the main line and you assemble `messages` yourself.\n\nFill in workspace and service, plus Haystack Enterprise API credentials. Open the Chat Trigger and send two messages in one session — the second should remember the first.",
-        "height": 520,
+        "content": "### Haystack Enterprise Chat Model on an AI Agent\n\nThis workflow plugs **Haystack Enterprise Chat Model** into the n8n' **AI Agent**. The Chat Model runs Chat Completions on your Haystack Enterprise service. The Agent builds `messages` from chat input plus Simple Memory.\n\n- **Haystack Enterprise Chat Model** → Agent **Model** port. Pick workspace and service, plus Haystack Enterprise API credentials.\n- **Simple Memory** → Agent **Memory** port, and the Chat Trigger so the widget can reload history.\n- **Calculator** → Agent **Tool** port. The Agent node expects at least one tool. Swap it for Haystack Enterprise AI (`usableAsTool`) or MCP tools when you want the Agent to call other pipelines as tools.\n\nOpen the Chat Trigger and send two messages in one session — the second should remember the first.",
+        "height": 420,
         "width": 520
       },
       "id": "a1b2c3d4-0006-4e1e-9e1e-000000000006",
       "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-1180, 0]
+      "position": [-1320, 0]
     }
   ],
   "pinData": {},
