@@ -288,24 +288,10 @@ function applyChatCompletionExtras(
 	additionalFields: IDataObject,
 ): void {
 	if (additionalFields.temperature !== undefined) body.temperature = additionalFields.temperature;
-	if (additionalFields.maxTokens !== undefined) body.max_tokens = additionalFields.maxTokens;
+	if (additionalFields.maxCompletionTokens !== undefined) {
+		body.max_completion_tokens = additionalFields.maxCompletionTokens;
+	}
 	if (additionalFields.topP !== undefined) body.top_p = additionalFields.topP;
-
-	const tools = parseJsonValue.call(this, itemIndex, 'Tools (JSON)', additionalFields.tools);
-	if (tools !== undefined) {
-		if (!Array.isArray(tools)) {
-			throw new NodeOperationError(this.getNode(), '"Tools (JSON)" must be a JSON array', { itemIndex });
-		}
-		if (tools.length > 0) body.tools = tools as IDataObject[];
-	}
-
-	const toolChoice = additionalFields.toolChoice;
-	if (typeof toolChoice === 'string' && toolChoice.trim() !== '') {
-		const trimmed = toolChoice.trim();
-		body.tool_choice = trimmed.startsWith('{')
-			? (parseJsonValue.call(this, itemIndex, 'Tool Choice', trimmed) as IDataObject)
-			: trimmed;
-	}
 
 	const extra = parseJsonValue.call(this, itemIndex, 'Extra Parameters (JSON)', additionalFields.extraParameters);
 	if (extra !== undefined) {

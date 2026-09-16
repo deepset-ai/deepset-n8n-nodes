@@ -30,11 +30,11 @@ describe('HaystackEnterpriseChatModel', () => {
 		setApiBaseUrlOverrideForTests(undefined);
 	});
 
-	it('supplies an OpenAI-compatible model pointed at the deployment chat completions URL', async () => {
+	it('supplies an OpenAI-compatible model pointed at the service chat completions URL', async () => {
 		const context = createSupplyDataContext({
 			workspaceName: 'acme',
 			deploymentId: 'support-chat',
-			options: { temperature: 0.2, maxTokens: 256 },
+			options: { temperature: 0.2, maxCompletionTokens: 256 },
 		});
 
 		const result = await node.supplyData.call(context, 0);
@@ -46,14 +46,35 @@ describe('HaystackEnterpriseChatModel', () => {
 			apiKey: 'secret-key',
 			useResponsesApi: false,
 			supportsStrictToolCalling: false,
-			temperature: 0.2,
-			maxTokens: 256,
-			topP: undefined,
-			frequencyPenalty: undefined,
-			presencePenalty: undefined,
 			timeout: undefined,
+			additionalParams: { temperature: 0.2, max_completion_tokens: 256 },
 		});
 		expect(result.response).toMatchObject({ type: 'openai', model: 'acme/support-chat' });
+	});
+
+	it('lets extra parameters override named generation fields and omits unset ones', async () => {
+		const context = createSupplyDataContext({
+			workspaceName: 'acme',
+			deploymentId: 'support-chat',
+			options: {
+				temperature: 0.2,
+				maxCompletionTokens: 256,
+				extraParameters: '{"temperature": 0.9, "presence_penalty": 0.1}',
+			},
+		});
+
+		await node.supplyData.call(context, 0);
+
+		expect(supplyModel).toHaveBeenCalledWith(
+			context,
+			expect.objectContaining({
+				additionalParams: {
+					temperature: 0.9,
+					max_completion_tokens: 256,
+					presence_penalty: 0.1,
+				},
+			}),
+		);
 	});
 
 	it('throws when workspace or service is missing', async () => {

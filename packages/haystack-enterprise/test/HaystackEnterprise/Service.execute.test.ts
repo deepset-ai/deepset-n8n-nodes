@@ -601,7 +601,6 @@ describe('executeService — chatCompletions', () => {
 	});
 
 	it('includes tool_call_id on tool messages and forwards generation extras', async () => {
-		const tools = [{ type: 'function', function: { name: 'get_weather' } }];
 		const { context, httpRequestWithAuthentication } = createContext(
 			{
 				...CHAT_COMPLETIONS_PARAMS,
@@ -613,10 +612,8 @@ describe('executeService — chatCompletions', () => {
 				},
 				additionalFields: {
 					temperature: 0.2,
-					maxTokens: 256,
+					maxCompletionTokens: 256,
 					topP: 0.9,
-					tools: JSON.stringify(tools),
-					toolChoice: 'auto',
 					extraParameters: '{"presence_penalty": 0.1}',
 				},
 			},
@@ -635,12 +632,12 @@ describe('executeService — chatCompletions', () => {
 				{ role: 'tool', content: '18°C', tool_call_id: 'call_1' },
 			],
 			temperature: 0.2,
-			max_tokens: 256,
+			max_completion_tokens: 256,
 			top_p: 0.9,
-			tools,
-			tool_choice: 'auto',
 			presence_penalty: 0.1,
 		});
+		expect(options.body).not.toHaveProperty('tools');
+		expect(options.body).not.toHaveProperty('tool_choice');
 	});
 
 	it('does not let extra parameters overwrite model, messages, or stream', async () => {
@@ -664,24 +661,6 @@ describe('executeService — chatCompletions', () => {
 		expect(options.body.messages).toEqual([{ role: 'user', content: 'hello' }]);
 		expect(options.body.stream).toBe(false);
 		expect(options.body.temperature).toBe(0.5);
-	});
-
-	it('parses a JSON object tool_choice', async () => {
-		const { context, httpRequestWithAuthentication } = createContext(
-			{
-				...CHAT_COMPLETIONS_PARAMS,
-				additionalFields: { toolChoice: '{"type":"function","function":{"name":"get_weather"}}' },
-			},
-			async () => CHAT_COMPLETION_RESPONSE,
-		);
-
-		await executeService.call(context, 'chatCompletions', 0);
-
-		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
-			string,
-			{ body: Record<string, unknown> },
-		];
-		expect(options.body.tool_choice).toEqual({ type: 'function', function: { name: 'get_weather' } });
 	});
 
 	it('aggregates streamed content and tool-call deltas when Simplify Output is on', async () => {

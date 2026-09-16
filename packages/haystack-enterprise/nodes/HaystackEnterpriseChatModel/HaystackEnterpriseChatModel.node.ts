@@ -97,30 +97,20 @@ export class HaystackEnterpriseChatModel implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Frequency Penalty',
-						name: 'frequencyPenalty',
-						type: 'number',
-						typeOptions: { minValue: -2, maxValue: 2, numberPrecision: 1 },
-						default: 0,
+						displayName: 'Extra Parameters (JSON)',
+						name: 'extraParameters',
+						type: 'json',
+						default: '{}',
 						description:
-							'Positive values penalize tokens based on how often they already appear, reducing repetition',
+							'Other OpenAI fields forwarded as-is (for example frequency_penalty, presence_penalty, response_format). Merged over the named fields below.',
 					},
 					{
-						displayName: 'Max Tokens',
-						name: 'maxTokens',
+						displayName: 'Max Completion Tokens',
+						name: 'maxCompletionTokens',
 						type: 'number',
 						typeOptions: { minValue: 1 },
 						default: 512,
 						description: 'The maximum number of tokens to generate',
-					},
-					{
-						displayName: 'Presence Penalty',
-						name: 'presencePenalty',
-						type: 'number',
-						typeOptions: { minValue: -2, maxValue: 2, numberPrecision: 1 },
-						default: 0,
-						description:
-							'Positive values penalize tokens that have already appeared, increasing the chance of new topics',
 					},
 					{
 						displayName: 'Sampling Temperature',
@@ -185,13 +175,20 @@ export class HaystackEnterpriseChatModel implements INodeType {
 		}
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
-			frequencyPenalty?: number;
-			maxTokens?: number;
-			presencePenalty?: number;
+			extraParameters?: unknown;
+			maxCompletionTokens?: number;
 			temperature?: number;
 			timeout?: number;
 			topP?: number;
 		};
+
+		const additionalParams: Record<string, unknown> = {};
+		if (options.temperature !== undefined) additionalParams.temperature = options.temperature;
+		if (options.maxCompletionTokens !== undefined) {
+			additionalParams.max_completion_tokens = options.maxCompletionTokens;
+		}
+		if (options.topP !== undefined) additionalParams.top_p = options.topP;
+		Object.assign(additionalParams, parseExtraParameters.call(this, itemIndex, options.extraParameters));
 
 		// @n8n/ai-node-sdk types ISupplyDataFunctions from its nested n8n-workflow copy.
 		return supplyModel(this as unknown as Parameters<typeof supplyModel>[0], {
@@ -201,12 +198,39 @@ export class HaystackEnterpriseChatModel implements INodeType {
 			apiKey,
 			useResponsesApi: false,
 			supportsStrictToolCalling: false,
-			temperature: options.temperature,
-			maxTokens: options.maxTokens,
-			topP: options.topP,
-			frequencyPenalty: options.frequencyPenalty,
-			presencePenalty: options.presencePenalty,
 			timeout: options.timeout,
+			additionalParams: Object.keys(additionalParams).length > 0 ? additionalParams : undefined,
 		});
 	}
+}
+
+function parseExtraParameters(
+	this: ISupplyDataFunctions,
+	itemIndex: number,
+	value: unknown,
+): Record<string, unknown> {
+	if (value === undefined || value === null || value === '') {
+		return {};
+	}
+	let parsed: unknown = value;
+	if (typeof value === 'string') {
+		if (value.trim() === '') return {};
+		try {
+			parsed = JSON.parse(value);
+		} catch {
+			throw new NodeOperationError(this.getNode(), '"Extra Parameters (JSON)" is not valid JSON', {
+				itemIndex,
+			});
+		}
+	}
+	if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+		throw new NodeOperationError(this.getNode(), '"Extra Parameters (JSON)" must be a JSON object', {
+			itemIndex,
+		});
+	}
+	const extras = { ...(parsed as Record<string, unknown>) };
+	delete extras.messages;
+	delete extras.model;
+	delete extras.stream;
+	return extras;
 }

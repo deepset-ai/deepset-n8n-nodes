@@ -120,7 +120,7 @@ is self-hosted-only — see that package's README.
 
 The Chat (Streaming) operation takes an optional **Search Session ID**, used to store a chat history. Leave it empty on the first message and the node starts a session automatically, returning its ID in the output's `search_session_id` field — feed that back into **Search Session ID** on the next Chat call to continue the conversation. To manage sessions explicitly instead (e.g. to list or delete them later), create one with the **Search Session** resource's **Create** operation and pass its ID in from the start.
 
-**Chat Completions** is the OpenAI-compatible alternative: you send the full conversation as `messages` (the client owns history — there is no search session) and get a `chat.completion` back. Use it when you need client-side tool calling (`tools` / `tool_choice`, then a `role: "tool"` follow-up), multimodal `file` / `image_url` content parts, or generation extras such as `temperature`. Turn **Stream** on to receive OpenAI SSE chunks instead of a single JSON response.
+**Chat Completions** is the OpenAI-compatible alternative: you send the full conversation as `messages` (the client owns history — there is no search session) and get a `chat.completion` back. Use it when you need multimodal `file` / `image_url` content parts, or generation extras such as `temperature`. Turn **Stream** on to receive OpenAI SSE chunks instead of a single JSON response.
 
 For multi-turn chat on an **AI Agent**, use **Haystack Enterprise Chat Model** instead: it runs Chat Completions on the selected service, but n8n's Agent and Simple Memory build `messages` for you.
 

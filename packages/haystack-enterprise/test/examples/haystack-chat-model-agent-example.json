@@ -64,7 +64,7 @@
     },
     {
       "parameters": {
-        "content": "### Haystack Enterprise Chat Model on an AI Agent\n\nThis workflow plugs **Haystack Enterprise Chat Model** into the n8n' **AI Agent**. The Chat Model runs Chat Completions on your Haystack Enterprise service. The Agent builds `messages` from chat input plus Simple Memory.\n\n- **Haystack Enterprise Chat Model** → Agent **Model** port. Pick workspace and service, plus Haystack Enterprise API credentials.\n- **Simple Memory** → Agent **Memory** port, and the Chat Trigger so the widget can reload history.\n- **Calculator** → Agent **Tool** port. The Agent node expects at least one tool. Swap it for Haystack Enterprise AI (`usableAsTool`) or MCP tools when you want the Agent to call other pipelines as tools.\n\nOpen the Chat Trigger and send two messages in one session — the second should remember the first.",
+        "content": "### Haystack Enterprise Chat Model on an AI Agent\n\nThis workflow plugs **Haystack Enterprise Chat Model** into n8n's **AI Agent**. The Chat Model runs Chat Completions on your Haystack Enterprise service. The Agent builds `messages` from chat input plus Simple Memory.\n\n- **Haystack Enterprise Chat Model** → Agent **Model** port. Pick workspace and service, plus Haystack Enterprise API credentials.\n- **Simple Memory** → Agent **Memory** port, and the Chat Trigger so the widget can reload history.\n- **Calculator** → Agent **Tool** port. The Agent node expects at least one tool. Swap it for Haystack Enterprise AI (`usableAsTool`) or MCP tools when you want the Agent to call other pipelines as tools.\n\nOpen the Chat Trigger and send two messages in one session — the second should remember the first.",
         "height": 420,
         "width": 520
       },

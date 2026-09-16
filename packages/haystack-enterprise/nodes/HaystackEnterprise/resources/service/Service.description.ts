@@ -26,7 +26,7 @@ export const serviceOperations: INodeProperties[] = [
 				name: 'Chat Completions',
 				value: 'chatCompletions',
 				description:
-					'Run an OpenAI-style chat completion against a deployed service. Clients send the full conversation in messages; optional extras like temperature and tools are forwarded to the service.',
+					'Run an OpenAI-style chat completion against a deployed service. Clients send the full conversation in messages; optional extras such as temperature are forwarded to the service.',
 				action: 'Create a chat completion',
 			},
 			{
@@ -549,8 +549,8 @@ export const serviceFields: INodeProperties[] = [
 					'Other OpenAI fields forwarded as-is (for example frequency_penalty, presence_penalty, response_format). Merged over the named fields below. Protocol fields (store, stream_options, metadata) are ignored by the API.',
 			},
 			{
-				displayName: 'Max Tokens',
-				name: 'maxTokens',
+				displayName: 'Max Completion Tokens',
+				name: 'maxCompletionTokens',
 				type: 'number',
 				typeOptions: { minValue: 1 },
 				default: 512,
@@ -563,23 +563,6 @@ export const serviceFields: INodeProperties[] = [
 				typeOptions: { minValue: 0, maxValue: 2, numberPrecision: 2 },
 				default: 1,
 				description: 'Sampling temperature. Higher values make output more random.',
-			},
-			{
-				displayName: 'Tool Choice',
-				name: 'toolChoice',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. auto',
-				description:
-					'Controls which tool is called: auto, none, required, or a JSON object like {"type":"function","function":{"name":"get_weather"}}',
-			},
-			{
-				displayName: 'Tools (JSON)',
-				name: 'tools',
-				type: 'json',
-				default: '[]',
-				description:
-					'Client-side tools the model may call, as an OpenAI tools array. The client must execute the call and send a tool message on the next request. Not used for tools the deployed Agent runs itself.',
 			},
 			{
 				displayName: 'Top P',
