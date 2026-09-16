@@ -1,5 +1,5 @@
 {
-  "name": "Haystack Enterprise AI – chat completions with client-owned history",
+  "name": "Haystack Enterprise AI – chat completions",
   "nodes": [
     {
       "parameters": {
@@ -11,18 +11,61 @@
       "name": "When chat message received",
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.3,
-      "position": [-900, 0],
+      "position": [-1120, 0],
       "webhookId": "f7a8b9c0-0001-4f7f-9f7f-000000000099"
     },
     {
       "parameters": {
-        "jsCode": "// Chat Completions has no search session: the client sends the full\n// conversation as `messages` on every request. This looks up prior turns\n// already stored for this n8n chat session and appends the new user message.\n//\n// Static data is per-workflow, in-memory-backed storage that n8n persists to\n// the database after each execution. It's fine for demos/small deployments,\n// but it resets if you clear it manually, and it isn't shared across workers\n// in a scaled/queue-mode setup. For production, replace this lookup/store\n// pair with a real data store (a Data Table node, a database, Redis, etc.)\n// keyed the same way.\nconst staticData = $getWorkflowStaticData('global');\nstaticData.conversations = staticData.conversations || {};\n\nconst n8nSessionId = $json.sessionId;\nconst history = staticData.conversations[n8nSessionId] || [];\nconst messages = [...history, { role: 'user', content: $json.chatInput }];\n\nreturn [\n  {\n    json: {\n      ...$json,\n      messages,\n    },\n  },\n];"
+        "simplifyOutput": true,
+        "options": {}
       },
       "id": "f7a8b9c0-0002-4f7f-9f7f-000000000002",
-      "name": "Look Up Conversation",
+      "name": "Get Chat History",
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1.1,
+      "position": [-900, 0],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 20
+      },
+      "id": "f7a8b9c0-0006-4f7f-9f7f-000000000006",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [-680, 220]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 2,
+        "options": {
+          "clashHandling": {
+            "values": {
+              "resolveClash": "preferLast",
+              "mergeMode": "shallowMerge",
+              "overrideEmpty": false
+            }
+          }
+        }
+      },
+      "id": "f7a8b9c0-0007-4f7f-9f7f-000000000007",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [-680, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const roleByType = {\n  human: 'user',\n  ai: 'assistant',\n  system: 'system',\n  HumanMessage: 'user',\n  AIMessage: 'assistant',\n  SystemMessage: 'system',\n};\n\nfunction toOpenAiMessages(raw) {\n  if (raw && (raw.human || raw.ai || raw.system)) {\n    const turns = [];\n    if (raw.system) turns.push({ role: 'system', content: raw.system });\n    if (raw.human) turns.push({ role: 'user', content: raw.human });\n    if (raw.ai) turns.push({ role: 'assistant', content: raw.ai });\n    return turns;\n  }\n  const content = raw?.kwargs?.content ?? raw?.content;\n  if (typeof content !== 'string' || content === '') return [];\n  const id = Array.isArray(raw.id) ? raw.id[raw.id.length - 1] : raw.type;\n  return [{ role: roleByType[id] ?? 'user', content }];\n}\n\nconst history = ($json.messages ?? []).flatMap(toOpenAiMessages);\nconst messages = [...history, { role: 'user', content: $json.chatInput }];\n\nreturn [{ json: { ...$json, messages } }];"
+      },
+      "id": "f7a8b9c0-0008-4f7f-9f7f-000000000008",
+      "name": "Build Messages",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-680, 0]
+      "position": [-460, 0]
     },
     {
       "parameters": {
@@ -41,7 +84,7 @@
       "name": "Haystack Enterprise AI",
       "type": "CUSTOM.haystackEnterpriseAi",
       "typeVersion": 1,
-      "position": [-460, 0],
+      "position": [-240, 0],
       "credentials": {
         "haystackEnterpriseApi": {
           "name": "Haystack Enterprise API"
@@ -50,25 +93,39 @@
     },
     {
       "parameters": {
-        "jsCode": "// Appends the assistant reply to the messages just sent, so the next\n// message in this n8n chat session includes the full conversation.\nconst staticData = $getWorkflowStaticData('global');\nstaticData.conversations = staticData.conversations || {};\n\nconst triggerData = $('When chat message received').item.json;\nconst sent = $('Look Up Conversation').item.json.messages;\nstaticData.conversations[triggerData.sessionId] = [\n  ...sent,\n  { role: 'assistant', content: $json.content },\n];\n\nreturn [\n  {\n    json: {\n      ...triggerData,\n      content: $json.content,\n    },\n  },\n];"
+        "mode": "insert",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "user",
+              "message": "={{ $('When chat message received').item.json.chatInput }}",
+              "hideFromUI": true
+            },
+            {
+              "type": "ai",
+              "message": "={{ $json.content }}",
+              "hideFromUI": true
+            }
+          ]
+        }
       },
       "id": "f7a8b9c0-0004-4f7f-9f7f-000000000004",
-      "name": "Remember Conversation",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [-240, 0]
+      "name": "Insert Chat",
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1.1,
+      "position": [-20, 0]
     },
     {
       "parameters": {
-        "content": "### Chat Completions with client-owned history\n\n**Chat Completions** is the OpenAI-compatible alternative to **Chat (Streaming)**. There is no search session — you send the full conversation as `messages` on every request, and get a `chat.completion` back.\n\n1. **Look Up Conversation** loads prior turns for this n8n chat session (empty on the first message) and appends the new user message.\n2. **Haystack Enterprise AI** runs Chat Completions with that `messages` array. **Stream** is on so tokens relay into the chat UI.\n3. **Remember Conversation** stores the assistant reply, so the next message continues the conversation.\n\n**Testing tip:** n8n only saves static data for production runs. In the canvas's Chat test panel, each message runs in manual mode, so history resets every time — activate the workflow first to see it persist.\n\nWant the platform to store history instead? See [`chat-with-auto-created-search-session-example.json`](./chat-with-auto-created-search-session-example.json). For client-side tool calling, add Additional Fields → Tools (JSON) and send a `role: \"tool\"` follow-up on the next request.",
-        "height": 500,
+        "content": "### Chat Completions\n\nSends the conversation as `messages` to a deployed service and streams the assistant reply into this chat.\n\n1. **Get Chat History** loads prior turns for this chat (empty on the first message).\n2. **Build Messages** appends the new user message.\n3. **Haystack Enterprise AI** runs Chat Completions. **Stream** is on so tokens show up live.\n4. **Insert Chat** writes the user and assistant turns into **Simple Memory** so the next message includes them.\n\nFill in your workspace and service, plus Haystack Enterprise API credentials.\n\nThe `sessionId` on the chat webhook is n8n's own chat session — it only keys Simple Memory. It is not sent to Haystack Enterprise.\n\nThe browser network tab shows n8n's chat webhook (`/webhook-test/...` or `/webhook/...`). The Haystack Enterprise call is made from the n8n server; open the **Build Messages** or **Haystack Enterprise AI** node's execution to see the `messages` array that was sent.",
+        "height": 480,
         "width": 460
       },
       "id": "f7a8b9c0-0005-4f7f-9f7f-000000000005",
       "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [-900, 200]
+      "position": [-1120, 280]
     }
   ],
   "pinData": {},
@@ -77,14 +134,57 @@
       "main": [
         [
           {
-            "node": "Look Up Conversation",
+            "node": "Get Chat History",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Look Up Conversation": {
+    "Get Chat History": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Get Chat History",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Insert Chat",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Build Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Messages": {
       "main": [
         [
           {
@@ -99,7 +199,7 @@
       "main": [
         [
           {
-            "node": "Remember Conversation",
+            "node": "Insert Chat",
             "type": "main",
             "index": 0
           }
