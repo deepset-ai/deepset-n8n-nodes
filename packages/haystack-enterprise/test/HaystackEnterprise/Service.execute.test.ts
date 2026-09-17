@@ -527,6 +527,51 @@ function openaiChunk(delta: Record<string, unknown>, finishReason: string | null
 	};
 }
 
+describe('executeService — listModels', () => {
+	it('returns each model as its own item', async () => {
+		const { context } = createContext(
+			{ workspaceName: 'acme' },
+			async () => ({
+				object: 'list',
+				data: [
+					{ id: 'acme/svc-1', object: 'model', name: 'first' },
+					{ id: 'acme/svc-2', object: 'model', name: 'second' },
+				],
+			}),
+		);
+
+		const result = await executeService.call(context, 'listModels', 0);
+
+		expect(result).toEqual([
+			{ json: { id: 'acme/svc-1', object: 'model', name: 'first' } },
+			{ json: { id: 'acme/svc-2', object: 'model', name: 'second' } },
+		]);
+	});
+
+	it('calls the deployment-scoped OpenAI models endpoint', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{ workspaceName: 'acme' },
+			async () => ({ object: 'list', data: [] }),
+		);
+
+		await executeService.call(context, 'listModels', 0);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseApi',
+			expect.objectContaining({
+				method: 'GET',
+				url: expect.stringContaining('/workspaces/acme/deployments/v1/models/'),
+			}),
+		);
+	});
+
+	it('throws when the response has no data array', async () => {
+		const { context } = createContext({ workspaceName: 'acme' }, async () => ({ object: 'list' }));
+
+		await expect(executeService.call(context, 'listModels', 0)).rejects.toThrow(/data array/);
+	});
+});
+
 describe('executeService — chatCompletions', () => {
 	it('surfaces OpenAI-shaped error bodies from the chat completions API', async () => {
 		const { context } = createContext(CHAT_COMPLETIONS_PARAMS, async () => {

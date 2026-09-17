@@ -63,11 +63,29 @@ async function get(this: IExecuteFunctions, itemIndex: number): Promise<IDataObj
 }
 
 /**
+ * GET /workspaces/{workspace}/deployments/v1/models/ — OpenAI-compatible model
+ * list. No pagination; each deployment in the workspace is one model entry.
+ */
+async function listModels(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject[]> {
+	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
+
+	const response = (await apiRequest.call(
+		this,
+		'GET',
+		`/workspaces/${workspaceName}/deployments/v1/models/`,
+	)) as IDataObject;
+
+	const data = response.data;
+	if (!Array.isArray(data)) {
+		throw new NodeOperationError(this.getNode(), 'The models response did not contain a data array', { itemIndex });
+	}
+
+	return data as IDataObject[];
+}
+
+/**
  * The *-stream endpoints take a singular `query` string in the body, unlike
- * `search`/`chat`'s `queries: [query]` array — confirmed from deepset's API
- * docs example requests, which don't publish a full request-body schema
- * table for these endpoints yet. Worth re-checking against a live call if
- * the API ever starts rejecting this shape.
+ * `search`/`chat`'s `queries: [query]` array.
  */
 async function runSearchStream(
 	this: IExecuteFunctions,
@@ -97,8 +115,7 @@ async function runSearchStream(
 	// search-stream is a one-off, historyless request — it has no concept of a
 	// search session. Only chat-stream takes one, and only optionally: when
 	// omitted, Haystack Enterprise creates one on the fly and reports its ID
-	// back via the X-Search-Session-Id response header (read below, once the
-	// stream request has been made).
+	// back via the X-Search-Session-Id response header
 	let searchSessionId: string | undefined;
 	if (endpoint === 'chat-stream') {
 		searchSessionId = this.getNodeParameter('searchSessionId', itemIndex, '') as string;
@@ -531,6 +548,9 @@ export async function executeService(
 			break;
 		case 'chatCompletions':
 			result = await runChatCompletions.call(this, itemIndex);
+			break;
+		case 'listModels':
+			result = await listModels.call(this, itemIndex);
 			break;
 		default:
 			throw new NodeOperationError(this.getNode(), `Unknown Service operation: ${operation}`, { itemIndex });
