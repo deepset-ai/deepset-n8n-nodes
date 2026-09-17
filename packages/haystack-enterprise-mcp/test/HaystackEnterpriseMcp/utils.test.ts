@@ -32,7 +32,8 @@ const { mockConnect, mockListTools, mockClose, ClientMock, TransportMock } = vi.
 
 vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({ Client: ClientMock }));
 vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js')>();
+	const actual =
+		await importOriginal<typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js')>();
 	return { ...actual, StreamableHTTPClientTransport: TransportMock };
 });
 
@@ -176,7 +177,9 @@ describe('loadWorkspaceOptions', () => {
 			{ workspace_id: 'missing-name' },
 		]);
 
-		return expect(loadWorkspaceOptions(context)).resolves.toEqual([{ name: 'Has-id', value: 'id-1' }]);
+		return expect(loadWorkspaceOptions(context)).resolves.toEqual([
+			{ name: 'Has-id', value: 'id-1' },
+		]);
 	});
 
 	it('returns an empty list for a non-array response', async () => {
@@ -261,7 +264,7 @@ describe('loadWorkspaceOptions', () => {
 	// all, an earlier internal assignment (`this.message = errorResponse.message`)
 	// can leave `.message` as a raw, non-string object instead of coercing it
 	// to a string.
-	it('never leaves .message as a non-string object when the HTTP status code can\'t be determined', async () => {
+	it("never leaves .message as a non-string object when the HTTP status code can't be determined", async () => {
 		const node = { name: 'Haystack Enterprise MCP' };
 		const context = {
 			helpers: {
@@ -285,7 +288,9 @@ describe('loadWorkspaceOptions', () => {
 });
 
 describe('loadMcpToolOptions', () => {
-	const context = { getNode: () => ({ name: 'Haystack Enterprise MCP' }) } as unknown as ILoadOptionsFunctions;
+	const context = {
+		getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+	} as unknown as ILoadOptionsFunctions;
 
 	beforeEach(() => {
 		mockConnect.mockReset().mockResolvedValue(undefined);
@@ -337,7 +342,9 @@ describe('loadMcpToolOptions', () => {
 	it('surfaces an unclassified connection failure as-is, without a synthesized fallback message', async () => {
 		mockConnect.mockRejectedValue(new Error('connection refused'));
 
-		await expect(loadMcpToolOptions(context, 'workspace-1', 'secret-key')).rejects.toThrow('connection refused');
+		await expect(loadMcpToolOptions(context, 'workspace-1', 'secret-key')).rejects.toThrow(
+			'connection refused',
+		);
 	});
 
 	it('surfaces a 404 as-is — only 401/403 get a synthesized hint', async () => {
@@ -359,13 +366,17 @@ describe('loadMcpToolOptions', () => {
 	it('adds a credential hint when connecting fails with a 401', async () => {
 		mockConnect.mockRejectedValue(new StreamableHTTPError(401, 'Unauthorized'));
 
-		await expect(loadMcpToolOptions(context, 'workspace-1', 'secret-key')).rejects.toThrow(/API key.*valid/);
+		await expect(loadMcpToolOptions(context, 'workspace-1', 'secret-key')).rejects.toThrow(
+			/API key.*valid/,
+		);
 	});
 });
 
 describe('listAllMcpTools', () => {
 	it('returns tools from a single page unchanged', async () => {
-		const client = { listTools: vi.fn().mockResolvedValue({ tools: [{ name: 'a' }, { name: 'b' }] }) };
+		const client = {
+			listTools: vi.fn().mockResolvedValue({ tools: [{ name: 'a' }, { name: 'b' }] }),
+		};
 
 		const tools = await listAllMcpTools(client as never);
 
@@ -402,7 +413,9 @@ describe('listAllMcpTools', () => {
 
 describe('describeTransportErrorHint', () => {
 	it('returns a credential hint for a 401 StreamableHTTPError', () => {
-		expect(describeTransportErrorHint(new StreamableHTTPError(401, 'Unauthorized'))).toMatch(/API key.*valid/);
+		expect(describeTransportErrorHint(new StreamableHTTPError(401, 'Unauthorized'))).toMatch(
+			/API key.*valid/,
+		);
 	});
 
 	it('returns a workspace-access hint for a 403 StreamableHTTPError', () => {
@@ -413,7 +426,9 @@ describe('describeTransportErrorHint', () => {
 
 	it('returns an empty string for a StreamableHTTPError with any other status', () => {
 		expect(describeTransportErrorHint(new StreamableHTTPError(404, 'Not Found'))).toBe('');
-		expect(describeTransportErrorHint(new StreamableHTTPError(500, 'Internal Server Error'))).toBe('');
+		expect(describeTransportErrorHint(new StreamableHTTPError(500, 'Internal Server Error'))).toBe(
+			'',
+		);
 	});
 
 	it('returns an empty string for a non-StreamableHTTPError, so callers surface it as-is', () => {
@@ -431,9 +446,9 @@ describe('describeToolCallErrorHint', () => {
 	});
 
 	it('explains a MethodNotFound McpError as the tool having disappeared', () => {
-		expect(describeToolCallErrorHint(new McpError(ErrorCode.MethodNotFound, 'no such tool'))).toMatch(
-			/no longer available on the MCP server/,
-		);
+		expect(
+			describeToolCallErrorHint(new McpError(ErrorCode.MethodNotFound, 'no such tool')),
+		).toMatch(/no longer available on the MCP server/);
 	});
 
 	it('explains an InternalError McpError as a pipeline failure', () => {
@@ -456,41 +471,54 @@ describe('getSelectedTools', () => {
 	const tools = [{ name: 'search' }, { name: 'chat' }, { name: 'index' }];
 
 	it('returns every tool when mode is "all", regardless of include/exclude lists', () => {
-		expect(getSelectedTools({ mode: 'all', includeTools: ['search'], excludeTools: ['chat'], tools })).toEqual(
-			tools,
-		);
+		expect(
+			getSelectedTools({ mode: 'all', includeTools: ['search'], excludeTools: ['chat'], tools }),
+		).toEqual(tools);
 	});
 
 	it('returns only the named tools when mode is "selected"', () => {
-		expect(getSelectedTools({ mode: 'selected', includeTools: ['chat'], excludeTools: [], tools })).toEqual([
-			{ name: 'chat' },
-		]);
+		expect(
+			getSelectedTools({ mode: 'selected', includeTools: ['chat'], excludeTools: [], tools }),
+		).toEqual([{ name: 'chat' }]);
 	});
 
 	it('falls back to every tool when mode is "selected" but no tools were chosen yet', () => {
-		expect(getSelectedTools({ mode: 'selected', includeTools: [], excludeTools: [], tools })).toEqual(tools);
+		expect(
+			getSelectedTools({ mode: 'selected', includeTools: [], excludeTools: [], tools }),
+		).toEqual(tools);
 	});
 
 	it('ignores selected names that no longer exist on the server', () => {
 		expect(
-			getSelectedTools({ mode: 'selected', includeTools: ['chat', 'removed-tool'], excludeTools: [], tools }),
+			getSelectedTools({
+				mode: 'selected',
+				includeTools: ['chat', 'removed-tool'],
+				excludeTools: [],
+				tools,
+			}),
 		).toEqual([{ name: 'chat' }]);
 	});
 
 	it('excludes the named tools when mode is "except"', () => {
-		expect(getSelectedTools({ mode: 'except', includeTools: [], excludeTools: ['chat'], tools })).toEqual([
-			{ name: 'search' },
-			{ name: 'index' },
-		]);
+		expect(
+			getSelectedTools({ mode: 'except', includeTools: [], excludeTools: ['chat'], tools }),
+		).toEqual([{ name: 'search' }, { name: 'index' }]);
 	});
 
 	it('returns every tool when mode is "except" but nothing is excluded', () => {
-		expect(getSelectedTools({ mode: 'except', includeTools: [], excludeTools: [], tools })).toEqual(tools);
+		expect(getSelectedTools({ mode: 'except', includeTools: [], excludeTools: [], tools })).toEqual(
+			tools,
+		);
 	});
 
 	it('can exclude every tool, returning an empty list', () => {
 		expect(
-			getSelectedTools({ mode: 'except', includeTools: [], excludeTools: ['search', 'chat', 'index'], tools }),
+			getSelectedTools({
+				mode: 'except',
+				includeTools: [],
+				excludeTools: ['search', 'chat', 'index'],
+				tools,
+			}),
 		).toEqual([]);
 	});
 });

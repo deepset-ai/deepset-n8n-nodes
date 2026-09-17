@@ -54,7 +54,11 @@ export const fileSuite: ContractResourceSuite = {
 				workspaceName: 'contract-test-workspace',
 				returnAll: false,
 				limit: 5,
-				filters: { name: 'contract-test.txt', content: 'hello', odataFilter: "name eq 'contract-test.txt'" },
+				filters: {
+					name: 'contract-test.txt',
+					content: 'hello',
+					odataFilter: "name eq 'contract-test.txt'",
+				},
 				sort: { field: 'name', order: 'ASC' },
 			},
 		},
@@ -68,7 +72,10 @@ export const fileSuite: ContractResourceSuite = {
 				workspaceName: 'contract-test-workspace',
 				returnAll: false,
 				limit: 5,
-				filters: { afterValue: '2024-01-02T00:00:00.000000+00:00', afterFileId: CONTRACT_TEST_FILE_ID },
+				filters: {
+					afterValue: '2024-01-02T00:00:00.000000+00:00',
+					afterFileId: CONTRACT_TEST_FILE_ID,
+				},
 			},
 		},
 		{
@@ -93,7 +100,9 @@ export const fileSuite: ContractResourceSuite = {
 			description: 'POST /files/update-meta',
 			params: {
 				workspaceName: 'contract-test-workspace',
-				'filesMetadata.file': [{ fileId: CONTRACT_TEST_FILE_ID, metadata: '{"category":"contract-test"}' }],
+				'filesMetadata.file': [
+					{ fileId: CONTRACT_TEST_FILE_ID, metadata: '{"category":"contract-test"}' },
+				],
 			},
 		},
 		{

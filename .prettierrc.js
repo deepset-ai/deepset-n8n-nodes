@@ -48,4 +48,17 @@ module.exports = {
 	 * https://prettier.io/docs/en/options.html#print-width
 	 */
 	printWidth: 100,
+
+	overrides: [
+		{
+			files: ['*.md', '*.mdx'],
+			options: {
+				/**
+				 * https://prettier.io/docs/en/options.html#prose-wrap
+				 * Reflow prose in READMEs and other docs (default "preserve" leaves long lines).
+				 */
+				proseWrap: 'always',
+			},
+		},
+	],
 };

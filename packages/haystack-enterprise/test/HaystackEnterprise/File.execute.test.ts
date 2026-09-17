@@ -20,7 +20,10 @@ describe('executeFile — upload', () => {
 		const result = await executeFile.call(context, 'upload', 0);
 
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
-		const [, options] = httpRequestWithAuthentication.mock.calls[0] as [string, { url: string; qs: Record<string, unknown>; body: FormData; json: boolean }];
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as [
+			string,
+			{ url: string; qs: Record<string, unknown>; body: FormData; json: boolean },
+		];
 		expect(options.url).toContain('/workspaces/ws/files');
 		expect(options.json).toBe(false);
 		expect(options.qs).toEqual({ write_mode: 'overwrite', file_name: 'note.txt' });
@@ -74,7 +77,7 @@ describe('executeFile — upload', () => {
 		expect(await uploaded.text()).toBe('binary-content');
 	});
 
-	it('uses the binary data\'s own filename when present', async () => {
+	it("uses the binary data's own filename when present", async () => {
 		const assertBinaryData = vi.fn(() => ({ mimeType: 'application/pdf', fileName: 'doc.pdf' }));
 		const getBinaryDataBuffer = vi.fn(async () => Buffer.from('binary-content'));
 		const { context, httpRequestWithAuthentication } = createContext(
@@ -107,7 +110,10 @@ describe('executeFile — get many', () => {
 
 		expect(result).toEqual([{ json: { file_id: 'a' } }, { json: { file_id: 'b' } }]);
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
-		const [, options] = httpRequestWithAuthentication.mock.calls[0] as [string, { qs: Record<string, unknown> }];
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as [
+			string,
+			{ qs: Record<string, unknown> },
+		];
 		expect(options.qs).not.toHaveProperty('page_number');
 	});
 
@@ -182,7 +188,10 @@ describe('executeFile — get many', () => {
 
 		const result = await executeFile.call(context, 'getAll', 0);
 
-		const [, options] = httpRequestWithAuthentication.mock.calls[0] as [string, { qs: Record<string, unknown> }];
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as [
+			string,
+			{ qs: Record<string, unknown> },
+		];
 		expect(options.qs).toMatchObject({ after_value: '2024-01-02', after_file_id: 'f2' });
 		expect(result).toEqual([{ json: { file_id: 'f3' } }]);
 	});
@@ -201,7 +210,10 @@ describe('executeFile — get many', () => {
 
 		await executeFile.call(context, 'getAll', 0);
 
-		const [, options] = httpRequestWithAuthentication.mock.calls[0] as [string, { qs: Record<string, unknown> }];
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as [
+			string,
+			{ qs: Record<string, unknown> },
+		];
 		expect(options.qs).not.toHaveProperty('after_value');
 		expect(options.qs).not.toHaveProperty('after_file_id');
 	});
@@ -246,7 +258,10 @@ describe('executeFile — get', () => {
 
 	it('converts a raw ArrayBuffer response body to a Buffer before reading it as text', async () => {
 		const source = Buffer.from('array-buffer content');
-		const arrayBuffer = source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength);
+		const arrayBuffer = source.buffer.slice(
+			source.byteOffset,
+			source.byteOffset + source.byteLength,
+		);
 		const { context } = createContext(
 			{ workspaceName: 'ws', fileId: 'f1', outputFormat: 'text' },
 			async () => ({ body: arrayBuffer, headers: {} }),
@@ -258,31 +273,46 @@ describe('executeFile — get', () => {
 	});
 
 	it('returns the file as binary data, forwarding the response content-type', async () => {
-		const prepareBinaryData = vi.fn(async (buffer: Buffer, _mime: unknown, contentType?: string) => ({
-			data: buffer.toString('base64'),
-			mimeType: contentType,
-			fileName: 'f1',
-		}));
+		const prepareBinaryData = vi.fn(
+			async (buffer: Buffer, _mime: unknown, contentType?: string) => ({
+				data: buffer.toString('base64'),
+				mimeType: contentType,
+				fileName: 'f1',
+			}),
+		);
 		const { context } = createContext(
 			{ workspaceName: 'ws', fileId: 'f1', outputFormat: 'binary', binaryPropertyName: 'data' },
-			async () => ({ body: Buffer.from('pdf-bytes'), headers: { 'content-type': 'application/pdf' } }),
+			async () => ({
+				body: Buffer.from('pdf-bytes'),
+				headers: { 'content-type': 'application/pdf' },
+			}),
 			{ prepareBinaryData },
 		);
 
 		const result = await executeFile.call(context, 'get', 0);
 
-		expect(prepareBinaryData).toHaveBeenCalledWith(Buffer.from('pdf-bytes'), undefined, 'application/pdf');
+		expect(prepareBinaryData).toHaveBeenCalledWith(
+			Buffer.from('pdf-bytes'),
+			undefined,
+			'application/pdf',
+		);
 		expect(result).toEqual([
 			{
 				json: { fileId: 'f1' },
-				binary: { data: { data: Buffer.from('pdf-bytes').toString('base64'), mimeType: 'application/pdf', fileName: 'f1' } },
+				binary: {
+					data: {
+						data: Buffer.from('pdf-bytes').toString('base64'),
+						mimeType: 'application/pdf',
+						fileName: 'f1',
+					},
+				},
 			},
 		]);
 	});
 });
 
 describe('executeFile — get meta / update meta', () => {
-	it('fetches a file\'s metadata by ID', async () => {
+	it("fetches a file's metadata by ID", async () => {
 		const { context, httpRequestWithAuthentication } = createContext(
 			{ workspaceName: 'ws', fileId: 'f1' },
 			async () => ({ source: 'api' }),
@@ -292,7 +322,10 @@ describe('executeFile — get meta / update meta', () => {
 
 		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'haystackEnterpriseApi',
-			expect.objectContaining({ method: 'GET', url: expect.stringContaining('/workspaces/ws/files/f1/meta') }),
+			expect.objectContaining({
+				method: 'GET',
+				url: expect.stringContaining('/workspaces/ws/files/f1/meta'),
+			}),
 		);
 		expect(result).toEqual([{ json: { source: 'api' } }]);
 	});
@@ -317,7 +350,10 @@ describe('executeFile — get meta / update meta', () => {
 	});
 
 	it('rejects invalid JSON metadata with a NodeOperationError naming the field', async () => {
-		const { context } = createContext({ workspaceName: 'ws', fileId: 'f1', metadata: '{not valid' }, async () => ({}));
+		const { context } = createContext(
+			{ workspaceName: 'ws', fileId: 'f1', metadata: '{not valid' },
+			async () => ({}),
+		);
 
 		await expect(executeFile.call(context, 'updateMeta', 0)).rejects.toThrow(NodeOperationError);
 	});
@@ -351,7 +387,10 @@ describe('executeFile — update meta bulk', () => {
 	});
 
 	it('defaults to an empty list when no entries are provided', async () => {
-		const { context, httpRequestWithAuthentication } = createContext({ workspaceName: 'ws' }, async () => ({}));
+		const { context, httpRequestWithAuthentication } = createContext(
+			{ workspaceName: 'ws' },
+			async () => ({}),
+		);
 
 		await executeFile.call(context, 'updateMetaBulk', 0);
 
@@ -364,13 +403,19 @@ describe('executeFile — update meta bulk', () => {
 
 describe('executeFile — delete / delete many', () => {
 	it('deletes a single file by ID', async () => {
-		const { context, httpRequestWithAuthentication } = createContext({ workspaceName: 'ws', fileId: 'f1' }, async () => ({}));
+		const { context, httpRequestWithAuthentication } = createContext(
+			{ workspaceName: 'ws', fileId: 'f1' },
+			async () => ({}),
+		);
 
 		const result = await executeFile.call(context, 'delete', 0);
 
 		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'haystackEnterpriseApi',
-			expect.objectContaining({ method: 'DELETE', url: expect.stringContaining('/workspaces/ws/files/f1') }),
+			expect.objectContaining({
+				method: 'DELETE',
+				url: expect.stringContaining('/workspaces/ws/files/f1'),
+			}),
 		);
 		expect(result).toEqual([{ json: { fileId: 'f1', success: true } }]);
 	});
@@ -406,7 +451,10 @@ describe('executeFile — delete / delete many', () => {
 	});
 
 	it('refuses to delete anything when no names are given and Delete All Files is off', async () => {
-		const { context } = createContext({ workspaceName: 'ws', names: '', deleteAll: false }, async () => ({}));
+		const { context } = createContext(
+			{ workspaceName: 'ws', names: '', deleteAll: false },
+			async () => ({}),
+		);
 
 		await expect(executeFile.call(context, 'deleteMany', 0)).rejects.toThrow(/Delete All Files/);
 	});

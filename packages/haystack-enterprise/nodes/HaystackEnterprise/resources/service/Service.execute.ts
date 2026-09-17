@@ -77,7 +77,11 @@ async function listModels(this: IExecuteFunctions, itemIndex: number): Promise<I
 
 	const data = response.data;
 	if (!Array.isArray(data)) {
-		throw new NodeOperationError(this.getNode(), 'The models response did not contain a data array', { itemIndex });
+		throw new NodeOperationError(
+			this.getNode(),
+			'The models response did not contain a data array',
+			{ itemIndex },
+		);
 	}
 
 	return data as IDataObject[];
@@ -99,11 +103,14 @@ async function runSearchStream(
 	const additionalFields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
 
 	const body: IDataObject = { query };
-	if (additionalFields.includeResult !== undefined) body.include_result = additionalFields.includeResult;
-	if (additionalFields.includeToolCalls !== undefined) body.include_tool_calls = additionalFields.includeToolCalls;
+	if (additionalFields.includeResult !== undefined)
+		body.include_result = additionalFields.includeResult;
+	if (additionalFields.includeToolCalls !== undefined)
+		body.include_tool_calls = additionalFields.includeToolCalls;
 	if (additionalFields.includeToolCallResults !== undefined)
 		body.include_tool_call_results = additionalFields.includeToolCallResults;
-	if (additionalFields.includeReasoning !== undefined) body.include_reasoning = additionalFields.includeReasoning;
+	if (additionalFields.includeReasoning !== undefined)
+		body.include_reasoning = additionalFields.includeReasoning;
 	if (additionalFields.viewPrompts !== undefined) body.view_prompts = additionalFields.viewPrompts;
 	const filters = parseJsonField.call(this, itemIndex, 'Filters (JSON)', additionalFields.filters);
 	if (filters) body.filters = filters;
@@ -161,7 +168,8 @@ async function runSearchStream(
 			searchSessionId ||= getResponseHeader(response.headers, 'X-Search-Session-Id');
 		}
 	} catch (error) {
-		if (relayLive) this.sendChunk('error', itemIndex, error instanceof Error ? error.message : 'Request failed');
+		if (relayLive)
+			this.sendChunk('error', itemIndex, error instanceof Error ? error.message : 'Request failed');
 		// eslint-disable-next-line @n8n/community-nodes/require-node-api-error -- already a NodeApiError (apiRequestStream/withServiceActivationRetry always throw one); rethrowing in place preserves .context.data (see apiRequest()'s docstring in utils.ts)
 		throw error;
 	}
@@ -258,7 +266,9 @@ function readMessages(this: IExecuteFunctions, itemIndex: number): IDataObject[]
 			this.getNodeParameter('messagesJson', itemIndex),
 		);
 		if (!Array.isArray(parsed) || parsed.length === 0) {
-			throw new NodeOperationError(this.getNode(), 'Messages must be a non-empty JSON array', { itemIndex });
+			throw new NodeOperationError(this.getNode(), 'Messages must be a non-empty JSON array', {
+				itemIndex,
+			});
 		}
 		return parsed as IDataObject[];
 	}
@@ -309,12 +319,21 @@ function applyChatCompletionExtras(
 	}
 	if (additionalFields.topP !== undefined) body.top_p = additionalFields.topP;
 
-	const extra = parseJsonValue.call(this, itemIndex, 'Extra Parameters (JSON)', additionalFields.extraParameters);
+	const extra = parseJsonValue.call(
+		this,
+		itemIndex,
+		'Extra Parameters (JSON)',
+		additionalFields.extraParameters,
+	);
 	if (extra !== undefined) {
 		if (!extra || typeof extra !== 'object' || Array.isArray(extra)) {
-			throw new NodeOperationError(this.getNode(), '"Extra Parameters (JSON)" must be a JSON object', {
-				itemIndex,
-			});
+			throw new NodeOperationError(
+				this.getNode(),
+				'"Extra Parameters (JSON)" must be a JSON object',
+				{
+					itemIndex,
+				},
+			);
 		}
 		const extras = { ...(extra as IDataObject) };
 		delete extras.messages;
@@ -346,7 +365,12 @@ function assertSingleChoiceWhenSimplifying(
 
 function deltaContent(chunk: IDataObject): string | undefined {
 	const choices = chunk.choices;
-	if (!Array.isArray(choices) || choices.length === 0 || typeof choices[0] !== 'object' || !choices[0]) {
+	if (
+		!Array.isArray(choices) ||
+		choices.length === 0 ||
+		typeof choices[0] !== 'object' ||
+		!choices[0]
+	) {
 		return undefined;
 	}
 	const delta = (choices[0] as IDataObject).delta as IDataObject | undefined;
@@ -422,7 +446,9 @@ function aggregateChatCompletionChunks(chunks: IDataObject[]): IDataObject {
 function simplifyChatCompletion(completion: IDataObject): IDataObject {
 	const choices = completion.choices;
 	const choice =
-		Array.isArray(choices) && typeof choices[0] === 'object' && choices[0] ? (choices[0] as IDataObject) : {};
+		Array.isArray(choices) && typeof choices[0] === 'object' && choices[0]
+			? (choices[0] as IDataObject)
+			: {};
 	const message = (choice.message as IDataObject) ?? {};
 	const simplified: IDataObject = {
 		content: message.content ?? '',
@@ -442,7 +468,10 @@ function simplifyChatCompletion(completion: IDataObject): IDataObject {
  * object; `stream: true` returns OpenAI `chat.completion.chunk` SSE (not the
  * Haystack-native delta/result events that chat-stream uses).
  */
-async function runChatCompletions(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject[]> {
+async function runChatCompletions(
+	this: IExecuteFunctions,
+	itemIndex: number,
+): Promise<IDataObject[]> {
 	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
 	const deploymentId = this.getNodeParameter('deploymentId', itemIndex) as string;
 	const stream = this.getNodeParameter('stream', itemIndex, false) as boolean;
@@ -490,7 +519,8 @@ async function runChatCompletions(this: IExecuteFunctions, itemIndex: number): P
 		)) as { stream: NodeJS.ReadableStream; headers: IDataObject };
 		responseStream = response.stream;
 	} catch (error) {
-		if (relayLive) this.sendChunk('error', itemIndex, error instanceof Error ? error.message : 'Request failed');
+		if (relayLive)
+			this.sendChunk('error', itemIndex, error instanceof Error ? error.message : 'Request failed');
 		// eslint-disable-next-line @n8n/community-nodes/require-node-api-error -- already a NodeApiError (apiRequestStream/withServiceActivationRetry always throw one); rethrowing in place preserves .context.data (see apiRequest()'s docstring in utils.ts)
 		throw error;
 	}
@@ -553,7 +583,9 @@ export async function executeService(
 			result = await listModels.call(this, itemIndex);
 			break;
 		default:
-			throw new NodeOperationError(this.getNode(), `Unknown Service operation: ${operation}`, { itemIndex });
+			throw new NodeOperationError(this.getNode(), `Unknown Service operation: ${operation}`, {
+				itemIndex,
+			});
 	}
 
 	const items = Array.isArray(result) ? result : [result];

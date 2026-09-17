@@ -63,10 +63,15 @@ function extractOpenAiNestedErrorMessage(data: IDataObject): string | undefined 
  * that assignment survives. So `.context.data` is the reliable path to
  * Haystack Enterprise's actual error body, not `.cause` or `.response`.
  */
-function extractApiErrorDetail(error: unknown, options: { firstErrorOnly?: boolean } = {}): string | undefined {
+function extractApiErrorDetail(
+	error: unknown,
+	options: { firstErrorOnly?: boolean } = {},
+): string | undefined {
 	const wrappedData = error instanceof NodeApiError ? error.context?.data : undefined;
 	const rawData =
-		error instanceof Error ? (error as { response?: { data?: unknown } }).response?.data : undefined;
+		error instanceof Error
+			? (error as { response?: { data?: unknown } }).response?.data
+			: undefined;
 
 	for (const data of [wrappedData, rawData]) {
 		if (!data || typeof data !== 'object') {
@@ -146,7 +151,11 @@ const RESOURCE_PERMISSION_ENDPOINTS: ReadonlyArray<{ pattern: RegExp; resource: 
  *
  * Returns '' for anything else so callers surface that error as-is.
  */
-function describeApiAuthErrorHint(httpCode: string | null, endpoint: string, description?: string): string {
+function describeApiAuthErrorHint(
+	httpCode: string | null,
+	endpoint: string,
+	description?: string,
+): string {
 	const normalizedDescription = description?.toLowerCase() ?? '';
 	const isUnauthorized = httpCode === '401' || normalizedDescription.includes('unauthorized');
 	const isForbidden = httpCode === '403' || normalizedDescription.includes('forbidden');
@@ -155,7 +164,9 @@ function describeApiAuthErrorHint(httpCode: string | null, endpoint: string, des
 		return 'Check that the API key in this credential is valid.';
 	}
 	if (isForbidden) {
-		const gatedResource = RESOURCE_PERMISSION_ENDPOINTS.find(({ pattern }) => pattern.test(endpoint))?.resource;
+		const gatedResource = RESOURCE_PERMISSION_ENDPOINTS.find(({ pattern }) =>
+			pattern.test(endpoint),
+		)?.resource;
 		if (gatedResource) {
 			return `This API key either can't access this workspace, or lacks permission for this ${gatedResource}. Check both in Haystack Enterprise Platform.`;
 		}
@@ -209,7 +220,11 @@ async function withApiErrorWrapping<T>(
 		const error =
 			caught instanceof NodeApiError
 				? caught
-				: new NodeApiError(context.getNode(), caught as JsonObject, description ? { description } : {});
+				: new NodeApiError(
+						context.getNode(),
+						caught as JsonObject,
+						description ? { description } : {},
+					);
 
 		if (caught instanceof NodeApiError && description) {
 			error.description = description;
@@ -298,14 +313,18 @@ export async function apiRequestStream(
 		this,
 		endpoint,
 		async () => {
-			const response = (await this.helpers.httpRequestWithAuthentication.call(this, CREDENTIAL_NAME, {
-				method,
-				url: `${getApiBaseUrl()}${endpoint}`,
-				json: true,
-				body,
-				encoding: 'stream',
-				returnFullResponse: true,
-			})) as { body: NodeJS.ReadableStream; headers: IDataObject };
+			const response = (await this.helpers.httpRequestWithAuthentication.call(
+				this,
+				CREDENTIAL_NAME,
+				{
+					method,
+					url: `${getApiBaseUrl()}${endpoint}`,
+					json: true,
+					body,
+					encoding: 'stream',
+					returnFullResponse: true,
+				},
+			)) as { body: NodeJS.ReadableStream; headers: IDataObject };
 			return { stream: response.body, headers: response.headers };
 		},
 		{ firstErrorOnly: true },
@@ -392,9 +411,10 @@ export async function consumeSseStream(
  * section) so the full event is still visible even when the message had to
  * fall back.
  */
-export function extractStreamErrorDetail(
-	error: IDataObject[string],
-): { message: string; data: IDataObject[string] } {
+export function extractStreamErrorDetail(error: IDataObject[string]): {
+	message: string;
+	data: IDataObject[string];
+} {
 	if (typeof error === 'string') {
 		return { message: error, data: error };
 	}
@@ -477,7 +497,9 @@ export async function fetchPaginatedResults<T>(
 	extractList: (response: unknown) => T[],
 ): Promise<T[]> {
 	if (!returnAll) {
-		const response = await apiRequest.call(context, 'GET', endpoint, { qs: { ...qs, limit, page_number: 1 } });
+		const response = await apiRequest.call(context, 'GET', endpoint, {
+			qs: { ...qs, limit, page_number: 1 },
+		});
 		return extractList(response);
 	}
 
@@ -546,9 +568,14 @@ async function loadResourceOptions(
 		return [];
 	}
 
-	const response = await loadOptionsApiRequest(context, 'GET', `/workspaces/${workspaceName}/${resourcePath}`, {
-		qs,
-	});
+	const response = await loadOptionsApiRequest(
+		context,
+		'GET',
+		`/workspaces/${workspaceName}/${resourcePath}`,
+		{
+			qs,
+		},
+	);
 
 	return extractList(response)
 		.map(toOption)
@@ -576,7 +603,9 @@ export async function loadDeploymentOptionsWithAllOption(
 	return [{ name: 'All Services', value: '' }, ...(await loadDeploymentOptions(context))];
 }
 
-export async function loadFileOptions(context: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+export async function loadFileOptions(
+	context: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
 	return loadResourceOptions(
 		context,
 		'files',
@@ -590,7 +619,9 @@ export async function loadFileOptions(context: ILoadOptionsFunctions): Promise<I
 	);
 }
 
-export async function loadIndexOptions(context: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+export async function loadIndexOptions(
+	context: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
 	return loadResourceOptions(context, 'indexes', extractPaginatedList, (index) => {
 		if (typeof index.name !== 'string') return undefined;
 		const status = typeof index.desired_status === 'string' ? ` (${index.desired_status})` : '';
@@ -625,7 +656,8 @@ export async function withServiceActivationRetry<T>(
 		try {
 			return await fn();
 		} catch (error) {
-			const isServiceActivating = error instanceof NodeApiError && error.httpCode === SERVICE_ACTIVATING_HTTP_CODE;
+			const isServiceActivating =
+				error instanceof NodeApiError && error.httpCode === SERVICE_ACTIVATING_HTTP_CODE;
 			const elapsedMs = Date.now() - startedAt;
 			if (isServiceActivating && elapsedMs < maxWaitMs) {
 				await sleep(Math.min(delayMs, maxWaitMs - elapsedMs));
@@ -642,7 +674,11 @@ export async function withServiceActivationRetry<T>(
  * respond with `{ search_sessions: [...], has_more, total }`).
  */
 export function extractSearchSessionList(response: unknown): IDataObject[] {
-	if (response && typeof response === 'object' && Array.isArray((response as IDataObject).search_sessions)) {
+	if (
+		response &&
+		typeof response === 'object' &&
+		Array.isArray((response as IDataObject).search_sessions)
+	) {
 		return (response as IDataObject).search_sessions as IDataObject[];
 	}
 	return [];
@@ -671,7 +707,8 @@ export async function loadSearchSessionOptions(
 		(session) => {
 			if (typeof session.search_session_id !== 'string') return undefined;
 			const id = session.search_session_id;
-			const title = typeof session.title === 'string' && session.title.trim() !== '' ? session.title : id;
+			const title =
+				typeof session.title === 'string' && session.title.trim() !== '' ? session.title : id;
 			return { name: title, value: id };
 		},
 		// Same deployment-only scoping as SearchSession's getAll() — see the comment there.

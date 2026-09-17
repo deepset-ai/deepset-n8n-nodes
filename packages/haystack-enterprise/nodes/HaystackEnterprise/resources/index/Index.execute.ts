@@ -60,7 +60,9 @@ export async function executeIndex(
 			result = await getAll.call(this, itemIndex);
 			break;
 		default:
-			throw new NodeOperationError(this.getNode(), `Unknown Index operation: ${operation}`, { itemIndex });
+			throw new NodeOperationError(this.getNode(), `Unknown Index operation: ${operation}`, {
+				itemIndex,
+			});
 	}
 
 	const items = Array.isArray(result) ? result : [result];

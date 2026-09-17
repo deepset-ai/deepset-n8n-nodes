@@ -86,7 +86,10 @@ export const searchSessionFields: INodeProperties[] = [
 		},
 	},
 	// Get Many
-	apiDocsNotice('getAll', 'get-search-sessions-api-v-1-workspaces-workspace-name-search-sessions-get'),
+	apiDocsNotice(
+		'getAll',
+		'get-search-sessions-api-v-1-workspaces-workspace-name-search-sessions-get',
+	),
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

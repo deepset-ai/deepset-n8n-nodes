@@ -30,6 +30,9 @@ jobs:
       - name: Run lint
         run: 'npm run lint'
 
+      - name: Check formatting
+        run: 'npm run format:check'
+
       - name: Run build
         run: 'npm run build'
 

@@ -9,6 +9,10 @@ export interface ContractTestCase {
 
 export interface ContractResourceSuite {
 	resource: string;
-	handler: (this: IExecuteFunctions, operation: string, itemIndex: number) => Promise<INodeExecutionData[]>;
+	handler: (
+		this: IExecuteFunctions,
+		operation: string,
+		itemIndex: number,
+	) => Promise<INodeExecutionData[]>;
 	cases: ContractTestCase[];
 }

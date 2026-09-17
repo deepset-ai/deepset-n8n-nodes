@@ -29,7 +29,10 @@ export const indexOperations: INodeProperties[] = [
 
 export const indexFields: INodeProperties[] = [
 	// Get
-	apiDocsNotice('get', 'get-index-by-name-api-v-1-workspaces-workspace-name-indexes-index-name-get'),
+	apiDocsNotice(
+		'get',
+		'get-index-by-name-api-v-1-workspaces-workspace-name-indexes-index-name-get',
+	),
 	{
 		displayName: 'Index Name or ID',
 		name: 'indexName',

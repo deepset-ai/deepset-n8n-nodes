@@ -1,13 +1,23 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest, extractPaginatedList, parseCommaSeparatedList, parseJsonField } from '../../utils';
+import {
+	apiRequest,
+	extractPaginatedList,
+	parseCommaSeparatedList,
+	parseJsonField,
+} from '../../utils';
 
 async function upload(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
 	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
 	const uploadFrom = this.getNodeParameter('uploadFrom', itemIndex) as string;
 	const writeMode = this.getNodeParameter('writeMode', itemIndex) as string;
 	const metadata =
-		parseJsonField.call(this, itemIndex, 'Metadata', this.getNodeParameter('metadata', itemIndex, '{}')) ?? {};
+		parseJsonField.call(
+			this,
+			itemIndex,
+			'Metadata',
+			this.getNodeParameter('metadata', itemIndex, '{}'),
+		) ?? {};
 
 	const formData = new FormData();
 	formData.append('meta', JSON.stringify(metadata));
@@ -100,11 +110,16 @@ async function get(this: IExecuteFunctions, itemIndex: number): Promise<INodeExe
 	const fileId = this.getNodeParameter('fileId', itemIndex) as string;
 	const outputFormat = this.getNodeParameter('outputFormat', itemIndex) as string;
 
-	const response = (await apiRequest.call(this, 'GET', `/workspaces/${workspaceName}/files/${fileId}`, {
-		json: false,
-		encoding: 'arraybuffer',
-		returnFullResponse: true,
-	})) as { body: ArrayBuffer | Buffer; headers: IDataObject };
+	const response = (await apiRequest.call(
+		this,
+		'GET',
+		`/workspaces/${workspaceName}/files/${fileId}`,
+		{
+			json: false,
+			encoding: 'arraybuffer',
+			returnFullResponse: true,
+		},
+	)) as { body: ArrayBuffer | Buffer; headers: IDataObject };
 
 	const buffer = Buffer.isBuffer(response.body) ? response.body : Buffer.from(response.body);
 
@@ -114,7 +129,9 @@ async function get(this: IExecuteFunctions, itemIndex: number): Promise<INodeExe
 
 	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
 	const contentType =
-		typeof response.headers['content-type'] === 'string' ? (response.headers['content-type'] as string) : undefined;
+		typeof response.headers['content-type'] === 'string'
+			? (response.headers['content-type'] as string)
+			: undefined;
 	const binaryData = await this.helpers.prepareBinaryData(buffer, undefined, contentType);
 	return { json: { fileId }, binary: { [binaryPropertyName]: binaryData } };
 }
@@ -122,15 +139,27 @@ async function get(this: IExecuteFunctions, itemIndex: number): Promise<INodeExe
 async function getMeta(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
 	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
 	const fileId = this.getNodeParameter('fileId', itemIndex) as string;
-	return (await apiRequest.call(this, 'GET', `/workspaces/${workspaceName}/files/${fileId}/meta`)) as IDataObject;
+	return (await apiRequest.call(
+		this,
+		'GET',
+		`/workspaces/${workspaceName}/files/${fileId}/meta`,
+	)) as IDataObject;
 }
 
 async function updateMeta(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
 	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
 	const fileId = this.getNodeParameter('fileId', itemIndex) as string;
-	const metadata = parseJsonField.call(this, itemIndex, 'Metadata', this.getNodeParameter('metadata', itemIndex)) ?? {};
+	const metadata =
+		parseJsonField.call(
+			this,
+			itemIndex,
+			'Metadata',
+			this.getNodeParameter('metadata', itemIndex),
+		) ?? {};
 
-	await apiRequest.call(this, 'PATCH', `/workspaces/${workspaceName}/files/${fileId}/meta`, { body: metadata });
+	await apiRequest.call(this, 'PATCH', `/workspaces/${workspaceName}/files/${fileId}/meta`, {
+		body: metadata,
+	});
 	return { fileId, success: true };
 }
 
@@ -212,7 +241,9 @@ export async function executeFile(
 			result = await deleteMany.call(this, itemIndex);
 			break;
 		default:
-			throw new NodeOperationError(this.getNode(), `Unknown File operation: ${operation}`, { itemIndex });
+			throw new NodeOperationError(this.getNode(), `Unknown File operation: ${operation}`, {
+				itemIndex,
+			});
 	}
 
 	const items = Array.isArray(result) ? result : [result];

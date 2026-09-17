@@ -1,23 +1,24 @@
 # Programmatic nodes
 
-Programmatic-style nodes implement an `execute` method and have full
-control over HTTP calls, loops, transformations, etc.
+Programmatic-style nodes implement an `execute` method and have full control over HTTP calls, loops,
+transformations, etc.
 
 Also read `.agents/nodes.md` for shared node anatomy and conventions.
 
 ## When to use
+
 - You need multiple dependent API calls per node execution.
 - You need complex transformations or branching logic.
-- The API doesn't map cleanly into simple "one request per item"
-  patterns.
+- The API doesn't map cleanly into simple "one request per item" patterns.
 
-If the integration is mostly simple HTTP/REST requests, prefer
-declarative-style instead (see `.agents/nodes-declarative.md`).
+If the integration is mostly simple HTTP/REST requests, prefer declarative-style instead (see
+`.agents/nodes-declarative.md`).
 
-If you choose programmatic-style, briefly explain **why**
-declarative-style won't work for this particular node.
+If you choose programmatic-style, briefly explain **why** declarative-style won't work for this
+particular node.
 
 ## Canonical execute pattern
+
 ```typescript
 async execute(
   this: IExecuteFunctions,
@@ -66,11 +67,11 @@ async execute(
 ```
 
 ## Guidelines
+
 - Always get input items via `this.getInputData()`
-- Pass the correct item index as the second argument to
-  `getNodeParameter`
-- Handle errors using `NodeApiError` (for API failures) and
-  `NodeOperationError` (for operational/validation errors)
+- Pass the correct item index as the second argument to `getNodeParameter`
+- Handle errors using `NodeApiError` (for API failures) and `NodeOperationError` (for
+  operational/validation errors)
 - Support `continueOnFail()` to allow workflows to proceed when possible
-- Programmatic-style nodes support both **light and full versioning**.
-  See `.agents/versioning.md` for details.
+- Programmatic-style nodes support both **light and full versioning**. See `.agents/versioning.md`
+  for details.

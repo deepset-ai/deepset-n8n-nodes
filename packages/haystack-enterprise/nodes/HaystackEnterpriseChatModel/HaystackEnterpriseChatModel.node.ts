@@ -8,7 +8,11 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import { getApiBaseUrl, loadDeploymentOptions, loadWorkspaceOptions } from '../HaystackEnterprise/utils';
+import {
+	getApiBaseUrl,
+	loadDeploymentOptions,
+	loadWorkspaceOptions,
+} from '../HaystackEnterprise/utils';
 
 export class HaystackEnterpriseChatModel implements INodeType {
 	description: INodeTypeDescription = {
@@ -177,7 +181,10 @@ export class HaystackEnterpriseChatModel implements INodeType {
 			additionalParams.max_completion_tokens = options.maxCompletionTokens;
 		}
 		if (options.topP !== undefined) additionalParams.top_p = options.topP;
-		Object.assign(additionalParams, parseExtraParameters.call(this, itemIndex, options.extraParameters));
+		Object.assign(
+			additionalParams,
+			parseExtraParameters.call(this, itemIndex, options.extraParameters),
+		);
 
 		const temperature = additionalParams.temperature;
 		delete additionalParams.temperature;
@@ -218,9 +225,13 @@ function parseExtraParameters(
 		}
 	}
 	if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-		throw new NodeOperationError(this.getNode(), '"Extra Parameters (JSON)" must be a JSON object', {
-			itemIndex,
-		});
+		throw new NodeOperationError(
+			this.getNode(),
+			'"Extra Parameters (JSON)" must be a JSON object',
+			{
+				itemIndex,
+			},
+		);
 	}
 	const extras = { ...(parsed as Record<string, unknown>) };
 	delete extras.messages;

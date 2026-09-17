@@ -24,7 +24,9 @@ async function resolveSpecToLocalFile(specSource: string): Promise<string> {
 
 	const response = await fetch(specSource);
 	if (!response.ok) {
-		throw new Error(`Failed to fetch spec from ${specSource}: ${response.status} ${response.statusText}`);
+		throw new Error(
+			`Failed to fetch spec from ${specSource}: ${response.status} ${response.statusText}`,
+		);
 	}
 	const body = await response.text();
 
@@ -55,7 +57,9 @@ async function waitForPrismReady(port: number, proc: ChildProcess): Promise<void
 	}
 
 	proc.kill();
-	throw new Error(`Prism mock server did not become ready within ${READY_TIMEOUT_MS}ms: ${String(lastError)}`);
+	throw new Error(
+		`Prism mock server did not become ready within ${READY_TIMEOUT_MS}ms: ${String(lastError)}`,
+	);
 }
 
 /**
@@ -77,9 +81,13 @@ export async function setup(): Promise<void> {
 	const specSource = process.env.CONTRACT_SPEC ?? DEFAULT_SPEC_URL;
 	const spec = await resolveSpecToLocalFile(specSource);
 
-	prismProcess = spawn('npx', ['--no-install', 'prism', 'mock', spec, '--port', String(MOCK_PORT), '--errors'], {
-		stdio: 'pipe',
-	});
+	prismProcess = spawn(
+		'npx',
+		['--no-install', 'prism', 'mock', spec, '--port', String(MOCK_PORT), '--errors'],
+		{
+			stdio: 'pipe',
+		},
+	);
 
 	let stderr = '';
 	prismProcess.stderr?.on('data', (chunk: Buffer) => {

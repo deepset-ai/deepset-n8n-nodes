@@ -1,6 +1,11 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest, createSearchSession, extractSearchSessionList, fetchListWithCursorOrPaging } from '../../utils';
+import {
+	apiRequest,
+	createSearchSession,
+	extractSearchSessionList,
+	fetchListWithCursorOrPaging,
+} from '../../utils';
 
 async function create(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
 	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
@@ -15,7 +20,9 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 	const returnAll = this.getNodeParameter('returnAll', itemIndex) as boolean;
 	const deploymentId = this.getNodeParameter('deploymentId', itemIndex, '');
 	if (typeof deploymentId !== 'string') {
-		throw new NodeOperationError(this.getNode(), '"Service Name or ID" must resolve to a string', { itemIndex });
+		throw new NodeOperationError(this.getNode(), '"Service Name or ID" must resolve to a string', {
+			itemIndex,
+		});
 	}
 	const filters = this.getNodeParameter('filters', itemIndex, {}) as IDataObject;
 
@@ -40,11 +47,18 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 	);
 }
 
-async function deleteSearchSession(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
+async function deleteSearchSession(
+	this: IExecuteFunctions,
+	itemIndex: number,
+): Promise<IDataObject> {
 	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
 	const searchSessionId = this.getNodeParameter('searchSessionId', itemIndex) as string;
 
-	await apiRequest.call(this, 'DELETE', `/workspaces/${workspaceName}/search_sessions/${searchSessionId}`);
+	await apiRequest.call(
+		this,
+		'DELETE',
+		`/workspaces/${workspaceName}/search_sessions/${searchSessionId}`,
+	);
 	return { searchSessionId, success: true };
 }
 
@@ -65,7 +79,11 @@ export async function executeSearchSession(
 			result = await deleteSearchSession.call(this, itemIndex);
 			break;
 		default:
-			throw new NodeOperationError(this.getNode(), `Unknown Search Session operation: ${operation}`, { itemIndex });
+			throw new NodeOperationError(
+				this.getNode(),
+				`Unknown Search Session operation: ${operation}`,
+				{ itemIndex },
+			);
 	}
 
 	const items = Array.isArray(result) ? result : [result];
