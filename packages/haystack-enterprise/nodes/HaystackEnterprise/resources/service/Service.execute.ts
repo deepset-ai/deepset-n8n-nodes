@@ -63,6 +63,28 @@ async function get(this: IExecuteFunctions, itemIndex: number): Promise<IDataObj
 }
 
 /**
+ * GET /workspaces/{workspace}/deployments/v1/models/ — OpenAI-compatible model
+ * list (deployment_execution_controller.list_models). No pagination; each
+ * deployment in the workspace is one model entry.
+ */
+async function listModels(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject[]> {
+	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
+
+	const response = (await apiRequest.call(
+		this,
+		'GET',
+		`/workspaces/${workspaceName}/deployments/v1/models/`,
+	)) as IDataObject;
+
+	const data = response.data;
+	if (!Array.isArray(data)) {
+		throw new NodeOperationError(this.getNode(), 'The models response did not contain a data array', { itemIndex });
+	}
+
+	return data as IDataObject[];
+}
+
+/**
  * The *-stream endpoints take a singular `query` string in the body, unlike
  * `search`/`chat`'s `queries: [query]` array — confirmed from deepset's API
  * docs example requests, which don't publish a full request-body schema
@@ -531,6 +553,9 @@ export async function executeService(
 			break;
 		case 'chatCompletions':
 			result = await runChatCompletions.call(this, itemIndex);
+			break;
+		case 'listModels':
+			result = await listModels.call(this, itemIndex);
 			break;
 		default:
 			throw new NodeOperationError(this.getNode(), `Unknown Service operation: ${operation}`, { itemIndex });

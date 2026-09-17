@@ -94,7 +94,7 @@ These were exported from a local dev setup where the node is loaded via n8n's `C
 
 The package ships two nodes:
 
-- **Haystack Enterprise AI** — File, Index, Search Session, and Service (Get, Get Many, Search (Streaming), Chat (Streaming), Chat Completions).
+- **Haystack Enterprise AI** — File, Index, Search Session, and Service (Get, Get Many, List Models, Search (Streaming), Chat (Streaming), Chat Completions).
 - **Haystack Enterprise Chat Model** — a language-model sub-node for n8n's **AI Agent**. It runs Chat Completions on a Haystack Enterprise service, the same Service operation as on Haystack Enterprise AI. Connect it to the Agent's Model port; the Agent owns conversation history.
 
 ## Credentials
@@ -120,7 +120,7 @@ is self-hosted-only — see that package's README.
 
 The Chat (Streaming) operation takes an optional **Search Session ID**, used to store a chat history. Leave it empty on the first message and the node starts a session automatically, returning its ID in the output's `search_session_id` field — feed that back into **Search Session ID** on the next Chat call to continue the conversation. To manage sessions explicitly instead (e.g. to list or delete them later), create one with the **Search Session** resource's **Create** operation and pass its ID in from the start.
 
-**Chat Completions** is the OpenAI-compatible alternative: you send the full conversation as `messages` (the client owns history — there is no search session) and get a `chat.completion` back. Turn **Stream** on to receive OpenAI SSE chunks instead of a single JSON response.
+**Chat Completions** is the OpenAI-compatible alternative: you send the full conversation as `messages` (the client owns history — there is no search session) and get a `chat.completion` back. Turn **Stream** on to receive OpenAI SSE chunks instead of a single JSON response. Use **List Models** to discover valid `model` values (`{workspace}/{deployment_id}`) for Chat Completions in that workspace.
 
 For multi-turn chat on an **AI Agent**, use **Haystack Enterprise Chat Model**: it runs Chat Completions on the selected service, n8n's Agent and Simple Memory build `messages` for you.
 
