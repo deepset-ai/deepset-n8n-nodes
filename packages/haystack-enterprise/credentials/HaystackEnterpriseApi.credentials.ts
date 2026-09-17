@@ -22,6 +22,15 @@ export class HaystackEnterpriseApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Server URL',
+			name: 'serverUrl',
+			type: 'string',
+			default: 'https://api.cloud.deepset.ai',
+			placeholder: 'https://api.cloud.deepset.ai',
+			description:
+				'The Haystack Enterprise API origin (scheme and host only). Use the default for the hosted Haystack Enterprise Platform; for self-hosted or dev environments, enter your instance API URL (for example <code>https://haystack.example.com</code>).',
+		},
+		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
@@ -44,7 +53,7 @@ export class HaystackEnterpriseApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.cloud.deepset.ai/api/v1',
+			baseURL: '={{ ($credentials.serverUrl || "https://api.cloud.deepset.ai").replace(/\\/$/, "") }}/api/v1',
 			url: '/workspaces',
 			method: 'GET',
 		},

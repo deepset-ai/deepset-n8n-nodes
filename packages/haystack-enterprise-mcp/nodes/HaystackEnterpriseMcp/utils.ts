@@ -2,8 +2,10 @@ import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.j
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	ISupplyDataFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -14,11 +16,41 @@ import {
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-export const API_BASE_URL_V1 = 'https://api.cloud.deepset.ai/api/v1';
-export const API_BASE_URL_V2 = 'https://api.cloud.deepset.ai/api/v2';
+// Kept in sync by hand with packages/haystack-enterprise/nodes/HaystackEnterprise/utils.ts
+// (DEFAULT_API_ORIGIN / normalizeApiOrigin / getApiBaseUrlFromCredentials).
+export const DEFAULT_API_ORIGIN = 'https://api.cloud.deepset.ai';
+export const API_BASE_URL_V1 = `${DEFAULT_API_ORIGIN}/api/v1`;
+export const API_BASE_URL_V2 = `${DEFAULT_API_ORIGIN}/api/v2`;
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
 const MCP_CLIENT_NAME = 'n8n-nodes-haystack-enterprise-mcp';
 const MCP_CLIENT_VERSION = '0.1.0';
+
+export function normalizeApiOrigin(serverUrl: string): string {
+	return serverUrl.trim().replace(/\/+$/, '');
+}
+
+export function getApiOriginFromCredentials(credentials: IDataObject): string {
+	const serverUrl = credentials.serverUrl;
+	if (typeof serverUrl === 'string' && serverUrl.trim() !== '') {
+		return normalizeApiOrigin(serverUrl);
+	}
+	return DEFAULT_API_ORIGIN;
+}
+
+export function getApiBaseUrlV1FromOrigin(origin: string): string {
+	return `${normalizeApiOrigin(origin)}/api/v1`;
+}
+
+export function getApiBaseUrlV2FromOrigin(origin: string): string {
+	return `${normalizeApiOrigin(origin)}/api/v2`;
+}
+
+export async function getApiOriginForContext(
+	context: IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions,
+): Promise<string> {
+	const credentials = await context.getCredentials(CREDENTIAL_NAME);
+	return getApiOriginFromCredentials(credentials);
+}
 
 /**
  * Builds the MCP client + transport pointed at a workspace's MCP server —
@@ -30,9 +62,10 @@ const MCP_CLIENT_VERSION = '0.1.0';
 export function createMcpTransport(
 	workspaceId: string,
 	apiKey: string,
+	apiOrigin: string,
 	signal?: AbortSignal,
 ): { client: Client; transport: StreamableHTTPClientTransport; mcpUrl: string } {
-	const mcpUrl = `${API_BASE_URL_V2}/workspaces/${workspaceId}/mcp`;
+	const mcpUrl = `${getApiBaseUrlV2FromOrigin(apiOrigin)}/workspaces/${workspaceId}/mcp`;
 	const client = new Client({ name: MCP_CLIENT_NAME, version: MCP_CLIENT_VERSION });
 	const transport = new StreamableHTTPClientTransport(new URL(mcpUrl), {
 		requestInit: { headers: { Authorization: `Bearer ${apiKey}` }, signal },
@@ -260,11 +293,12 @@ function describeWorkspaceListErrorHint(httpCode: string | null): string {
 export async function loadWorkspaceOptions(
 	context: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
+	const apiOrigin = await getApiOriginForContext(context);
 	let response: unknown;
 	try {
 		response = await context.helpers.httpRequestWithAuthentication.call(context, CREDENTIAL_NAME, {
 			method: 'GET',
-			url: `${API_BASE_URL_V1}/workspaces`,
+			url: `${getApiBaseUrlV1FromOrigin(apiOrigin)}/workspaces`,
 			json: true,
 		});
 	} catch (caught) {
@@ -314,7 +348,8 @@ export async function loadMcpToolOptions(
 	workspaceId: string,
 	apiKey: string,
 ): Promise<INodePropertyOptions[]> {
-	const { client, transport } = createMcpTransport(workspaceId, apiKey);
+	const apiOrigin = await getApiOriginForContext(context);
+	const { client, transport } = createMcpTransport(workspaceId, apiKey, apiOrigin);
 
 	try {
 		await client.connect(transport);

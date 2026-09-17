@@ -5,14 +5,30 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	ISupplyDataFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
-const PRODUCTION_API_BASE_URL = 'https://api.cloud.deepset.ai/api/v1';
+export const DEFAULT_API_ORIGIN = 'https://api.cloud.deepset.ai';
+const PRODUCTION_API_BASE_URL = `${DEFAULT_API_ORIGIN}/api/v1`;
 
 let apiBaseUrlOverride: string | undefined;
+
+/** Trims trailing slashes from a configured API origin. */
+export function normalizeApiOrigin(serverUrl: string): string {
+	return serverUrl.trim().replace(/\/+$/, '');
+}
+
+/** Resolves the v1 REST base URL from credential fields (API origin, not a versioned path). */
+export function getApiBaseUrlFromCredentials(credentials: IDataObject): string {
+	const serverUrl = credentials.serverUrl;
+	if (typeof serverUrl === 'string' && serverUrl.trim() !== '') {
+		return `${normalizeApiOrigin(serverUrl)}/api/v1`;
+	}
+	return PRODUCTION_API_BASE_URL;
+}
 
 /**
  * Test-only escape hatch — lets the contract-tests package point requests at
@@ -28,8 +44,19 @@ export function setApiBaseUrlOverrideForTests(url: string | undefined): void {
 	apiBaseUrlOverride = url;
 }
 
+/** @deprecated Prefer {@link getApiBaseUrlForContext} so requests respect credential Server URL. */
 export function getApiBaseUrl(): string {
 	return apiBaseUrlOverride ?? PRODUCTION_API_BASE_URL;
+}
+
+export async function getApiBaseUrlForContext(
+	context: IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions,
+): Promise<string> {
+	if (apiBaseUrlOverride) {
+		return apiBaseUrlOverride;
+	}
+	const credentials = await context.getCredentials(CREDENTIAL_NAME);
+	return getApiBaseUrlFromCredentials(credentials);
 }
 
 /** Deployment chat completions use OpenAI-style `{ error: { message, type, ... } }` bodies. */
@@ -251,9 +278,10 @@ export async function apiRequest(
 	endpoint: string,
 	options: Partial<IHttpRequestOptions> = {},
 ): Promise<unknown> {
+	const apiBaseUrl = await getApiBaseUrlForContext(this);
 	const requestOptions: IHttpRequestOptions = {
 		method,
-		url: `${getApiBaseUrl()}${endpoint}`,
+		url: `${apiBaseUrl}${endpoint}`,
 		json: true,
 		...options,
 	};
@@ -313,12 +341,13 @@ export async function apiRequestStream(
 		this,
 		endpoint,
 		async () => {
+			const apiBaseUrl = await getApiBaseUrlForContext(this);
 			const response = (await this.helpers.httpRequestWithAuthentication.call(
 				this,
 				CREDENTIAL_NAME,
 				{
 					method,
-					url: `${getApiBaseUrl()}${endpoint}`,
+					url: `${apiBaseUrl}${endpoint}`,
 					json: true,
 					body,
 					encoding: 'stream',

@@ -10,7 +10,7 @@ import { supplyModel } from '@n8n/ai-node-sdk';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
-	getApiBaseUrl,
+	getApiBaseUrlForContext,
 	loadDeploymentOptions,
 	loadWorkspaceOptions,
 } from '../HaystackEnterprise/utils';
@@ -190,10 +190,12 @@ export class HaystackEnterpriseChatModel implements INodeType {
 		const temperature = additionalParams.temperature;
 		delete additionalParams.temperature;
 
+		const apiBaseUrl = await getApiBaseUrlForContext(this);
+
 		// @n8n/ai-node-sdk types ISupplyDataFunctions from its nested n8n-workflow copy.
 		return supplyModel(this as unknown as Parameters<typeof supplyModel>[0], {
 			type: 'openai',
-			baseUrl: `${getApiBaseUrl()}/workspaces/${workspaceName}/deployments/v1`,
+			baseUrl: `${apiBaseUrl}/workspaces/${workspaceName}/deployments/v1`,
 			model: `${workspaceName}/${deploymentId}`,
 			apiKey,
 			useResponsesApi: false,

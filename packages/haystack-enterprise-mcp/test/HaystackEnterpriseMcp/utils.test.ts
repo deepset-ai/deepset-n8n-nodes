@@ -38,10 +38,14 @@ vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', async (importOrigi
 	return { ...actual, StreamableHTTPClientTransport: TransportMock };
 });
 
-function createLoadOptionsContext(httpRequestWithAuthentication: (...args: unknown[]) => unknown) {
+function createLoadOptionsContext(
+	httpRequestWithAuthentication: (...args: unknown[]) => unknown,
+	credentials: Record<string, unknown> = { apiKey: 'secret-key' },
+) {
 	return {
 		helpers: { httpRequestWithAuthentication },
 		getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+		getCredentials: async () => credentials,
 	} as unknown as ILoadOptionsFunctions;
 }
 
@@ -226,6 +230,7 @@ describe('loadWorkspaceOptions', () => {
 				},
 			},
 			getNode: () => node,
+			getCredentials: async () => ({ apiKey: 'secret-key' }),
 		} as unknown as ILoadOptionsFunctions;
 
 		const error = await loadWorkspaceOptions(context).catch((caught: unknown) => caught);
@@ -251,6 +256,7 @@ describe('loadWorkspaceOptions', () => {
 				},
 			},
 			getNode: () => node,
+			getCredentials: async () => ({ apiKey: 'secret-key' }),
 		} as unknown as ILoadOptionsFunctions;
 
 		await expect(loadWorkspaceOptions(context)).rejects.toMatchObject({
@@ -279,6 +285,7 @@ describe('loadWorkspaceOptions', () => {
 				},
 			},
 			getNode: () => node,
+			getCredentials: async () => ({ apiKey: 'secret-key' }),
 		} as unknown as ILoadOptionsFunctions;
 
 		const error = await loadWorkspaceOptions(context).catch((caught: unknown) => caught);
@@ -291,6 +298,7 @@ describe('loadWorkspaceOptions', () => {
 describe('loadMcpToolOptions', () => {
 	const context = {
 		getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+		getCredentials: async () => ({ apiKey: 'secret-key' }),
 	} as unknown as ILoadOptionsFunctions;
 
 	beforeEach(() => {
@@ -319,6 +327,24 @@ describe('loadMcpToolOptions', () => {
 			expect.objectContaining({ requestInit: { headers: { Authorization: 'Bearer secret-key' } } }),
 		);
 		expect(mockClose).toHaveBeenCalledTimes(1);
+	});
+
+	it('uses the Server URL from credentials for the MCP endpoint', async () => {
+		mockListTools.mockResolvedValue({ tools: [{ name: 'search' }] });
+		const customContext = {
+			getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+			getCredentials: async () => ({
+				apiKey: 'secret-key',
+				serverUrl: 'https://self-hosted.example.com',
+			}),
+		} as unknown as ILoadOptionsFunctions;
+
+		await loadMcpToolOptions(customContext, 'workspace-1', 'secret-key');
+
+		expect(TransportMock).toHaveBeenCalledWith(
+			new URL('https://self-hosted.example.com/api/v2/workspaces/workspace-1/mcp'),
+			expect.objectContaining({ requestInit: { headers: { Authorization: 'Bearer secret-key' } } }),
+		);
 	});
 
 	it('follows nextCursor to collect tools across multiple pages', async () => {
