@@ -462,7 +462,7 @@ async function runChatCompletions(this: IExecuteFunctions, itemIndex: number): P
 
 	await consumeSseStream(responseStream, (event) => {
 		if (event.error !== undefined) {
-			streamError = extractStreamErrorDetail(event.error);
+			streamError = extractStreamErrorDetail(event.error ?? event);
 			return;
 		}
 		chunks.push(event);

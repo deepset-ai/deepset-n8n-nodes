@@ -251,6 +251,30 @@ describe('apiRequest', () => {
 		});
 	});
 
+	it('surfaces OpenAI-style `{ error: { message } }` bodies as the NodeApiError description', async () => {
+		const context = createContext(async () => {
+			throw Object.assign(new Error('Request failed with status code 500'), {
+				response: {
+					status: 500,
+					data: {
+						error: {
+							message: 'Internal server error',
+							type: 'server_error',
+							param: null,
+							code: null,
+						},
+					},
+				},
+			});
+		});
+
+		await expect(
+			apiRequest.call(context, 'POST', '/workspaces/ws/deployments/v1/chat/completions'),
+		).rejects.toMatchObject({
+			description: 'Internal server error',
+		});
+	});
+
 	it('falls back to NodeApiError default extraction when the error response has no recognizable detail', async () => {
 		const context = createContext(async () => {
 			throw Object.assign(new Error('Request failed with status code 500'), {
@@ -460,6 +484,21 @@ describe('extractStreamErrorDetail', () => {
 		).toEqual({
 			message: 'Upstream pipeline failed',
 			data: { message: 'Upstream pipeline failed', type: 'server_error' },
+		});
+	});
+
+	it('uses an OpenAI-style `{ error: { message } }` envelope as the message', () => {
+		const payload = {
+			error: {
+				message: 'Internal server error',
+				type: 'server_error',
+				param: null,
+				code: null,
+			},
+		};
+		expect(extractStreamErrorDetail(payload)).toEqual({
+			message: 'Internal server error',
+			data: payload,
 		});
 	});
 

@@ -528,6 +528,28 @@ function openaiChunk(delta: Record<string, unknown>, finishReason: string | null
 }
 
 describe('executeService — chatCompletions', () => {
+	it('surfaces OpenAI-shaped error bodies from the chat completions API', async () => {
+		const { context } = createContext(CHAT_COMPLETIONS_PARAMS, async () => {
+			throw Object.assign(new Error('Request failed with status code 500'), {
+				response: {
+					status: 500,
+					data: {
+						error: {
+							message: 'Internal server error',
+							type: 'server_error',
+							param: null,
+							code: null,
+						},
+					},
+				},
+			});
+		});
+
+		await expect(executeService.call(context, 'chatCompletions', 0)).rejects.toMatchObject({
+			description: 'Internal server error',
+		});
+	});
+
 	it('posts to the deployment-scoped endpoint with model workspace/deployment_id', async () => {
 		const { context, httpRequestWithAuthentication } = createContext(
 			CHAT_COMPLETIONS_PARAMS,
