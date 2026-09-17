@@ -546,7 +546,7 @@ export const serviceFields: INodeProperties[] = [
 				type: 'json',
 				default: '{}',
 				description:
-					'Other OpenAI fields forwarded as-is (for example temperature, frequency_penalty, presence_penalty, response_format). Merged over the named fields below. Protocol fields (store, stream_options, metadata) are ignored by the API.',
+					'Other OpenAI fields forwarded as-is. Merged over the named fields below.',
 			},
 			{
 				displayName: 'Max Completion Tokens',
