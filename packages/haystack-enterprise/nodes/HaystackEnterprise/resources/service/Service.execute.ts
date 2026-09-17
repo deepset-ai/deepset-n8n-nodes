@@ -205,9 +205,9 @@ async function runSearchStream(
 
 /**
  * `type: 'json'` parameters arrive as a string or already-parsed value depending
- * on whether the user typed JSON or used an expression. parseJsonField() only
- * accepts strings and only returns objects, so this also covers arrays (messages,
- * tools) and already-parsed values.
+ * on whether the user typed JSON or used an expression. Unlike `parseJsonField()`
+ * in utils (typed for objects), this accepts arrays and objects and passes through
+ * already-parsed values.
  */
 function parseJsonValue(
 	this: IExecuteFunctions,
@@ -304,6 +304,26 @@ function applyChatCompletionExtras(
 		delete extras.model;
 		delete extras.stream;
 		Object.assign(body, extras);
+	}
+}
+
+function assertSingleChoiceWhenSimplifying(
+	this: IExecuteFunctions,
+	itemIndex: number,
+	body: IDataObject,
+	simplify: boolean,
+): void {
+	if (!simplify) {
+		return;
+	}
+	const n = body.n;
+	const choiceCount = typeof n === 'number' && Number.isFinite(n) ? n : 1;
+	if (choiceCount !== 1) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Simplify Output only supports a single completion choice (n=1). Turn off Simplify Output or set n to 1 in Extra Parameters.',
+			{ itemIndex },
+		);
 	}
 }
 
@@ -418,6 +438,7 @@ async function runChatCompletions(this: IExecuteFunctions, itemIndex: number): P
 		stream,
 	};
 	applyChatCompletionExtras.call(this, itemIndex, body, additionalFields);
+	assertSingleChoiceWhenSimplifying.call(this, itemIndex, body, simplify);
 
 	const waitForActivation = this.getNodeParameter('waitForActivation', itemIndex, false) as boolean;
 	const maxWaitMinutes = this.getNodeParameter('maxWaitMinutes', itemIndex, 5) as number;

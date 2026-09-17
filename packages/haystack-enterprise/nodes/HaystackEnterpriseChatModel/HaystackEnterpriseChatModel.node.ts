@@ -191,7 +191,7 @@ export class HaystackEnterpriseChatModel implements INodeType {
 			useResponsesApi: false,
 			supportsStrictToolCalling: false,
 			timeout: options.timeout,
-			// ChatOpenAI defaults to 0.7; Haystack Enterprise services only accept the API default (1).
+			// ChatOpenAI defaults to 0.7; we default to 1 and allow Extra Parameters to override when supported.
 			temperature: typeof temperature === 'number' ? temperature : 1,
 			additionalParams: Object.keys(additionalParams).length > 0 ? additionalParams : undefined,
 		});

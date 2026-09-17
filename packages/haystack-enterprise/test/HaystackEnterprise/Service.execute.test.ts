@@ -703,6 +703,20 @@ describe('executeService — chatCompletions', () => {
 		expect(options.body.temperature).toBe(0.5);
 	});
 
+	it('rejects n > 1 in Extra Parameters when Simplify Output is on', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				...CHAT_COMPLETIONS_PARAMS,
+				simplify: true,
+				additionalFields: { extraParameters: '{"n": 2}' },
+			},
+			async () => CHAT_COMPLETION_RESPONSE,
+		);
+
+		await expect(executeService.call(context, 'chatCompletions', 0)).rejects.toThrow(/n=1/);
+		expect(httpRequestWithAuthentication).not.toHaveBeenCalled();
+	});
+
 	it('aggregates streamed content and tool-call deltas when Simplify Output is on', async () => {
 		const { context, stream } = createStreamContext({
 			params: { ...CHAT_COMPLETIONS_PARAMS, stream: true },
