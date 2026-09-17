@@ -26,7 +26,7 @@ export const serviceOperations: INodeProperties[] = [
 				name: 'Chat Completions',
 				value: 'chatCompletions',
 				description:
-					'Run an OpenAI-style chat completion against a service. Clients send the full conversation in messages; optional extras such as max_completion_tokens are forwarded to the service.',
+					'Run an OpenAI-style chat completion against a service. Clients send the full conversation in messages.',
 				action: 'Create a chat completion',
 			},
 			{
@@ -45,7 +45,7 @@ export const serviceOperations: INodeProperties[] = [
 				name: 'List Models (Chat Completions)',
 				value: 'listModels',
 				description:
-					'List workspace services as OpenAI-compatible models (`GET …/deployments/v1/models/`). Each model ID is `{workspace}/{deployment ID}` — the same value Chat Completions expects in `model`.',
+					'List workspace services as OpenAI-compatible models to use it with Chat Completions (`model` parameter).',
 				action: 'List models for chat completions',
 			},
 			{
