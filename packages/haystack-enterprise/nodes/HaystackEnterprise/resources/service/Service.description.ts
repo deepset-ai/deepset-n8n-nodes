@@ -19,14 +19,14 @@ export const serviceOperations: INodeProperties[] = [
 				name: 'Chat (Streaming)',
 				value: 'chatStream',
 				description:
-					'Run a chat query against a deployed service and receive the answer incrementally, as it is generated',
+					'Run a chat query against a service and receive the answer incrementally, as it is generated',
 				action: 'Chat with a service streaming',
 			},
 			{
 				name: 'Chat Completions',
 				value: 'chatCompletions',
 				description:
-					'Run an OpenAI-style chat completion against a deployed service. Clients send the full conversation in messages; optional extras such as max_completion_tokens are forwarded to the service.',
+					'Run an OpenAI-style chat completion against a service. Clients send the full conversation in messages; optional extras such as max_completion_tokens are forwarded to the service.',
 				action: 'Create a chat completion',
 			},
 			{
@@ -45,7 +45,7 @@ export const serviceOperations: INodeProperties[] = [
 				name: 'Search (Streaming)',
 				value: 'searchStream',
 				description:
-					'Run a search query against a deployed service and receive the answer incrementally, as it is generated',
+					'Run a search query against a service and receive the answer incrementally, as it is generated',
 				action: 'Search a service streaming',
 			},
 		],
@@ -431,7 +431,7 @@ export const serviceFields: INodeProperties[] = [
 		placeholder: 'Add Message',
 		default: { message: [{ role: 'user', content: '' }] },
 		required: true,
-		description: 'Conversation history sent to the deployed service. Include prior turns for multi-turn chat.',
+		description: 'Conversation history sent to the service. Include prior turns for multi-turn chat.',
 		displayOptions: {
 			show: {
 				resource: ['service'],

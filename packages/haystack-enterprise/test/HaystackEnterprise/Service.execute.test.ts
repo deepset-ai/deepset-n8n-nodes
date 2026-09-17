@@ -591,6 +591,25 @@ describe('executeService — chatCompletions', () => {
 		expect(options.body.messages).toEqual(messages);
 	});
 
+	it('forwards JSON messages when content is a string or a content-parts array', async () => {
+		const messages = [
+			{ role: 'user', content: 'What do you know about Asthma?' },
+			{ role: 'user', content: [{ type: 'text', text: 'Which tools do you have access to again?' }] },
+		];
+		const { context, httpRequestWithAuthentication } = createContext(
+			{ ...CHAT_COMPLETIONS_PARAMS, messagesInput: 'json', messagesJson: messages },
+			async () => CHAT_COMPLETION_RESPONSE,
+		);
+
+		await executeService.call(context, 'chatCompletions', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
+			string,
+			{ body: { messages: unknown } },
+		];
+		expect(options.body.messages).toEqual(messages);
+	});
+
 	it('throws when messages are empty', async () => {
 		const { context } = createContext(
 			{ ...CHAT_COMPLETIONS_PARAMS, messages: { message: [] } },
