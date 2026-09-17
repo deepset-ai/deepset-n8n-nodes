@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { buildContractTestContext } from '../src/context';
 import { contractResourceSuites } from '../src/registry';
 

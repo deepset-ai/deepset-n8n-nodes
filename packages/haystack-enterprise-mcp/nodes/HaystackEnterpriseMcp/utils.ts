@@ -1,17 +1,18 @@
+import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import {
 	StreamableHTTPClientTransport,
 	StreamableHTTPError,
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { ErrorCode, McpError, type Tool } from '@modelcontextprotocol/sdk/types.js';
-import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export const API_BASE_URL_V1 = 'https://api.cloud.deepset.ai/api/v1';
 export const API_BASE_URL_V2 = 'https://api.cloud.deepset.ai/api/v2';

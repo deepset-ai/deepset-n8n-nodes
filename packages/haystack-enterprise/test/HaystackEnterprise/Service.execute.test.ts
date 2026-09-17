@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+
 import { executeService } from '../../nodes/HaystackEnterprise/resources/service/Service.execute';
 import { createExecuteContext as createContext, FakeStream } from './testHelpers';
 

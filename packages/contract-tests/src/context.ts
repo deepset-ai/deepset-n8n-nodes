@@ -1,5 +1,5 @@
-import { Readable } from 'node:stream';
 import type { IExecuteFunctions, IHttpRequestOptions } from 'n8n-workflow';
+import { Readable } from 'node:stream';
 
 export interface ContractTestContextOptions {
 	/** Flat parameter map — `getNodeParameter(name, _itemIndex, fallback)` reads from this, falling back like real n8n does when the parameter is absent. */

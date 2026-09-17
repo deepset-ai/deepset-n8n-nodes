@@ -8,14 +8,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import {
-	loadDeploymentOptions,
-	loadDeploymentOptionsWithAllOption,
-	loadFileOptions,
-	loadIndexOptions,
-	loadSearchSessionOptions,
-	loadWorkspaceOptions,
-} from './utils';
+
 import { fileFields, fileOperations } from './resources/file/File.description';
 import { executeFile } from './resources/file/File.execute';
 import { indexFields, indexOperations } from './resources/index/Index.description';
@@ -27,6 +20,14 @@ import {
 import { executeSearchSession } from './resources/searchSession/SearchSession.execute';
 import { serviceFields, serviceOperations } from './resources/service/Service.description';
 import { executeService } from './resources/service/Service.execute';
+import {
+	loadDeploymentOptions,
+	loadDeploymentOptionsWithAllOption,
+	loadFileOptions,
+	loadIndexOptions,
+	loadSearchSessionOptions,
+	loadWorkspaceOptions,
+} from './utils';
 
 export class HaystackEnterpriseAi implements INodeType {
 	description: INodeTypeDescription = {

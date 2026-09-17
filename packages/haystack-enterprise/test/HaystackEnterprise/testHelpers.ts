@@ -1,5 +1,5 @@
-import { vi } from 'vitest';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { vi } from 'vitest';
 
 /**
  * Minimal fake IExecuteFunctions context shared by the resource execute()

@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import {
 	API_BASE_URL_V2,
 	buildMcpToolName,

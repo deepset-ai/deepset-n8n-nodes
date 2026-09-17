@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { HaystackEnterpriseChatModel } from '../../nodes/HaystackEnterpriseChatModel/HaystackEnterpriseChatModel.node';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { setApiBaseUrlOverrideForTests } from '../../nodes/HaystackEnterprise/utils';
+import { HaystackEnterpriseChatModel } from '../../nodes/HaystackEnterpriseChatModel/HaystackEnterpriseChatModel.node';
 
 const supplyModel = vi.fn((_ctx: unknown, model: unknown) => ({ response: model }));
 

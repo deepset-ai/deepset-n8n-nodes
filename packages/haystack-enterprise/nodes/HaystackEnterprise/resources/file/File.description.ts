@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { createApiDocsNotice } from '../shared';
 
 const apiDocsNotice = createApiDocsNotice('file');

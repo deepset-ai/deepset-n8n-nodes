@@ -32,7 +32,7 @@ workspace:
 npm install        # install deps for every package
 npm run build      # build every package
 npm run lint       # lint every package
-npm run format     # apply Prettier (100 cols; Markdown prose wraps)
+npm run format     # apply Prettier (100 cols, import sort, Markdown prose wraps)
 npm run format:check # CI: verify formatting
 npm run test       # run every package's test suite
 ```

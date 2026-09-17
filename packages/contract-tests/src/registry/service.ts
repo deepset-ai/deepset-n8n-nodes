@@ -1,5 +1,6 @@
-import { executeService } from '../../../haystack-enterprise/nodes/HaystackEnterprise/resources/service/Service.execute';
 import type { ContractResourceSuite } from './types';
+
+import { executeService } from '../../../haystack-enterprise/nodes/HaystackEnterprise/resources/service/Service.execute';
 
 /**
  * TODO: Service isn't published in the OpenAPI spec yet — there's no

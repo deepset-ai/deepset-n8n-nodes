@@ -1,3 +1,6 @@
+import type { ToolFilterMode } from './utils';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -10,12 +13,11 @@ import type {
 	ISupplyDataFunctions,
 	SupplyData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import { StructuredToolkit } from 'n8n-core';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+
 import {
 	buildMcpToolName,
 	contentToString,
@@ -28,7 +30,6 @@ import {
 	loadMcpToolOptions,
 	loadWorkspaceOptions,
 	normalizeMcpInputSchema,
-	type ToolFilterMode,
 } from './utils';
 
 const SELF_HOSTED_ONLY_MESSAGE =

@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
 import { NodeOperationError } from 'n8n-workflow';
+import { describe, expect, it, vi } from 'vitest';
+
 import { executeFile } from '../../nodes/HaystackEnterprise/resources/file/File.execute';
 import { createExecuteContext as createContext } from './testHelpers';
 

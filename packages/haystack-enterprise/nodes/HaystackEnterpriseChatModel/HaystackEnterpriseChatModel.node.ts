@@ -1,4 +1,3 @@
-import { supplyModel } from '@n8n/ai-node-sdk';
 import type {
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -7,7 +6,9 @@ import type {
 	ISupplyDataFunctions,
 	SupplyData,
 } from 'n8n-workflow';
+import { supplyModel } from '@n8n/ai-node-sdk';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+
 import {
 	getApiBaseUrl,
 	loadDeploymentOptions,

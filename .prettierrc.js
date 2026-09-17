@@ -1,4 +1,13 @@
+/** @type {import('prettier').Config} */
 module.exports = {
+	plugins: ['@ianvs/prettier-plugin-sort-imports'],
+
+	/**
+	 * https://github.com/IanVS/prettier-plugin-sort-imports#importorder
+	 */
+	importOrder: ['<TYPES>', '<BUILTIN_MODULES>', '<THIRD_PARTY_MODULES>', '', '^[.]'],
+	importOrderTypeScriptVersion: '5.0.0',
+
 	/**
 	 * https://prettier.io/docs/en/options.html#semicolons
 	 */

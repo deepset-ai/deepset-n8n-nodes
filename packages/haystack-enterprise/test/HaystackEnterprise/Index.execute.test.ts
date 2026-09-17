@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { executeIndex } from '../../nodes/HaystackEnterprise/resources/index/Index.execute';
 import { createExecuteContext as createContext } from './testHelpers';
 

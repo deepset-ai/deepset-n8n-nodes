@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { executeSearchSession } from '../../nodes/HaystackEnterprise/resources/searchSession/SearchSession.execute';
 import { createExecuteContext } from './testHelpers';
 

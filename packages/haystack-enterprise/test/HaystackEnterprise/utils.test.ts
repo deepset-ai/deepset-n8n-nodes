@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
 import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { describe, expect, it, vi } from 'vitest';
+
 import {
 	apiRequest,
 	consumeSseStream,

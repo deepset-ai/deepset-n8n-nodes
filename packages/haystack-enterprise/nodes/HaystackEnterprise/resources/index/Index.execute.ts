@@ -1,5 +1,6 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+
 import { apiRequest, extractPaginatedList, fetchListWithCursorOrPaging } from '../../utils';
 
 async function get(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
