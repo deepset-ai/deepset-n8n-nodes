@@ -45,7 +45,7 @@ export const serviceOperations: INodeProperties[] = [
 				name: 'List Models (Chat Completions)',
 				value: 'listModels',
 				description:
-					'List workspace services as OpenAI-compatible models to use it with Chat Completions (`model` parameter).',
+					'List workspace services as OpenAI-compatible models to use it with Chat Completions (`model` parameter)',
 				action: 'List models for chat completions',
 			},
 			{
