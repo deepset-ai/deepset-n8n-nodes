@@ -81,21 +81,21 @@ N8N_DEV_RELOAD=true N8N_USER_FOLDER=~/.n8n-node-cli n8n start
 - [`search-stream-example.json`](./test/examples/search-stream-example.json) — a form-triggered workflow that submits a question straight to **Search (Streaming)** and shows the answer. The simplest example to start with.
 - [`chat-with-auto-created-search-session-example.json`](./test/examples/chat-with-auto-created-search-session-example.json) — the simplest chat workflow: leaves **Search Session ID** empty and lets **Chat (Streaming)** create one automatically, remembering the returned ID for the rest of the conversation.
 - [`chat-with-search-session-example.json`](./test/examples/chat-with-search-session-example.json) — the same conversation-history pattern, but managing the **Search Session** explicitly (create/list/delete) instead of relying on auto-creation.
+- [`haystack-chat-model-agent-example.json`](./test/examples/haystack-chat-model-agent-example.json) — recommended for conversational chat: n8n **AI Agent** with **Haystack Enterprise Chat Model** on the Model port (deployment chat completions) and Simple Memory. Use this instead of wiring **Chat Completions** directly to a Chat Trigger.
+- For programmatic use, call **Service → Chat Completions** on **Haystack Enterprise AI** and supply the OpenAI-style `messages` array yourself (fields or JSON).
 - [`agent-with-chat-and-search-tools-example.json`](./test/examples/agent-with-chat-and-search-tools-example.json) — an AI Agent with two separate tool instances of this node, one running **Search (Streaming)** against a search-tuned service and one running **Chat (Streaming)** against a chat-tuned service, so it can pick whichever fits the user's request.
 - [`mirror-files-in-google-drive-example.json`](./test/examples/mirror-files-in-google-drive-example.json) — a nightly scheduled workflow that diffs a Google Drive folder against files already indexed in Haystack Enterprise, uploading new files, updating changed ones, deleting removed ones, and waiting for indexing to finish before reporting.
 
-To import one: in the n8n editor, open the menu (**⋮** in the top right) → **Import from File**, and select the JSON file. You'll still need to fill in your own credentials, and any service-specific nodes (e.g. Google Drive, OpenAI Chat Model) with your own credentials/settings.
+To import one: in the n8n editor, open the menu (**⋮** in the top right) → **Import from File**, and select the JSON file. You'll still need to fill in your own credentials, and any service-specific nodes (e.g. Google Drive) with your own credentials/settings.
 
 These were exported from a local dev setup where the node is loaded via n8n's `CUSTOM` custom-nodes folder (see `.agents/workflow.md`), so their Haystack Enterprise node `type` fields use the `CUSTOM.` prefix.
 
 ## Operations
 
-The node exposes the following resources:
+The package ships two nodes:
 
-- **File** — Upload, Get, Get Many, Get Meta, Update Meta, Update Meta Bulk, Delete, Delete Many
-- **Index** — Get, Get Many
-- **Search Session** — Create, Get Many, Delete
-- **Service** — Get, Get Many, Search (Streaming), Chat (Streaming)
+- **Haystack Enterprise AI** — File, Index, Search Session, and Service (Get, Get Many, Search (Streaming), Chat (Streaming), Chat Completions).
+- **Haystack Enterprise Chat Model** — a language-model sub-node for n8n's **AI Agent**. It runs Chat Completions on a Haystack Enterprise service, the same Service operation as on Haystack Enterprise AI. Connect it to the Agent's Model port; the Agent owns conversation history.
 
 ## Credentials
 
@@ -120,6 +120,10 @@ is self-hosted-only — see that package's README.
 
 The Chat (Streaming) operation takes an optional **Search Session ID**, used to store a chat history. Leave it empty on the first message and the node starts a session automatically, returning its ID in the output's `search_session_id` field — feed that back into **Search Session ID** on the next Chat call to continue the conversation. To manage sessions explicitly instead (e.g. to list or delete them later), create one with the **Search Session** resource's **Create** operation and pass its ID in from the start.
 
+**Chat Completions** is the OpenAI-compatible alternative: you send the full conversation as `messages` (the client owns history — there is no search session) and get a `chat.completion` back. Use it when you need multimodal `file` / `image_url` content parts, or generation extras such as `temperature`. Turn **Stream** on to receive OpenAI SSE chunks instead of a single JSON response.
+
+For multi-turn chat on an **AI Agent**, use **Haystack Enterprise Chat Model** instead: it runs Chat Completions on the selected service, but n8n's Agent and Simple Memory build `messages` for you.
+
 ### One-off answers with Search (Streaming)
 
 Not every use case is a conversation. For a single self-contained answer — a long summary, a one-time question, a report — use **Search (Streaming)** (the `search-stream` endpoint) instead of Chat. It retrieves from whatever files/documents are already indexed in the workspace and generates the answer itself, so the query is a question or instruction rather than pasted-in content. It needs no search session at all, and with **Simplify Output** enabled the node returns one item with the fully concatenated answer, ready to feed straight into the next node.
@@ -127,6 +131,8 @@ Not every use case is a conversation. For a single self-contained answer — a l
 ### Using Chat and Search as AI Agent tools
 
 This node sets `usableAsTool: true`, so any operation can be connected to an AI Agent's Tool input instead of the main flow — the agent decides whether and when to call it, and with what arguments, based on the conversation.
+
+To make a Haystack Enterprise **service** the Agent's language model (not just a tool), connect **Haystack Enterprise Chat Model** to the Agent's Model input. See [`haystack-chat-model-agent-example.json`](./test/examples/haystack-chat-model-agent-example.json).
 
 ## Linting
 

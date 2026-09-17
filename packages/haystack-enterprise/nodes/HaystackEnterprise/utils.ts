@@ -32,11 +32,22 @@ export function getApiBaseUrl(): string {
 	return apiBaseUrlOverride ?? PRODUCTION_API_BASE_URL;
 }
 
+/** Deployment chat completions use OpenAI-style `{ error: { message, type, ... } }` bodies. */
+function extractOpenAiNestedErrorMessage(data: IDataObject): string | undefined {
+	const nested = data.error;
+	if (!nested || typeof nested !== 'object' || Array.isArray(nested)) {
+		return undefined;
+	}
+	const message = (nested as IDataObject).message;
+	return typeof message === 'string' && message.length > 0 ? message : undefined;
+}
+
 /**
  * Haystack Enterprise's API reports errors as `{ "errors": string[] }` (and some
  * endpoints use FastAPI's default `{ "detail": ... }` shape), neither of
  * which `NodeApiError` recognizes out of the box — it only special-cases
- * `data.message` / `data.error.message`, then falls back to matching the
+ * `data.message` / `data.error.message` (the latter is not always applied
+ * when the failure is already wrapped), then falls back to matching the
  * raw HTTP error's own top-level `.message` (e.g. "Request failed with
  * status code 500") first, since `message` sorts before `detail`/`errors`
  * in its key-priority list. That silently swallows the real API error.
@@ -81,6 +92,11 @@ function extractApiErrorDetail(error: unknown, options: { firstErrorOnly?: boole
 			if (messages.length > 0) {
 				return messages.join('; ');
 			}
+		}
+
+		const openAiMessage = extractOpenAiNestedErrorMessage(data as IDataObject);
+		if (openAiMessage) {
+			return openAiMessage;
 		}
 
 		const message = (data as IDataObject).message;
@@ -366,9 +382,11 @@ export async function consumeSseStream(
 
 /**
  * A mid-stream SSE `error` event's `error` field arrives either as a plain
- * string or as Haystack Enterprise's `{ errors: string[] }` shape (see
- * extractApiErrorDetail() above) — never both, and not always the latter, so
- * this falls back to a generic message when neither shape yields one. `data`
+ * string, as Haystack Enterprise's `{ errors: string[] }` shape (see
+ * extractApiErrorDetail() above), as an OpenAI `{ message }` object, or as
+ * `{ error: { message } }` on chat-completions streams — never more than one
+ * of those, and not always
+ * present, so this falls back to a generic message when none yields one. `data`
  * is whatever raw payload was passed in, for callers to attach to
  * `NodeApiError`/`NodeOperationError`'s `.context.data` (n8n's "Error data"
  * section) so the full event is still visible even when the message had to
@@ -382,12 +400,20 @@ export function extractStreamErrorDetail(
 	}
 
 	if (error && typeof error === 'object') {
-		const errors = (error as IDataObject).errors;
+		const payload = error as IDataObject;
+		const errors = payload.errors;
 		if (Array.isArray(errors)) {
 			const message = errors.find((item): item is string => typeof item === 'string');
 			if (message) {
 				return { message, data: error };
 			}
+		}
+		if (typeof payload.message === 'string') {
+			return { message: payload.message, data: error };
+		}
+		const openAiMessage = extractOpenAiNestedErrorMessage(payload);
+		if (openAiMessage) {
+			return { message: openAiMessage, data: error };
 		}
 	}
 
