@@ -26,7 +26,7 @@ export const serviceOperations: INodeProperties[] = [
 				name: 'Chat Completions',
 				value: 'chatCompletions',
 				description:
-					'Run an OpenAI-style chat completion against a deployed service. Clients send the full conversation in messages; optional extras such as temperature are forwarded to the service.',
+					'Run an OpenAI-style chat completion against a deployed service. Clients send the full conversation in messages; optional extras such as max_completion_tokens are forwarded to the service.',
 				action: 'Create a chat completion',
 			},
 			{
@@ -546,7 +546,7 @@ export const serviceFields: INodeProperties[] = [
 				type: 'json',
 				default: '{}',
 				description:
-					'Other OpenAI fields forwarded as-is (for example frequency_penalty, presence_penalty, response_format). Merged over the named fields below. Protocol fields (store, stream_options, metadata) are ignored by the API.',
+					'Other OpenAI fields forwarded as-is (for example temperature, frequency_penalty, presence_penalty, response_format). Merged over the named fields below. Protocol fields (store, stream_options, metadata) are ignored by the API.',
 			},
 			{
 				displayName: 'Max Completion Tokens',
@@ -555,14 +555,6 @@ export const serviceFields: INodeProperties[] = [
 				typeOptions: { minValue: 1 },
 				default: 512,
 				description: 'The maximum number of tokens to generate',
-			},
-			{
-				displayName: 'Temperature',
-				name: 'temperature',
-				type: 'number',
-				typeOptions: { minValue: 0, maxValue: 2, numberPrecision: 2 },
-				default: 1,
-				description: 'Sampling temperature. Higher values make output more random.',
 			},
 			{
 				displayName: 'Top P',

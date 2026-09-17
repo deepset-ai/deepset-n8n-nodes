@@ -102,7 +102,7 @@ export class HaystackEnterpriseChatModel implements INodeType {
 						type: 'json',
 						default: '{}',
 						description:
-							'Other OpenAI fields forwarded as-is (for example frequency_penalty, presence_penalty, response_format). Merged over the named fields below.',
+							'Other OpenAI fields forwarded as-is (for example temperature, frequency_penalty, presence_penalty, response_format). Merged over the named fields below.',
 					},
 					{
 						displayName: 'Max Completion Tokens',
@@ -111,15 +111,6 @@ export class HaystackEnterpriseChatModel implements INodeType {
 						typeOptions: { minValue: 1 },
 						default: 512,
 						description: 'The maximum number of tokens to generate',
-					},
-					{
-						displayName: 'Sampling Temperature',
-						name: 'temperature',
-						type: 'number',
-						typeOptions: { minValue: 0, maxValue: 2, numberPrecision: 1 },
-						default: 0.7,
-						description:
-							'Controls randomness. Lower values make output more focused; higher values make it more random.',
 					},
 					{
 						displayName: 'Timeout',
@@ -177,18 +168,19 @@ export class HaystackEnterpriseChatModel implements INodeType {
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			extraParameters?: unknown;
 			maxCompletionTokens?: number;
-			temperature?: number;
 			timeout?: number;
 			topP?: number;
 		};
 
 		const additionalParams: Record<string, unknown> = {};
-		if (options.temperature !== undefined) additionalParams.temperature = options.temperature;
 		if (options.maxCompletionTokens !== undefined) {
 			additionalParams.max_completion_tokens = options.maxCompletionTokens;
 		}
 		if (options.topP !== undefined) additionalParams.top_p = options.topP;
 		Object.assign(additionalParams, parseExtraParameters.call(this, itemIndex, options.extraParameters));
+
+		const temperature = additionalParams.temperature;
+		delete additionalParams.temperature;
 
 		// @n8n/ai-node-sdk types ISupplyDataFunctions from its nested n8n-workflow copy.
 		return supplyModel(this as unknown as Parameters<typeof supplyModel>[0], {
@@ -199,6 +191,8 @@ export class HaystackEnterpriseChatModel implements INodeType {
 			useResponsesApi: false,
 			supportsStrictToolCalling: false,
 			timeout: options.timeout,
+			// ChatOpenAI defaults to 0.7; Haystack Enterprise services only accept the API default (1).
+			temperature: typeof temperature === 'number' ? temperature : 1,
 			additionalParams: Object.keys(additionalParams).length > 0 ? additionalParams : undefined,
 		});
 	}

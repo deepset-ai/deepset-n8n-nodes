@@ -287,7 +287,6 @@ function applyChatCompletionExtras(
 	body: IDataObject,
 	additionalFields: IDataObject,
 ): void {
-	if (additionalFields.temperature !== undefined) body.temperature = additionalFields.temperature;
 	if (additionalFields.maxCompletionTokens !== undefined) {
 		body.max_completion_tokens = additionalFields.maxCompletionTokens;
 	}

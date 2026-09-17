@@ -34,7 +34,7 @@ describe('HaystackEnterpriseChatModel', () => {
 		const context = createSupplyDataContext({
 			workspaceName: 'acme',
 			deploymentId: 'support-chat',
-			options: { temperature: 0.2, maxCompletionTokens: 256 },
+			options: { maxCompletionTokens: 256 },
 		});
 
 		const result = await node.supplyData.call(context, 0);
@@ -47,17 +47,17 @@ describe('HaystackEnterpriseChatModel', () => {
 			useResponsesApi: false,
 			supportsStrictToolCalling: false,
 			timeout: undefined,
-			additionalParams: { temperature: 0.2, max_completion_tokens: 256 },
+			temperature: 1,
+			additionalParams: { max_completion_tokens: 256 },
 		});
 		expect(result.response).toMatchObject({ type: 'openai', model: 'acme/support-chat' });
 	});
 
-	it('lets extra parameters override named generation fields and omits unset ones', async () => {
+	it('lets extra parameters override named generation fields and the default temperature', async () => {
 		const context = createSupplyDataContext({
 			workspaceName: 'acme',
 			deploymentId: 'support-chat',
 			options: {
-				temperature: 0.2,
 				maxCompletionTokens: 256,
 				extraParameters: '{"temperature": 0.9, "presence_penalty": 0.1}',
 			},
@@ -68,8 +68,8 @@ describe('HaystackEnterpriseChatModel', () => {
 		expect(supplyModel).toHaveBeenCalledWith(
 			context,
 			expect.objectContaining({
+				temperature: 0.9,
 				additionalParams: {
-					temperature: 0.9,
 					max_completion_tokens: 256,
 					presence_penalty: 0.1,
 				},

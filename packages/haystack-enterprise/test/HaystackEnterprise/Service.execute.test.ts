@@ -611,10 +611,9 @@ describe('executeService — chatCompletions', () => {
 					],
 				},
 				additionalFields: {
-					temperature: 0.2,
 					maxCompletionTokens: 256,
 					topP: 0.9,
-					extraParameters: '{"presence_penalty": 0.1}',
+					extraParameters: '{"temperature": 0.2, "presence_penalty": 0.1}',
 				},
 			},
 			async () => CHAT_COMPLETION_RESPONSE,
