@@ -42,11 +42,11 @@ export const serviceOperations: INodeProperties[] = [
 				action: 'Get many services',
 			},
 			{
-				name: 'List Models',
+				name: 'List Models (Chat Completions)',
 				value: 'listModels',
 				description:
-					'List workspace services as OpenAI-compatible models. Each model ID is `{workspace}/{deployment ID}` — the same value Chat Completions expects in `model`.',
-				action: 'List models',
+					'List workspace services as OpenAI-compatible models (`GET …/deployments/v1/models/`). Each model ID is `{workspace}/{deployment ID}` — the same value Chat Completions expects in `model`.',
+				action: 'List models for chat completions',
 			},
 			{
 				name: 'Search (Streaming)',
