@@ -8,6 +8,18 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+
+import { fileFields, fileOperations } from './resources/file/File.description';
+import { executeFile } from './resources/file/File.execute';
+import { indexFields, indexOperations } from './resources/index/Index.description';
+import { executeIndex } from './resources/index/Index.execute';
+import {
+	searchSessionFields,
+	searchSessionOperations,
+} from './resources/searchSession/SearchSession.description';
+import { executeSearchSession } from './resources/searchSession/SearchSession.execute';
+import { serviceFields, serviceOperations } from './resources/service/Service.description';
+import { executeService } from './resources/service/Service.execute';
 import {
 	loadDeploymentOptions,
 	loadDeploymentOptionsWithAllOption,
@@ -16,14 +28,6 @@ import {
 	loadSearchSessionOptions,
 	loadWorkspaceOptions,
 } from './utils';
-import { fileFields, fileOperations } from './resources/file/File.description';
-import { executeFile } from './resources/file/File.execute';
-import { indexFields, indexOperations } from './resources/index/Index.description';
-import { executeIndex } from './resources/index/Index.execute';
-import { searchSessionFields, searchSessionOperations } from './resources/searchSession/SearchSession.description';
-import { executeSearchSession } from './resources/searchSession/SearchSession.execute';
-import { serviceFields, serviceOperations } from './resources/service/Service.description';
-import { executeService } from './resources/service/Service.execute';
 
 export class HaystackEnterpriseAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -111,7 +115,9 @@ export class HaystackEnterpriseAi implements INodeType {
 			async getDeployments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return loadDeploymentOptions(this);
 			},
-			async getDeploymentsWithAllOption(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getDeploymentsWithAllOption(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
 				return loadDeploymentOptionsWithAllOption(this);
 			},
 			async getFiles(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -145,7 +151,9 @@ export class HaystackEnterpriseAi implements INodeType {
 				} else if (resource === 'searchSession') {
 					resultItems = await executeSearchSession.call(this, operation, i);
 				} else {
-					throw new NodeOperationError(this.getNode(), `Unknown resource: ${resource}`, { itemIndex: i });
+					throw new NodeOperationError(this.getNode(), `Unknown resource: ${resource}`, {
+						itemIndex: i,
+					});
 				}
 
 				for (const item of resultItems) {

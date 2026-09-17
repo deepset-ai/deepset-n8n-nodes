@@ -1,5 +1,6 @@
-import { executeIndex } from '../../../haystack-enterprise/nodes/HaystackEnterprise/resources/index/Index.execute';
 import type { ContractResourceSuite } from './types';
+
+import { executeIndex } from '../../../haystack-enterprise/nodes/HaystackEnterprise/resources/index/Index.execute';
 import { cursorPaginationCases } from './caseFactories';
 
 export const indexSuite: ContractResourceSuite = {

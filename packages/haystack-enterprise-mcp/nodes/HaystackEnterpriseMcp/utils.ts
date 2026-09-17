@@ -1,9 +1,18 @@
-import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions, JsonObject } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport, StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { ErrorCode, McpError, type Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type {
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	JsonObject,
+} from 'n8n-workflow';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import {
+	StreamableHTTPClientTransport,
+	StreamableHTTPError,
+} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export const API_BASE_URL_V1 = 'https://api.cloud.deepset.ai/api/v1';
 export const API_BASE_URL_V2 = 'https://api.cloud.deepset.ai/api/v2';
@@ -189,7 +198,9 @@ export function contentToString(content: unknown): string {
  * n8n's own MCP Client Tool node's isStructuredContent check.
  */
 export function isStructuredContent(value: unknown): value is Record<string, unknown> {
-	return value !== undefined && value !== null && typeof value === 'object' && !Array.isArray(value);
+	return (
+		value !== undefined && value !== null && typeof value === 'object' && !Array.isArray(value)
+	);
 }
 
 /**
@@ -271,7 +282,9 @@ export async function loadWorkspaceOptions(
 		// string-coercing that raw object — producing the literal, useless
 		// text "[object Object]" no matter how good `.message` actually is.
 		const error =
-			caught instanceof NodeApiError ? caught : new NodeApiError(context.getNode(), caught as JsonObject);
+			caught instanceof NodeApiError
+				? caught
+				: new NodeApiError(context.getNode(), caught as JsonObject);
 		const hint = describeWorkspaceListErrorHint(error.httpCode);
 		const message =
 			hint ||
@@ -283,10 +296,16 @@ export async function loadWorkspaceOptions(
 
 	const workspaces = Array.isArray(response) ? (response as IDataObject[]) : [];
 	return workspaces
-		.filter((workspace) => typeof workspace.name === 'string' && typeof workspace.workspace_id === 'string')
+		.filter(
+			(workspace) =>
+				typeof workspace.name === 'string' && typeof workspace.workspace_id === 'string',
+		)
 		.map((workspace) => {
 			const name = workspace.name as string;
-			return { name: name.charAt(0).toUpperCase() + name.slice(1), value: workspace.workspace_id as string };
+			return {
+				name: name.charAt(0).toUpperCase() + name.slice(1),
+				value: workspace.workspace_id as string,
+			};
 		});
 }
 
@@ -304,7 +323,10 @@ export async function loadMcpToolOptions(
 		// the error's own message as-is rather than wrapping it in a synthesized
 		// one — this also shows up verbatim in n8n's "problem loading the
 		// parameter options" popover, which doesn't wrap or grow to fit long text.
-		throw new NodeOperationError(context.getNode(), describeTransportErrorHint(error) || (error as Error).message);
+		throw new NodeOperationError(
+			context.getNode(),
+			describeTransportErrorHint(error) || (error as Error).message,
+		);
 	}
 
 	try {
@@ -315,7 +337,10 @@ export async function loadMcpToolOptions(
 			description: tool.description ?? '',
 		}));
 	} catch (error) {
-		throw new NodeOperationError(context.getNode(), describeTransportErrorHint(error) || (error as Error).message);
+		throw new NodeOperationError(
+			context.getNode(),
+			describeTransportErrorHint(error) || (error as Error).message,
+		);
 	} finally {
 		await client.close();
 	}

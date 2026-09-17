@@ -74,7 +74,8 @@ const commonAdditionalFields: INodeProperties[] = [
 		name: 'filters',
 		type: 'json',
 		default: '',
-		description: 'Haystack Enterprise filters to narrow down the search. See the Haystack Enterprise filtering logic docs.',
+		description:
+			'Haystack Enterprise filters to narrow down the search. See the Haystack Enterprise filtering logic docs.',
 	},
 	{
 		displayName: 'Params (JSON)',
@@ -88,7 +89,8 @@ const commonAdditionalFields: INodeProperties[] = [
 		name: 'viewPrompts',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to add the runtime prompts of all nodes to the response (runs the pipeline in debug mode)',
+		description:
+			'Whether to add the runtime prompts of all nodes to the response (runs the pipeline in debug mode)',
 	},
 ];
 
@@ -103,7 +105,8 @@ const streamingAdditionalFields: INodeProperties[] = [
 		name: 'includeResult',
 		type: 'boolean',
 		default: true,
-		description: 'Whether to stream a final event containing the complete pipeline result (answers/documents)',
+		description:
+			'Whether to stream a final event containing the complete pipeline result (answers/documents)',
 	},
 	{
 		displayName: 'Include Tool Calls',
@@ -124,7 +127,8 @@ const streamingAdditionalFields: INodeProperties[] = [
 		name: 'includeReasoning',
 		type: 'boolean',
 		default: false,
-		description: "Whether to stream the pipeline's intermediate reasoning output, if the underlying model supports it",
+		description:
+			"Whether to stream the pipeline's intermediate reasoning output, if the underlying model supports it",
 	},
 ];
 
@@ -364,7 +368,7 @@ export const serviceFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description:
-			'The ID of an existing search session to continue, for chat history. Leave empty to start a new session automatically — its ID is returned in the output\'s search_session_id field, ready to reuse on the next call to continue the conversation.',
+			"The ID of an existing search session to continue, for chat history. Leave empty to start a new session automatically — its ID is returned in the output's search_session_id field, ready to reuse on the next call to continue the conversation.",
 		displayOptions: {
 			show: {
 				resource: ['service'],
@@ -406,7 +410,8 @@ export const serviceFields: INodeProperties[] = [
 				type: 'number',
 				typeOptions: { minValue: 0 },
 				default: 3,
-				description: 'The number of most recent chat history items (query and answer) to include in the chat',
+				description:
+					'The number of most recent chat history items (query and answer) to include in the chat',
 			},
 			...streamingAdditionalFields,
 		],
@@ -438,7 +443,8 @@ export const serviceFields: INodeProperties[] = [
 		placeholder: 'Add Message',
 		default: { message: [{ role: 'user', content: '' }] },
 		required: true,
-		description: 'Conversation history sent to the service. Include prior turns for multi-turn chat.',
+		description:
+			'Conversation history sent to the service. Include prior turns for multi-turn chat.',
 		displayOptions: {
 			show: {
 				resource: ['service'],
@@ -552,8 +558,7 @@ export const serviceFields: INodeProperties[] = [
 				name: 'extraParameters',
 				type: 'json',
 				default: '{}',
-				description:
-					'Other OpenAI fields forwarded as-is. Merged over the named fields below.',
+				description: 'Other OpenAI fields forwarded as-is. Merged over the named fields below.',
 			},
 			{
 				displayName: 'Max Completion Tokens',

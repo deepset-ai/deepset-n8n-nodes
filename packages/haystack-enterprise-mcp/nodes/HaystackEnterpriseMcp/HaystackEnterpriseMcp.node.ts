@@ -1,3 +1,6 @@
+import type { ToolFilterMode } from './utils';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -10,12 +13,11 @@ import type {
 	ISupplyDataFunctions,
 	SupplyData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import { StructuredToolkit } from 'n8n-core';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+
 import {
 	buildMcpToolName,
 	contentToString,
@@ -28,7 +30,6 @@ import {
 	loadMcpToolOptions,
 	loadWorkspaceOptions,
 	normalizeMcpInputSchema,
-	type ToolFilterMode,
 } from './utils';
 
 const SELF_HOSTED_ONLY_MESSAGE =
@@ -116,7 +117,12 @@ async function connectAndListFilteredTools(
 	const includeMode = ctx.getNodeParameter('include', itemIndex, 'all') as ToolFilterMode;
 	const includeTools = ctx.getNodeParameter('includeTools', itemIndex, []) as string[];
 	const excludeTools = ctx.getNodeParameter('excludeTools', itemIndex, []) as string[];
-	const filteredTools = getSelectedTools({ mode: includeMode, includeTools, excludeTools, tools: mcpTools });
+	const filteredTools = getSelectedTools({
+		mode: includeMode,
+		includeTools,
+		excludeTools,
+		tools: mcpTools,
+	});
 
 	if (filteredTools.length === 0) {
 		await client.close();
@@ -179,7 +185,8 @@ export class HaystackEnterpriseMcp implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'This node is only available on self-hosted n8n instances. It does not work on n8n Cloud.',
+				displayName:
+					'This node is only available on self-hosted n8n instances. It does not work on n8n Cloud.',
 				name: 'selfHostedNotice',
 				type: 'notice',
 				default: '',
@@ -212,7 +219,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 				type: 'options',
 				default: 'all',
 				description:
-						'How to select the <a href="https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool/" target="_blank" rel="noopener noreferrer">tools</a> you want to be exposed to the AI Agent',
+					'How to select the <a href="https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool/" target="_blank" rel="noopener noreferrer">tools</a> you want to be exposed to the AI Agent',
 				options: [
 					{
 						name: 'All',
@@ -235,7 +242,10 @@ export class HaystackEnterpriseMcp implements INodeType {
 				displayName: 'Tools to Include',
 				name: 'includeTools',
 				type: 'multiOptions',
-				typeOptions: { loadOptionsMethod: 'getAvailableMcpTools', loadOptionsDependsOn: ['workspaceId'] },
+				typeOptions: {
+					loadOptionsMethod: 'getAvailableMcpTools',
+					loadOptionsDependsOn: ['workspaceId'],
+				},
 				default: [],
 				description:
 					'The <a href="https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool/" target="_blank" rel="noopener noreferrer">tools</a> currently available from your Haystack Enterprise Platform MCP server. Click the refresh icon to load the list. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -245,7 +255,10 @@ export class HaystackEnterpriseMcp implements INodeType {
 				displayName: 'Tools to Exclude',
 				name: 'excludeTools',
 				type: 'multiOptions',
-				typeOptions: { loadOptionsMethod: 'getAvailableMcpTools', loadOptionsDependsOn: ['workspaceId'] },
+				typeOptions: {
+					loadOptionsMethod: 'getAvailableMcpTools',
+					loadOptionsDependsOn: ['workspaceId'],
+				},
 				default: [],
 				description:
 					'The <a href="https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool/" target="_blank" rel="noopener noreferrer">tools</a> currently available from your Haystack Enterprise Platform MCP server. Click the refresh icon to load the list. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
@@ -295,7 +308,10 @@ export class HaystackEnterpriseMcp implements INodeType {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		assertSelfHosted(this.getNode());
 
-		const { client, filteredTools, timeout, signal } = await connectAndListFilteredTools(this, itemIndex);
+		const { client, filteredTools, timeout, signal } = await connectAndListFilteredTools(
+			this,
+			itemIndex,
+		);
 
 		const toolsMissingDescription = filteredTools.filter((t) => !t.description).map((t) => t.name);
 		if (toolsMissingDescription.length > 0) {
@@ -353,7 +369,8 @@ export class HaystackEnterpriseMcp implements INodeType {
 						if (result.isError) {
 							throw new NodeOperationError(
 								this.getNode(),
-								contentToString(result.content) || 'The pipeline reported an error with no message.',
+								contentToString(result.content) ||
+									'The pipeline reported an error with no message.',
 								{ itemIndex },
 							);
 						}
@@ -362,7 +379,9 @@ export class HaystackEnterpriseMcp implements INodeType {
 						// append it so structured output isn't silently dropped.
 						output = [
 							contentToString(result.content),
-							isStructuredContent(result.structuredContent) ? JSON.stringify(result.structuredContent) : '',
+							isStructuredContent(result.structuredContent)
+								? JSON.stringify(result.structuredContent)
+								: '',
 						]
 							.filter(Boolean)
 							.join('\n');
@@ -380,13 +399,18 @@ export class HaystackEnterpriseMcp implements INodeType {
 					this.addOutputData(NodeConnectionTypes.AiTool, runIndex, [
 						[{ json: { tool: mcpTool.name, response: output } }],
 					]);
-					this.logAiEvent('ai-tool-called', `Called Haystack Enterprise Platform tool "${mcpTool.name}"`);
+					this.logAiEvent(
+						'ai-tool-called',
+						`Called Haystack Enterprise Platform tool "${mcpTool.name}"`,
+					);
 					return output;
 				},
 			});
 
 			// Override with the sanitized raw JSON Schema so N8n can convert it
-			(tool as unknown as { schema: unknown }).schema = normalizeMcpInputSchema(mcpTool.inputSchema);
+			(tool as unknown as { schema: unknown }).schema = normalizeMcpInputSchema(
+				mcpTool.inputSchema,
+			);
 
 			return tool;
 		});

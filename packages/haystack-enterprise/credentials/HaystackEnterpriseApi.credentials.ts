@@ -53,7 +53,8 @@ export class HaystackEnterpriseApi implements ICredentialType {
 				type: 'responseCode',
 				properties: {
 					value: 401,
-					message: 'Invalid API key. Check your key in Haystack Enterprise Platform under Settings → API Keys.',
+					message:
+						'Invalid API key. Check your key in Haystack Enterprise Platform under Settings → API Keys.',
 				},
 			},
 			{

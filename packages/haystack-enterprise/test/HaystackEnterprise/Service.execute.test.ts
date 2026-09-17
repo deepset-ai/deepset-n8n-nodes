@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+
 import { executeService } from '../../nodes/HaystackEnterprise/resources/service/Service.execute';
 import { createExecuteContext as createContext, FakeStream } from './testHelpers';
 
@@ -18,7 +19,12 @@ interface StreamContextOptions {
 	responseHeaders?: Record<string, string>;
 }
 
-function createStreamContext({ params, streamRequestError, isStreaming, responseHeaders }: StreamContextOptions) {
+function createStreamContext({
+	params,
+	streamRequestError,
+	isStreaming,
+	responseHeaders,
+}: StreamContextOptions) {
 	const stream = new FakeStream();
 	const sendChunk = vi.fn();
 
@@ -43,7 +49,11 @@ describe('executeService — get many', () => {
 	it('returns each service as its own item', async () => {
 		const { context } = createContext(
 			{ workspaceName: 'ws', returnAll: false, limit: 50, filters: {}, sort: {} },
-			async () => ({ data: [{ deployment_id: 'a' }, { deployment_id: 'b' }], has_more: false, total: 2 }),
+			async () => ({
+				data: [{ deployment_id: 'a' }, { deployment_id: 'b' }],
+				has_more: false,
+				total: 2,
+			}),
 		);
 
 		const result = await executeService.call(context, 'getAll', 0);
@@ -80,14 +90,23 @@ describe('executeService — get many', () => {
 
 	it('queries by the before cursor instead of page_number when Return All is off', async () => {
 		const { context, httpRequestWithAuthentication } = createContext(
-			{ workspaceName: 'ws', returnAll: false, limit: 50, filters: { before: 'service-cursor-1' }, sort: {} },
+			{
+				workspaceName: 'ws',
+				returnAll: false,
+				limit: 50,
+				filters: { before: 'service-cursor-1' },
+				sort: {},
+			},
 			async () => ({ data: [{ deployment_id: 'a' }], has_more: false, total: 1 }),
 		);
 
 		const result = await executeService.call(context, 'getAll', 0);
 
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
-		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { qs: Record<string, unknown> }];
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
+			string,
+			{ qs: Record<string, unknown> },
+		];
 		expect(options.qs).toMatchObject({ before: 'service-cursor-1' });
 		expect(options.qs).not.toHaveProperty('page_number');
 		expect(result).toEqual([{ json: { deployment_id: 'a' } }]);
@@ -95,13 +114,22 @@ describe('executeService — get many', () => {
 
 	it('queries by the after cursor instead of page_number when Return All is off', async () => {
 		const { context, httpRequestWithAuthentication } = createContext(
-			{ workspaceName: 'ws', returnAll: false, limit: 50, filters: { after: 'service-cursor-2' }, sort: {} },
+			{
+				workspaceName: 'ws',
+				returnAll: false,
+				limit: 50,
+				filters: { after: 'service-cursor-2' },
+				sort: {},
+			},
 			async () => ({ data: [{ deployment_id: 'b' }], has_more: false, total: 1 }),
 		);
 
 		await executeService.call(context, 'getAll', 0);
 
-		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { qs: Record<string, unknown> }];
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
+			string,
+			{ qs: Record<string, unknown> },
+		];
 		expect(options.qs).toMatchObject({ after: 'service-cursor-2' });
 		expect(options.qs).not.toHaveProperty('page_number');
 	});
@@ -121,7 +149,10 @@ describe('executeService — get many', () => {
 
 		await executeService.call(context, 'getAll', 0);
 
-		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { qs: Record<string, unknown> }];
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
+			string,
+			{ qs: Record<string, unknown> },
+		];
 		expect(options.qs).toHaveProperty('page_number');
 		expect(options.qs).not.toHaveProperty('before');
 	});
@@ -134,7 +165,10 @@ describe('executeService — stream request error handling', () => {
 		// error body (e.g. `response.data.message`), while `.message` is often
 		// just n8n's generic per-status-code fallback text.
 		const apiError = Object.assign(new Error('Request failed with status code 500'), {
-			response: { status: 500, data: { message: 'Pipeline execution failed: missing component X' } },
+			response: {
+				status: 500,
+				data: { message: 'Pipeline execution failed: missing component X' },
+			},
 		});
 		const { context } = createStreamContext({
 			params: {
@@ -159,7 +193,10 @@ describe('executeService — stream request error handling', () => {
 		// n8n's node-error-view component only shows the "Error data" section
 		// when `error.context.data` is populated.
 		const apiError = Object.assign(new Error('Request failed with status code 500'), {
-			response: { status: 500, data: { errors: ['Pipeline execution failed: missing component X'] } },
+			response: {
+				status: 500,
+				data: { errors: ['Pipeline execution failed: missing component X'] },
+			},
 		});
 		const { context } = createStreamContext({
 			params: {
@@ -225,7 +262,10 @@ describe('executeService — streaming (searchStream / chatStream)', () => {
 		await flushMicrotasks();
 		stream.emit('data', sseRecord({ type: 'delta', delta: { text: 'Hel' } }));
 		stream.emit('data', sseRecord({ type: 'delta', delta: { text: 'lo' } }));
-		stream.emit('data', sseRecord({ type: 'result', result: { results: [{ answers: [{ answer: 'Hello' }] }] } }));
+		stream.emit(
+			'data',
+			sseRecord({ type: 'result', result: { results: [{ answers: [{ answer: 'Hello' }] }] } }),
+		);
 		stream.emit('end');
 
 		expect(await resultPromise).toEqual([
@@ -356,7 +396,7 @@ describe('executeService — streaming (searchStream / chatStream)', () => {
 		expect(sendChunk).toHaveBeenCalledWith('error', 0, 'Pipeline execution failed');
 	});
 
-	it('surfaces the first `errors` entry when a stream error event carries deepset\'s `{ errors: [...] }` shape', async () => {
+	it("surfaces the first `errors` entry when a stream error event carries deepset's `{ errors: [...] }` shape", async () => {
 		const { context, stream, sendChunk } = createStreamContext({
 			params: {
 				workspaceName: 'ws',
@@ -429,12 +469,16 @@ describe('executeService — streaming (searchStream / chatStream)', () => {
 
 		const result = await resultPromise;
 
-		const calls = httpRequestWithAuthentication.mock.calls as unknown as Array<[string, { url: string }]>;
+		const calls = httpRequestWithAuthentication.mock.calls as unknown as Array<
+			[string, { url: string }]
+		>;
 		const createCalls = calls.filter(([, options]) => options.url.endsWith('/search_sessions'));
 		expect(createCalls).toHaveLength(0);
 
 		const streamCall = calls.find(([, options]) => options.url.endsWith('/chat-stream'));
-		expect(streamCall?.[1]).toMatchObject({ body: { query: 'hello', search_session_id: 'existing-session' } });
+		expect(streamCall?.[1]).toMatchObject({
+			body: { query: 'hello', search_session_id: 'existing-session' },
+		});
 		expect(result).toEqual([{ json: { content: 'Hi', search_session_id: 'existing-session' } }]);
 	});
 
@@ -460,9 +504,14 @@ describe('executeService — streaming (searchStream / chatStream)', () => {
 
 		const result = await resultPromise;
 
-		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { body: Record<string, unknown> }];
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
+			string,
+			{ body: Record<string, unknown> },
+		];
 		expect(options.body).not.toHaveProperty('search_session_id');
-		expect(result).toEqual([{ json: { content: 'Hi', search_session_id: 'auto-created-session' } }]);
+		expect(result).toEqual([
+			{ json: { content: 'Hi', search_session_id: 'auto-created-session' } },
+		]);
 	});
 
 	it('stamps the auto-created search session ID onto every raw event when Simplify Output is off', async () => {
@@ -529,16 +578,13 @@ function openaiChunk(delta: Record<string, unknown>, finishReason: string | null
 
 describe('executeService — listModels', () => {
 	it('returns each model as its own item', async () => {
-		const { context } = createContext(
-			{ workspaceName: 'acme' },
-			async () => ({
-				object: 'list',
-				data: [
-					{ id: 'acme/svc-1', object: 'model', name: 'first' },
-					{ id: 'acme/svc-2', object: 'model', name: 'second' },
-				],
-			}),
-		);
+		const { context } = createContext({ workspaceName: 'acme' }, async () => ({
+			object: 'list',
+			data: [
+				{ id: 'acme/svc-1', object: 'model', name: 'first' },
+				{ id: 'acme/svc-2', object: 'model', name: 'second' },
+			],
+		}));
 
 		const result = await executeService.call(context, 'listModels', 0);
 
@@ -661,7 +707,10 @@ describe('executeService — chatCompletions', () => {
 	it('forwards JSON messages when content is a string or a content-parts array', async () => {
 		const messages = [
 			{ role: 'user', content: 'What do you know about Asthma?' },
-			{ role: 'user', content: [{ type: 'text', text: 'Which tools do you have access to again?' }] },
+			{
+				role: 'user',
+				content: [{ type: 'text', text: 'Which tools do you have access to again?' }],
+			},
 		];
 		const { context, httpRequestWithAuthentication } = createContext(
 			{ ...CHAT_COMPLETIONS_PARAMS, messagesInput: 'json', messagesJson: messages },
@@ -683,7 +732,9 @@ describe('executeService — chatCompletions', () => {
 			async () => CHAT_COMPLETION_RESPONSE,
 		);
 
-		await expect(executeService.call(context, 'chatCompletions', 0)).rejects.toThrow(/Messages cannot be empty/);
+		await expect(executeService.call(context, 'chatCompletions', 0)).rejects.toThrow(
+			/Messages cannot be empty/,
+		);
 	});
 
 	it('includes tool_call_id on tool messages and forwards generation extras', async () => {
@@ -730,7 +781,8 @@ describe('executeService — chatCompletions', () => {
 			{
 				...CHAT_COMPLETIONS_PARAMS,
 				additionalFields: {
-					extraParameters: '{"model": "other/id", "messages": [], "stream": true, "temperature": 0.5}',
+					extraParameters:
+						'{"model": "other/id", "messages": [], "stream": true, "temperature": 0.5}',
 				},
 			},
 			async () => CHAT_COMPLETION_RESPONSE,
@@ -773,7 +825,14 @@ describe('executeService — chatCompletions', () => {
 			'data',
 			sseRecord(
 				openaiChunk({
-					tool_calls: [{ index: 0, id: 'call_1', type: 'function', function: { name: 'get_weather', arguments: '' } }],
+					tool_calls: [
+						{
+							index: 0,
+							id: 'call_1',
+							type: 'function',
+							function: { name: 'get_weather', arguments: '' },
+						},
+					],
 				}),
 			),
 		);
