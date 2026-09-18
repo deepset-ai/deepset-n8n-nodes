@@ -24,6 +24,7 @@ import {
 	createMcpTransport,
 	describeToolCallErrorHint,
 	describeTransportErrorHint,
+	getApiOriginForContext,
 	getSelectedTools,
 	isStructuredContent,
 	listAllMcpTools,
@@ -76,7 +77,8 @@ async function connectAndListFilteredTools(
 		);
 	}
 
-	const { client, transport, mcpUrl } = createMcpTransport(workspaceId, apiKey, signal);
+	const apiOrigin = await getApiOriginForContext(ctx);
+	const { client, transport, mcpUrl } = createMcpTransport(workspaceId, apiKey, apiOrigin, signal);
 
 	try {
 		await client.connect(transport);

@@ -138,10 +138,12 @@ The package ships two nodes:
 
 ## Credentials
 
-You need a Haystack Enterprise API credential, which requires an API key:
+You need a Haystack Enterprise API credential:
 
 1. In Haystack Enterprise Platform, go to Settings → API Keys and generate a key.
-2. In n8n, create a "Haystack Enterprise API" credential and paste the key in.
+2. In n8n, create a "Haystack Enterprise API" credential. **Server URL** defaults to the hosted
+   Haystack Enterprise Platform API (`https://api.cloud.deepset.ai`); for self-hosted or dev
+   environments, set it to your instance's API origin (scheme and host only). Paste your API key.
 
 Use a workspace- or organization-level key with sufficient permissions for the operations and
 resources you plan to use.

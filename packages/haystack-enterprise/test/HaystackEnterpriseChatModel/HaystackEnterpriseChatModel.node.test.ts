@@ -85,6 +85,26 @@ describe('HaystackEnterpriseChatModel', () => {
 		expect(supplyModel).not.toHaveBeenCalled();
 	});
 
+	it('uses the Server URL from credentials for the chat completions base URL', async () => {
+		const context = createSupplyDataContext(
+			{
+				workspaceName: 'acme',
+				deploymentId: 'support-chat',
+				options: {},
+			},
+			{ apiKey: 'secret-key', serverUrl: 'https://self-hosted.example.com/' },
+		);
+
+		await node.supplyData.call(context, 0);
+
+		expect(supplyModel).toHaveBeenCalledWith(
+			context,
+			expect.objectContaining({
+				baseUrl: 'https://self-hosted.example.com/api/v1/workspaces/acme/deployments/v1',
+			}),
+		);
+	});
+
 	it('throws when the credential has no API key', async () => {
 		const context = createSupplyDataContext(
 			{ workspaceName: 'acme', deploymentId: 'support-chat' },

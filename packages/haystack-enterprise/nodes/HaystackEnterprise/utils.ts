@@ -5,31 +5,59 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	ISupplyDataFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
-const PRODUCTION_API_BASE_URL = 'https://api.cloud.deepset.ai/api/v1';
+export const DEFAULT_API_ORIGIN = 'https://api.cloud.deepset.ai';
 
 let apiBaseUrlOverride: string | undefined;
 
+export function normalizeApiOrigin(serverUrl: string): string {
+	return serverUrl.trim().replace(/\/+$/, '');
+}
+
+export function getApiOriginFromCredentials(credentials: IDataObject): string {
+	const serverUrl = credentials.serverUrl;
+	if (typeof serverUrl === 'string' && serverUrl.trim() !== '') {
+		return normalizeApiOrigin(serverUrl);
+	}
+	return DEFAULT_API_ORIGIN;
+}
+
+/** Strips a trailing `/api/v1` or `/api/v2` so versioned base URLs are not doubled. */
+function apiOriginWithoutVersionPath(origin: string): string {
+	const withoutVersion = normalizeApiOrigin(origin).replace(/\/api\/v[12]$/i, '');
+	return withoutVersion === '' ? DEFAULT_API_ORIGIN : withoutVersion;
+}
+
+export function getApiBaseUrlV1FromOrigin(origin: string): string {
+	return `${apiOriginWithoutVersionPath(origin)}/api/v1`;
+}
+
+export function getApiBaseUrlFromCredentials(credentials: IDataObject): string {
+	return getApiBaseUrlV1FromOrigin(getApiOriginFromCredentials(credentials));
+}
+
 /**
- * Test-only escape hatch — lets the contract-tests package point requests at
- * a local Prism mock or an ephemeral environment instead of production. Not
- * `process.env`-based deliberately: reading `process.env` directly here would
- * let any environment variable on the host process affect this cloud-eligible
- * package's requests, which is exactly what
- * `@n8n/community-nodes/no-restricted-globals` guards against. Only
- * `contract-tests` (a private, non-published dev package with no cloud
- * eligibility constraints) ever calls this, from its own `setupFiles` hook.
+ * Test-only escape hatch for targeting local Prism mocks or ephemeral environments.
+ * Deliberately avoids `process.env` so host environment variables cannot affect
+ * requests from this cloud-eligible package (`@n8n/community-nodes/no-restricted-globals`).
  */
 export function setApiBaseUrlOverrideForTests(url: string | undefined): void {
 	apiBaseUrlOverride = url;
 }
 
-export function getApiBaseUrl(): string {
-	return apiBaseUrlOverride ?? PRODUCTION_API_BASE_URL;
+export async function getApiBaseUrlForContext(
+	context: IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions,
+): Promise<string> {
+	if (apiBaseUrlOverride) {
+		return apiBaseUrlOverride;
+	}
+	const credentials = await context.getCredentials(CREDENTIAL_NAME);
+	return getApiBaseUrlFromCredentials(credentials);
 }
 
 /** Deployment chat completions use OpenAI-style `{ error: { message, type, ... } }` bodies. */
@@ -251,9 +279,10 @@ export async function apiRequest(
 	endpoint: string,
 	options: Partial<IHttpRequestOptions> = {},
 ): Promise<unknown> {
+	const apiBaseUrl = await getApiBaseUrlForContext(this);
 	const requestOptions: IHttpRequestOptions = {
 		method,
-		url: `${getApiBaseUrl()}${endpoint}`,
+		url: `${apiBaseUrl}${endpoint}`,
 		json: true,
 		...options,
 	};
@@ -313,12 +342,13 @@ export async function apiRequestStream(
 		this,
 		endpoint,
 		async () => {
+			const apiBaseUrl = await getApiBaseUrlForContext(this);
 			const response = (await this.helpers.httpRequestWithAuthentication.call(
 				this,
 				CREDENTIAL_NAME,
 				{
 					method,
-					url: `${getApiBaseUrl()}${endpoint}`,
+					url: `${apiBaseUrl}${endpoint}`,
 					json: true,
 					body,
 					encoding: 'stream',

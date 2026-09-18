@@ -10,12 +10,15 @@ import {
 	extractStreamErrorDetail,
 	extractWorkspaceList,
 	fetchPaginatedResults,
+	getApiBaseUrlFromCredentials,
+	getApiBaseUrlV1FromOrigin,
 	loadDeploymentOptions,
 	loadDeploymentOptionsWithAllOption,
 	loadFileOptions,
 	loadIndexOptions,
 	loadSearchSessionOptions,
 	loadWorkspaceOptions,
+	normalizeApiOrigin,
 	parseJsonField,
 	withServiceActivationRetry,
 } from '../../nodes/HaystackEnterprise/utils';
@@ -23,23 +26,58 @@ import { FakeStream } from './testHelpers';
 
 function createContext<T = ILoadOptionsFunctions>(
 	httpRequestWithAuthentication: (...args: unknown[]) => unknown,
+	credentials: IDataObject = { apiKey: 'test-key' },
 ): T {
 	return {
 		helpers: { httpRequestWithAuthentication },
 		getNode: () => ({ name: 'Haystack Enterprise AI' }),
+		getCredentials: async () => credentials,
 	} as unknown as T;
 }
 
 function createLoadOptionsContext(
 	httpRequestWithAuthentication: (...args: unknown[]) => unknown,
 	workspaceName = 'ws',
+	credentials: IDataObject = { apiKey: 'test-key' },
 ): ILoadOptionsFunctions {
 	return {
 		helpers: { httpRequestWithAuthentication },
 		getNode: () => ({ name: 'Haystack Enterprise AI' }),
 		getNodeParameter: (name: string) => (name === 'workspaceName' ? workspaceName : undefined),
+		getCredentials: async () => credentials,
 	} as unknown as ILoadOptionsFunctions;
 }
+
+describe('normalizeApiOrigin', () => {
+	it('trims whitespace and trailing slashes', () => {
+		expect(normalizeApiOrigin('  https://haystack.example.com/  ')).toBe(
+			'https://haystack.example.com',
+		);
+	});
+});
+
+describe('getApiBaseUrlFromCredentials', () => {
+	it('defaults to production when serverUrl is missing', () => {
+		expect(getApiBaseUrlFromCredentials({ apiKey: 'k' })).toBe(
+			'https://api.cloud.deepset.ai/api/v1',
+		);
+	});
+
+	it('derives v1 from a custom server URL', () => {
+		expect(getApiBaseUrlFromCredentials({ apiKey: 'k', serverUrl: 'https://dev.internal/' })).toBe(
+			'https://dev.internal/api/v1',
+		);
+	});
+
+	it('does not double /api/v1 when the credential already includes it', () => {
+		expect(
+			getApiBaseUrlFromCredentials({ apiKey: 'k', serverUrl: 'https://dev.internal/api/v1/' }),
+		).toBe('https://dev.internal/api/v1');
+		expect(getApiBaseUrlV1FromOrigin('https://dev.internal/api/v1')).toBe(
+			'https://dev.internal/api/v1',
+		);
+	});
+});
 
 describe('extractWorkspaceList', () => {
 	it('accepts a bare array response', () => {
@@ -159,6 +197,23 @@ describe('loadDeploymentOptionsWithAllOption', () => {
 });
 
 describe('apiRequest', () => {
+	it('uses the Server URL from credentials when building the request URL', async () => {
+		const httpRequestWithAuthentication = vi.fn(async () => ({ ok: true }));
+		const context = createContext(httpRequestWithAuthentication, {
+			apiKey: 'test-key',
+			serverUrl: 'https://self-hosted.example.com',
+		});
+
+		await apiRequest.call(context, 'GET', '/workspaces');
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseApi',
+			expect.objectContaining({
+				url: 'https://self-hosted.example.com/api/v1/workspaces',
+			}),
+		);
+	});
+
 	// This is the shape n8n's helpers.httpRequestWithAuthentication() actually
 	// throws in production: it catches the raw HTTP failure itself and
 	// immediately wraps it in its own NodeApiError (see n8n-core's

@@ -5,11 +5,12 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-	API_BASE_URL_V2,
 	buildMcpToolName,
 	contentToString,
+	DEFAULT_API_ORIGIN,
 	describeToolCallErrorHint,
 	describeTransportErrorHint,
+	getApiBaseUrlV2FromOrigin,
 	getSelectedTools,
 	isStructuredContent,
 	listAllMcpTools,
@@ -38,12 +39,30 @@ vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', async (importOrigi
 	return { ...actual, StreamableHTTPClientTransport: TransportMock };
 });
 
-function createLoadOptionsContext(httpRequestWithAuthentication: (...args: unknown[]) => unknown) {
+function createLoadOptionsContext(
+	httpRequestWithAuthentication: (...args: unknown[]) => unknown,
+	credentials: Record<string, unknown> = { apiKey: 'secret-key' },
+) {
 	return {
 		helpers: { httpRequestWithAuthentication },
 		getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+		getCredentials: async () => credentials,
 	} as unknown as ILoadOptionsFunctions;
 }
+
+describe('getApiBaseUrlV2FromOrigin', () => {
+	it('appends /api/v2 to a bare origin', () => {
+		expect(getApiBaseUrlV2FromOrigin('https://host.example.com')).toBe(
+			'https://host.example.com/api/v2',
+		);
+	});
+
+	it('strips /api/v1 before appending /api/v2', () => {
+		expect(getApiBaseUrlV2FromOrigin('https://host.example.com/api/v1/')).toBe(
+			'https://host.example.com/api/v2',
+		);
+	});
+});
 
 describe('normalizeMcpInputSchema', () => {
 	it('passes through a valid object schema unchanged', () => {
@@ -226,6 +245,7 @@ describe('loadWorkspaceOptions', () => {
 				},
 			},
 			getNode: () => node,
+			getCredentials: async () => ({ apiKey: 'secret-key' }),
 		} as unknown as ILoadOptionsFunctions;
 
 		const error = await loadWorkspaceOptions(context).catch((caught: unknown) => caught);
@@ -251,6 +271,7 @@ describe('loadWorkspaceOptions', () => {
 				},
 			},
 			getNode: () => node,
+			getCredentials: async () => ({ apiKey: 'secret-key' }),
 		} as unknown as ILoadOptionsFunctions;
 
 		await expect(loadWorkspaceOptions(context)).rejects.toMatchObject({
@@ -279,6 +300,7 @@ describe('loadWorkspaceOptions', () => {
 				},
 			},
 			getNode: () => node,
+			getCredentials: async () => ({ apiKey: 'secret-key' }),
 		} as unknown as ILoadOptionsFunctions;
 
 		const error = await loadWorkspaceOptions(context).catch((caught: unknown) => caught);
@@ -291,6 +313,7 @@ describe('loadWorkspaceOptions', () => {
 describe('loadMcpToolOptions', () => {
 	const context = {
 		getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+		getCredentials: async () => ({ apiKey: 'secret-key' }),
 	} as unknown as ILoadOptionsFunctions;
 
 	beforeEach(() => {
@@ -315,10 +338,28 @@ describe('loadMcpToolOptions', () => {
 			{ name: 'no-description', value: 'no-description', description: '' },
 		]);
 		expect(TransportMock).toHaveBeenCalledWith(
-			new URL(`${API_BASE_URL_V2}/workspaces/workspace-1/mcp`),
+			new URL(`${getApiBaseUrlV2FromOrigin(DEFAULT_API_ORIGIN)}/workspaces/workspace-1/mcp`),
 			expect.objectContaining({ requestInit: { headers: { Authorization: 'Bearer secret-key' } } }),
 		);
 		expect(mockClose).toHaveBeenCalledTimes(1);
+	});
+
+	it('uses the Server URL from credentials for the MCP endpoint', async () => {
+		mockListTools.mockResolvedValue({ tools: [{ name: 'search' }] });
+		const customContext = {
+			getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+			getCredentials: async () => ({
+				apiKey: 'secret-key',
+				serverUrl: 'https://self-hosted.example.com',
+			}),
+		} as unknown as ILoadOptionsFunctions;
+
+		await loadMcpToolOptions(customContext, 'workspace-1', 'secret-key');
+
+		expect(TransportMock).toHaveBeenCalledWith(
+			new URL('https://self-hosted.example.com/api/v2/workspaces/workspace-1/mcp'),
+			expect.objectContaining({ requestInit: { headers: { Authorization: 'Bearer secret-key' } } }),
+		);
 	});
 
 	it('follows nextCursor to collect tools across multiple pages', async () => {
