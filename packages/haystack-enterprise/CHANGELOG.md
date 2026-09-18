@@ -1,11 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- **Credentials:** configurable **Server URL** on Haystack Enterprise API credentials (default
-  hosted Haystack Enterprise Platform API). All REST, streaming, and Chat Model requests use the
-  configured origin.
-
 ## 0.1.0
 
 Initial release.

@@ -44,11 +44,6 @@ export function setApiBaseUrlOverrideForTests(url: string | undefined): void {
 	apiBaseUrlOverride = url;
 }
 
-/** @deprecated Prefer {@link getApiBaseUrlForContext} so requests respect credential Server URL. */
-export function getApiBaseUrl(): string {
-	return apiBaseUrlOverride ?? PRODUCTION_API_BASE_URL;
-}
-
 export async function getApiBaseUrlForContext(
 	context: IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions,
 ): Promise<string> {
