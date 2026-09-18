@@ -5,11 +5,12 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-	API_BASE_URL_V2,
 	buildMcpToolName,
 	contentToString,
+	DEFAULT_API_ORIGIN,
 	describeToolCallErrorHint,
 	describeTransportErrorHint,
+	getApiBaseUrlV2FromOrigin,
 	getSelectedTools,
 	isStructuredContent,
 	listAllMcpTools,
@@ -323,7 +324,7 @@ describe('loadMcpToolOptions', () => {
 			{ name: 'no-description', value: 'no-description', description: '' },
 		]);
 		expect(TransportMock).toHaveBeenCalledWith(
-			new URL(`${API_BASE_URL_V2}/workspaces/workspace-1/mcp`),
+			new URL(`${getApiBaseUrlV2FromOrigin(DEFAULT_API_ORIGIN)}/workspaces/workspace-1/mcp`),
 			expect.objectContaining({ requestInit: { headers: { Authorization: 'Bearer secret-key' } } }),
 		);
 		expect(mockClose).toHaveBeenCalledTimes(1);

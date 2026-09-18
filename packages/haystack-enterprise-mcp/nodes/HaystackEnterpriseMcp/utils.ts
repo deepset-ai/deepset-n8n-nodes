@@ -19,8 +19,6 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 // Kept in sync by hand with packages/haystack-enterprise/nodes/HaystackEnterprise/utils.ts
 // (DEFAULT_API_ORIGIN / normalizeApiOrigin / getApiBaseUrlFromCredentials).
 export const DEFAULT_API_ORIGIN = 'https://api.cloud.deepset.ai';
-export const API_BASE_URL_V1 = `${DEFAULT_API_ORIGIN}/api/v1`;
-export const API_BASE_URL_V2 = `${DEFAULT_API_ORIGIN}/api/v2`;
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
 const MCP_CLIENT_NAME = 'n8n-nodes-haystack-enterprise-mcp';
 const MCP_CLIENT_VERSION = '0.1.0';
