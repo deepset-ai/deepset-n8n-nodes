@@ -15,7 +15,6 @@ export const DEFAULT_API_ORIGIN = 'https://api.cloud.deepset.ai';
 
 let apiBaseUrlOverride: string | undefined;
 
-/** Trims trailing slashes from a configured API origin. */
 export function normalizeApiOrigin(serverUrl: string): string {
 	return serverUrl.trim().replace(/\/+$/, '');
 }
@@ -38,20 +37,14 @@ export function getApiBaseUrlV1FromOrigin(origin: string): string {
 	return `${apiOriginWithoutVersionPath(origin)}/api/v1`;
 }
 
-/** Resolves the v1 REST base URL from credential fields (API origin, not a versioned path). */
 export function getApiBaseUrlFromCredentials(credentials: IDataObject): string {
 	return getApiBaseUrlV1FromOrigin(getApiOriginFromCredentials(credentials));
 }
 
 /**
- * Test-only escape hatch — lets the contract-tests package point requests at
- * a local Prism mock or an ephemeral environment instead of production. Not
- * `process.env`-based deliberately: reading `process.env` directly here would
- * let any environment variable on the host process affect this cloud-eligible
- * package's requests, which is exactly what
- * `@n8n/community-nodes/no-restricted-globals` guards against. Only
- * `contract-tests` (a private, non-published dev package with no cloud
- * eligibility constraints) ever calls this, from its own `setupFiles` hook.
+ * Test-only escape hatch for targeting local Prism mocks or ephemeral environments.
+ * Deliberately avoids `process.env` so host environment variables cannot affect
+ * requests from this cloud-eligible package (`@n8n/community-nodes/no-restricted-globals`).
  */
 export function setApiBaseUrlOverrideForTests(url: string | undefined): void {
 	apiBaseUrlOverride = url;
