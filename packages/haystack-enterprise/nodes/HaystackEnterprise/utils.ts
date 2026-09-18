@@ -12,7 +12,6 @@ import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
 export const DEFAULT_API_ORIGIN = 'https://api.cloud.deepset.ai';
-const PRODUCTION_API_BASE_URL = `${DEFAULT_API_ORIGIN}/api/v1`;
 
 let apiBaseUrlOverride: string | undefined;
 
@@ -21,13 +20,21 @@ export function normalizeApiOrigin(serverUrl: string): string {
 	return serverUrl.trim().replace(/\/+$/, '');
 }
 
-/** Resolves the v1 REST base URL from credential fields (API origin, not a versioned path). */
-export function getApiBaseUrlFromCredentials(credentials: IDataObject): string {
+export function getApiOriginFromCredentials(credentials: IDataObject): string {
 	const serverUrl = credentials.serverUrl;
 	if (typeof serverUrl === 'string' && serverUrl.trim() !== '') {
-		return `${normalizeApiOrigin(serverUrl)}/api/v1`;
+		return normalizeApiOrigin(serverUrl);
 	}
-	return PRODUCTION_API_BASE_URL;
+	return DEFAULT_API_ORIGIN;
+}
+
+export function getApiBaseUrlV1FromOrigin(origin: string): string {
+	return `${normalizeApiOrigin(origin)}/api/v1`;
+}
+
+/** Resolves the v1 REST base URL from credential fields (API origin, not a versioned path). */
+export function getApiBaseUrlFromCredentials(credentials: IDataObject): string {
+	return getApiBaseUrlV1FromOrigin(getApiOriginFromCredentials(credentials));
 }
 
 /**
