@@ -100,8 +100,7 @@ describe('HaystackEnterpriseChatModel', () => {
 		expect(supplyModel).toHaveBeenCalledWith(
 			context,
 			expect.objectContaining({
-				baseUrl:
-					'https://self-hosted.example.com/api/v1/workspaces/acme/deployments/v1',
+				baseUrl: 'https://self-hosted.example.com/api/v1/workspaces/acme/deployments/v1',
 			}),
 		);
 	});

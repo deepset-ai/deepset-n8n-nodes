@@ -63,9 +63,9 @@ describe('getApiBaseUrlFromCredentials', () => {
 	});
 
 	it('derives v1 from a custom server URL', () => {
-		expect(
-			getApiBaseUrlFromCredentials({ apiKey: 'k', serverUrl: 'https://dev.internal/' }),
-		).toBe('https://dev.internal/api/v1');
+		expect(getApiBaseUrlFromCredentials({ apiKey: 'k', serverUrl: 'https://dev.internal/' })).toBe(
+			'https://dev.internal/api/v1',
+		);
 	});
 });
 
