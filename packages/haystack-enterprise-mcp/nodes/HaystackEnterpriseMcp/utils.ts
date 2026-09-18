@@ -35,12 +35,18 @@ export function getApiOriginFromCredentials(credentials: IDataObject): string {
 	return DEFAULT_API_ORIGIN;
 }
 
+/** Strips a trailing `/api/v1` or `/api/v2` so versioned base URLs are not doubled. */
+function apiOriginWithoutVersionPath(origin: string): string {
+	const withoutVersion = normalizeApiOrigin(origin).replace(/\/api\/v[12]$/i, '');
+	return withoutVersion === '' ? DEFAULT_API_ORIGIN : withoutVersion;
+}
+
 export function getApiBaseUrlV1FromOrigin(origin: string): string {
-	return `${normalizeApiOrigin(origin)}/api/v1`;
+	return `${apiOriginWithoutVersionPath(origin)}/api/v1`;
 }
 
 export function getApiBaseUrlV2FromOrigin(origin: string): string {
-	return `${normalizeApiOrigin(origin)}/api/v2`;
+	return `${apiOriginWithoutVersionPath(origin)}/api/v2`;
 }
 
 export async function getApiOriginForContext(

@@ -50,6 +50,20 @@ function createLoadOptionsContext(
 	} as unknown as ILoadOptionsFunctions;
 }
 
+describe('getApiBaseUrlV2FromOrigin', () => {
+	it('appends /api/v2 to a bare origin', () => {
+		expect(getApiBaseUrlV2FromOrigin('https://host.example.com')).toBe(
+			'https://host.example.com/api/v2',
+		);
+	});
+
+	it('strips /api/v1 before appending /api/v2', () => {
+		expect(getApiBaseUrlV2FromOrigin('https://host.example.com/api/v1/')).toBe(
+			'https://host.example.com/api/v2',
+		);
+	});
+});
+
 describe('normalizeMcpInputSchema', () => {
 	it('passes through a valid object schema unchanged', () => {
 		const schema = { type: 'object', properties: { foo: { type: 'string' } } };

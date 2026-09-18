@@ -11,6 +11,7 @@ import {
 	extractWorkspaceList,
 	fetchPaginatedResults,
 	getApiBaseUrlFromCredentials,
+	getApiBaseUrlV1FromOrigin,
 	loadDeploymentOptions,
 	loadDeploymentOptionsWithAllOption,
 	loadFileOptions,
@@ -64,6 +65,15 @@ describe('getApiBaseUrlFromCredentials', () => {
 
 	it('derives v1 from a custom server URL', () => {
 		expect(getApiBaseUrlFromCredentials({ apiKey: 'k', serverUrl: 'https://dev.internal/' })).toBe(
+			'https://dev.internal/api/v1',
+		);
+	});
+
+	it('does not double /api/v1 when the credential already includes it', () => {
+		expect(
+			getApiBaseUrlFromCredentials({ apiKey: 'k', serverUrl: 'https://dev.internal/api/v1/' }),
+		).toBe('https://dev.internal/api/v1');
+		expect(getApiBaseUrlV1FromOrigin('https://dev.internal/api/v1')).toBe(
 			'https://dev.internal/api/v1',
 		);
 	});
