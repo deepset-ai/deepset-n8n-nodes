@@ -1,10 +1,10 @@
 {
-	"name": "Haystack Enterprise AI – using search stream with form trigger",
+	"name": "Haystack Enterprise AI – using chat with form trigger",
 	"nodes": [
 		{
 			"parameters": {
 				"formTitle": "Ask your knowledge base",
-				"formDescription": "Ask questions or request summaries and reports in natural language. This workflow queries your Haystack Enterprise AI service, which searches your organization’s indexed documents and knowledge to return accurate, AI-generated answers. It is best suited for single, self-contained questions or requests rather than back-and-forth conversations.",
+				"formDescription": "Ask questions or request summaries and reports in natural language. This workflow sends a one-off Chat query to your Haystack Enterprise AI service, which searches your organization’s indexed documents and returns an AI-generated answer.",
 				"formFields": {
 					"values": [
 						{
@@ -34,10 +34,10 @@
 			"parameters": {
 				"workspaceName": "my-workspace",
 				"resource": "service",
-				"operation": "searchStream",
+				"operation": "chat",
 				"deploymentId": "my-first-service",
 				"query": "={{ $json['What do you want to know?'] }}",
-				"simplify": true,
+				"searchSessionId": "",
 				"additionalFields": {
 					"files": "={{ $json['Restrict to files (optional)'] }}"
 				}
@@ -57,7 +57,7 @@
 			"parameters": {
 				"operation": "completion",
 				"respondWith": "showText",
-				"responseText": "={{ $json.content }}",
+				"responseText": "={{ $json.results[0].answers[0].answer }}",
 				"options": {}
 			},
 			"id": "e5f6a7b8-0003-4c1c-9c1c-000000000003",
@@ -68,7 +68,7 @@
 		},
 		{
 			"parameters": {
-				"content": "### One-off search queries (streaming)\n\n**Queries a deployed service — the query is a question or an instruction (\"summarize X\", \"what changed between Y and Z\"), and the service does the retrieval itself. Use it, for a single self-contained answer rather than a back-and-forth conversation.\n\nWhy this shape fits:\n\n1. **No search session needed.** Search sessions exist to give Chat a conversation history. A one-off request has no history to keep, so the **Search Session ID** field is left empty entirely — nothing to create, look up, or store (contrast with [`chat-with-search-session.json`](./chat-with-search-session.json), which exists specifically to manage that session lifecycle).\n2. **`Simplify Output` stays on.** With it enabled, the node consumes the whole SSE stream internally and hands you back one item with the fully concatenated answer in `content` — exactly what you want when the report is being fed into another node (here, the completion page) rather than typed out live to a human.\n3. **`Files` narrows the search.** The optional \"Restrict to files\" form field maps to Additional Fields → File Names or IDs, scoping retrieval to specific indexed files instead of the whole workspace — handy when you know exactly which report(s) the answer should be drawn from.\n4. **Any one-shot trigger works.** This example uses a Form Trigger so it's runnable standalone, but the same pattern applies to a webhook, a Gmail trigger summarizing an incoming email (see `test-workflow-search.json`), a scheduled job generating a recurring report, etc.\n\nIf you instead want the answer to stream token-by-token into a chat UI, use **Chat (Streaming)** behind a Chat Trigger in streaming response mode.",
+				"content": "### One-off chat queries\n\nSends one question to a deployed service via **Chat** (`/chat`). The service does the retrieval itself. Use it for a single self-contained answer rather than a back-and-forth conversation.\n\n1. **Search Session ID stays empty.** Leave it blank for a one-off question. The platform may still create a session and return its ID in `search_session_id`; this workflow does not reuse it. To continue a conversation, see [`chat-with-auto-created-search-session-example.json`](./chat-with-auto-created-search-session-example.json).\n2. **The answer is on the result.** Chat returns the query result as one JSON item. The completion page reads `results[0].answers[0].answer`.\n3. **`Files` narrows retrieval.** The optional \"Restrict to files\" form field maps to Additional Fields → File Names or IDs.\n4. **Any one-shot trigger works.** This example uses a Form Trigger, but the same pattern applies to a webhook or a scheduled job.\n\nIf you want the answer to stream token-by-token into a chat UI, use **Chat (Streaming)** behind a Chat Trigger in streaming response mode.",
 				"height": 460,
 				"width": 460
 			},

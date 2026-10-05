@@ -329,7 +329,7 @@ async function loadOptionsApiRequest(
  *
  * Uses `firstErrorOnly` (rather than apiRequest()'s join-all-messages
  * description) so the NodeApiError's description surfaces a single readable
- * sentence for the search-stream/chat-stream operations — the full `errors`
+ * sentence for the chat-stream operation — the full `errors`
  * array is still available in `.context.data` for n8n's "Error data" section.
  */
 export async function apiRequestStream(

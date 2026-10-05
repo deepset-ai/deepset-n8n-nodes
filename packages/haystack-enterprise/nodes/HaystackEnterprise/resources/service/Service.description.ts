@@ -16,6 +16,13 @@ export const serviceOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Chat',
+				value: 'chat',
+				description:
+					'Run a chat query against a service and receive the full answer once generation finishes',
+				action: 'Chat with a service',
+			},
+			{
 				name: 'Chat (Streaming)',
 				value: 'chatStream',
 				description:
@@ -47,13 +54,6 @@ export const serviceOperations: INodeProperties[] = [
 				description:
 					'List workspace services as OpenAI-compatible models to use it with Chat Completions (`model` parameter)',
 				action: 'List models for chat completions',
-			},
-			{
-				name: 'Search (Streaming)',
-				value: 'searchStream',
-				description:
-					'Run a search query against a service and receive the answer incrementally, as it is generated',
-				action: 'Search a service streaming',
 			},
 		],
 		default: 'getAll',
@@ -99,6 +99,16 @@ const commonAdditionalFields: INodeProperties[] = [
  * additional event types Haystack Enterprise streams back (tool calls, tool call
  * results, reasoning), on top of the answer-text deltas that always stream.
  */
+const chatHistoryLimitField: INodeProperties = {
+	displayName: 'Chat History Limit',
+	name: 'chatHistoryLimit',
+	type: 'number',
+	typeOptions: { minValue: 0 },
+	default: 3,
+	description:
+		'The number of most recent chat history items (query and answer) to include in the chat',
+};
+
 const streamingAdditionalFields: INodeProperties[] = [
 	{
 		displayName: 'Include Result',
@@ -133,7 +143,7 @@ const streamingAdditionalFields: INodeProperties[] = [
 ];
 
 export const serviceFields: INodeProperties[] = [
-	// Get / Search (Streaming) / Chat (Streaming) / Chat Completions
+	// Get / Chat / Chat (Streaming) / Chat Completions
 	{
 		displayName: 'Service Name or ID',
 		name: 'deploymentId',
@@ -149,7 +159,7 @@ export const serviceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['service'],
-				operation: ['get', 'searchStream', 'chatStream', 'chatCompletions'],
+				operation: ['get', 'chat', 'chatStream', 'chatCompletions'],
 			},
 		},
 	},
@@ -163,7 +173,7 @@ export const serviceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['service'],
-				operation: ['searchStream', 'chatStream', 'chatCompletions'],
+				operation: ['chat', 'chatStream', 'chatCompletions'],
 			},
 		},
 	},
@@ -178,7 +188,7 @@ export const serviceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['service'],
-				operation: ['searchStream', 'chatStream', 'chatCompletions'],
+				operation: ['chat', 'chatStream', 'chatCompletions'],
 				waitForActivation: [true],
 			},
 		},
@@ -300,52 +310,7 @@ export const serviceFields: INodeProperties[] = [
 			},
 		],
 	},
-	// Search (Streaming)
-	{
-		displayName: 'Search',
-		name: 'query',
-		type: 'string',
-		required: true,
-		default: '',
-		typeOptions: { rows: 3 },
-		placeholder: 'e.g. {{ $json.Subject }}',
-		description: 'The search query to send to the service. Supports expressions.',
-		displayOptions: {
-			show: {
-				resource: ['service'],
-				operation: ['searchStream'],
-			},
-		},
-	},
-	{
-		displayName: 'Simplify Output',
-		name: 'simplify',
-		type: 'boolean',
-		default: true,
-		description:
-			'Whether to return one aggregated item with the concatenated answer text and final result, instead of one item per streamed event (deltas, tool calls, reasoning, the final result)',
-		displayOptions: {
-			show: {
-				resource: ['service'],
-				operation: ['searchStream'],
-			},
-		},
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['service'],
-				operation: ['searchStream'],
-			},
-		},
-		options: [...commonAdditionalFields, ...streamingAdditionalFields],
-	},
-	// Chat (Streaming)
+	// Chat / Chat (Streaming)
 	{
 		displayName: 'Query',
 		name: 'query',
@@ -358,7 +323,7 @@ export const serviceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['service'],
-				operation: ['chatStream'],
+				operation: ['chat', 'chatStream'],
 			},
 		},
 	},
@@ -372,9 +337,23 @@ export const serviceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['service'],
-				operation: ['chatStream'],
+				operation: ['chat', 'chatStream'],
 			},
 		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['service'],
+				operation: ['chat'],
+			},
+		},
+		options: [...commonAdditionalFields, chatHistoryLimitField],
 	},
 	{
 		displayName: 'Simplify Output',
@@ -402,19 +381,7 @@ export const serviceFields: INodeProperties[] = [
 				operation: ['chatStream'],
 			},
 		},
-		options: [
-			...commonAdditionalFields,
-			{
-				displayName: 'Chat History Limit',
-				name: 'chatHistoryLimit',
-				type: 'number',
-				typeOptions: { minValue: 0 },
-				default: 3,
-				description:
-					'The number of most recent chat history items (query and answer) to include in the chat',
-			},
-			...streamingAdditionalFields,
-		],
+		options: [...commonAdditionalFields, chatHistoryLimitField, ...streamingAdditionalFields],
 	},
 	// Chat Completions
 	{

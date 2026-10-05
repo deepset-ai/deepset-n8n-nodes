@@ -88,22 +88,106 @@ async function listModels(this: IExecuteFunctions, itemIndex: number): Promise<I
 	return data as IDataObject[];
 }
 
-/**
- * The *-stream endpoints take a singular `query` string in the body, unlike
- * `search`/`chat`'s `queries: [query]` array.
- */
-async function runSearchStream(
+interface ChatRequest {
+	workspaceName: string;
+	deploymentId: string;
+	query: string;
+	additionalFields: IDataObject;
+	searchSessionId: string;
+	waitForActivation: boolean;
+	maxWaitMinutes: number;
+}
+
+function readChatRequest(this: IExecuteFunctions, itemIndex: number): ChatRequest {
+	return {
+		workspaceName: this.getNodeParameter('workspaceName', itemIndex) as string,
+		deploymentId: this.getNodeParameter('deploymentId', itemIndex) as string,
+		query: this.getNodeParameter('query', itemIndex) as string,
+		additionalFields: this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject,
+		searchSessionId: this.getNodeParameter('searchSessionId', itemIndex, '') as string,
+		waitForActivation: this.getNodeParameter('waitForActivation', itemIndex, false) as boolean,
+		maxWaitMinutes: this.getNodeParameter('maxWaitMinutes', itemIndex, 5) as number,
+	};
+}
+
+/** Filters, params, files, and view_prompts are shared by /chat and /chat-stream. */
+function applySharedQueryFields(
 	this: IExecuteFunctions,
 	itemIndex: number,
-	endpoint: 'search-stream' | 'chat-stream',
-): Promise<IDataObject[]> {
-	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
-	const deploymentId = this.getNodeParameter('deploymentId', itemIndex) as string;
-	const query = this.getNodeParameter('query', itemIndex) as string;
-	const simplify = this.getNodeParameter('simplify', itemIndex) as boolean;
-	const additionalFields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
+	body: IDataObject,
+	additionalFields: IDataObject,
+): void {
+	if (additionalFields.viewPrompts !== undefined) body.view_prompts = additionalFields.viewPrompts;
+	const filters = parseJsonField.call(this, itemIndex, 'Filters (JSON)', additionalFields.filters);
+	if (filters) body.filters = filters;
+	const params = parseJsonField.call(this, itemIndex, 'Params (JSON)', additionalFields.params);
+	if (params) body.params = params;
+	const files = parseCommaSeparatedList(additionalFields.files);
+	if (files.length > 0) body.files = files;
+}
 
-	const body: IDataObject = { query };
+/**
+ * Search session ID is optional on both /chat and /chat-stream. Omit it and
+ * Haystack Enterprise creates a session, returning the ID in X-Search-Session-Id.
+ */
+function applyChatSessionFields(
+	body: IDataObject,
+	searchSessionId: string,
+	additionalFields: IDataObject,
+): void {
+	if (searchSessionId) body.search_session_id = searchSessionId;
+	if (additionalFields.chatHistoryLimit !== undefined) {
+		body.chat_history_limit = additionalFields.chatHistoryLimit;
+	}
+}
+
+/**
+ * POST /workspaces/{workspace}/deployments/{id}/chat — one JSON result, not SSE.
+ * `queries` is an array, unlike chat-stream's singular `query`.
+ */
+async function runChat(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
+	const request = readChatRequest.call(this, itemIndex);
+	const body: IDataObject = { queries: [request.query] };
+	applySharedQueryFields.call(this, itemIndex, body, request.additionalFields);
+	applyChatSessionFields(body, request.searchSessionId, request.additionalFields);
+
+	const response = (await withServiceActivationRetry.call(
+		this,
+		() =>
+			apiRequest.call(
+				this,
+				'POST',
+				`/workspaces/${request.workspaceName}/deployments/${request.deploymentId}/chat`,
+				{ body, returnFullResponse: true },
+			),
+		request.waitForActivation,
+		request.maxWaitMinutes * 60_000,
+	)) as { body: IDataObject; headers?: IDataObject };
+
+	const payload = response.body;
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+		throw new NodeOperationError(this.getNode(), 'The chat response was not a JSON object', {
+			itemIndex,
+		});
+	}
+
+	const result = { ...payload };
+	const searchSessionId =
+		request.searchSessionId || getResponseHeader(response.headers ?? {}, 'X-Search-Session-Id');
+	if (searchSessionId) result.search_session_id = searchSessionId;
+	return result;
+}
+
+/**
+ * POST /workspaces/{workspace}/deployments/{id}/chat-stream. Takes a singular
+ * `query` string, unlike /chat's `queries: [query]` array.
+ */
+async function runChatStream(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject[]> {
+	const request = readChatRequest.call(this, itemIndex);
+	const { additionalFields } = request;
+	const simplify = this.getNodeParameter('simplify', itemIndex) as boolean;
+
+	const body: IDataObject = { query: request.query };
 	if (additionalFields.includeResult !== undefined)
 		body.include_result = additionalFields.includeResult;
 	if (additionalFields.includeToolCalls !== undefined)
@@ -112,29 +196,10 @@ async function runSearchStream(
 		body.include_tool_call_results = additionalFields.includeToolCallResults;
 	if (additionalFields.includeReasoning !== undefined)
 		body.include_reasoning = additionalFields.includeReasoning;
-	if (additionalFields.viewPrompts !== undefined) body.view_prompts = additionalFields.viewPrompts;
-	const filters = parseJsonField.call(this, itemIndex, 'Filters (JSON)', additionalFields.filters);
-	if (filters) body.filters = filters;
-	const params = parseJsonField.call(this, itemIndex, 'Params (JSON)', additionalFields.params);
-	if (params) body.params = params;
-	const files = parseCommaSeparatedList(additionalFields.files);
-	if (files.length > 0) body.files = files;
+	applySharedQueryFields.call(this, itemIndex, body, additionalFields);
+	applyChatSessionFields(body, request.searchSessionId, additionalFields);
 
-	// search-stream is a one-off, historyless request — it has no concept of a
-	// search session. Only chat-stream takes one, and only optionally: when
-	// omitted, Haystack Enterprise creates one on the fly and reports its ID
-	// back via the X-Search-Session-Id response header
-	let searchSessionId: string | undefined;
-	if (endpoint === 'chat-stream') {
-		searchSessionId = this.getNodeParameter('searchSessionId', itemIndex, '') as string;
-		if (searchSessionId) body.search_session_id = searchSessionId;
-		if (additionalFields.chatHistoryLimit !== undefined) {
-			body.chat_history_limit = additionalFields.chatHistoryLimit;
-		}
-	}
-
-	const waitForActivation = this.getNodeParameter('waitForActivation', itemIndex, false) as boolean;
-	const maxWaitMinutes = this.getNodeParameter('maxWaitMinutes', itemIndex, 5) as number;
+	let searchSessionId: string | undefined = request.searchSessionId || undefined;
 
 	// Relaying chunks live (via sendChunk) only has an observable effect when
 	// this node is the tail of a chat-trigger workflow running in streaming
@@ -156,18 +221,16 @@ async function runSearchStream(
 				apiRequestStream.call(
 					this,
 					'POST',
-					`/workspaces/${workspaceName}/deployments/${deploymentId}/${endpoint}`,
+					`/workspaces/${request.workspaceName}/deployments/${request.deploymentId}/chat-stream`,
 					body,
 				),
-			waitForActivation,
-			maxWaitMinutes * 60_000,
+			request.waitForActivation,
+			request.maxWaitMinutes * 60_000,
 		)) as { stream: NodeJS.ReadableStream; headers: IDataObject };
 		stream = response.stream;
-		// Only relevant for chat-stream when searchSessionId wasn't supplied —
-		// echoes back the ID of the session Haystack Enterprise just created.
-		if (endpoint === 'chat-stream') {
-			searchSessionId ||= getResponseHeader(response.headers, 'X-Search-Session-Id');
-		}
+		// Echoes back the ID of the session Haystack Enterprise just created
+		// when Search Session ID was left empty.
+		searchSessionId ||= getResponseHeader(response.headers, 'X-Search-Session-Id');
 	} catch (error) {
 		if (relayLive)
 			this.sendChunk('error', itemIndex, error instanceof Error ? error.message : 'Request failed');
@@ -571,11 +634,11 @@ export async function executeService(
 		case 'getAll':
 			result = await getAll.call(this, itemIndex);
 			break;
-		case 'searchStream':
-			result = await runSearchStream.call(this, itemIndex, 'search-stream');
+		case 'chat':
+			result = await runChat.call(this, itemIndex);
 			break;
 		case 'chatStream':
-			result = await runSearchStream.call(this, itemIndex, 'chat-stream');
+			result = await runChatStream.call(this, itemIndex);
 			break;
 		case 'chatCompletions':
 			result = await runChatCompletions.call(this, itemIndex);
