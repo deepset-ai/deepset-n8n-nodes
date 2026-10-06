@@ -4,7 +4,7 @@
 		{
 			"parameters": {
 				"formTitle": "Ask your knowledge base",
-				"formDescription": "Ask questions or request summaries and reports in natural language. This workflow sends a one-off Chat query to your Haystack Enterprise AI service, which searches your organization’s indexed documents and returns an AI-generated answer.",
+				"formDescription": "Ask questions or request information, summaries, or reports in natural language. This workflow sends a one-off Chat query to your Haystack Enterprise AI service, which processes the request and returns an AI-generated response based on the configured pipeline and its capabilities.",
 				"formFields": {
 					"values": [
 						{

@@ -63,7 +63,7 @@ export const serviceOperations: INodeProperties[] = [
 
 const commonAdditionalFields: INodeProperties[] = [
 	{
-		displayName: 'File Names or IDs',
+		displayName: 'Temporary File IDs',
 		name: 'files',
 		type: 'string',
 		default: '',
