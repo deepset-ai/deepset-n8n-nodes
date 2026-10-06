@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { executeIndex } from '../../nodes/HaystackEnterprise/resources/index/Index.execute';
 import { createExecuteContext as createContext } from './testHelpers';
 
@@ -13,9 +14,14 @@ describe('executeIndex — get', () => {
 
 		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'haystackEnterpriseApi',
-			expect.objectContaining({ method: 'GET', url: expect.stringContaining('/workspaces/ws/indexes/my-index') }),
+			expect.objectContaining({
+				method: 'GET',
+				url: expect.stringContaining('/workspaces/ws/indexes/my-index'),
+			}),
 		);
-		expect(result).toEqual([{ json: { pipeline_index_id: 'idx-1', name: 'my-index', desired_status: 'DEPLOYED' } }]);
+		expect(result).toEqual([
+			{ json: { pipeline_index_id: 'idx-1', name: 'my-index', desired_status: 'DEPLOYED' } },
+		]);
 	});
 });
 
@@ -92,7 +98,9 @@ describe('executeIndex — get many', () => {
 
 		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'haystackEnterpriseApi',
-			expect.objectContaining({ qs: expect.objectContaining({ select: 'name, created_by/user_id' }) }),
+			expect.objectContaining({
+				qs: expect.objectContaining({ select: 'name, created_by/user_id' }),
+			}),
 		);
 	});
 
@@ -111,7 +119,10 @@ describe('executeIndex — get many', () => {
 		const result = await executeIndex.call(context, 'getAll', 0);
 
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
-		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { qs: Record<string, unknown> }];
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
+			string,
+			{ qs: Record<string, unknown> },
+		];
 		expect(options.qs).toMatchObject({ before: 'idx-cursor-1' });
 		expect(options.qs).not.toHaveProperty('page_number');
 		expect(result).toEqual([{ json: { name: 'a' } }]);
@@ -131,7 +142,10 @@ describe('executeIndex — get many', () => {
 
 		await executeIndex.call(context, 'getAll', 0);
 
-		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { qs: Record<string, unknown> }];
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
+			string,
+			{ qs: Record<string, unknown> },
+		];
 		expect(options.qs).toMatchObject({ after: 'idx-cursor-2' });
 		expect(options.qs).not.toHaveProperty('page_number');
 	});
@@ -156,7 +170,10 @@ describe('executeIndex — get many', () => {
 
 		await executeIndex.call(context, 'getAll', 0);
 
-		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [string, { qs: Record<string, unknown> }];
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
+			string,
+			{ qs: Record<string, unknown> },
+		];
 		expect(options.qs).toHaveProperty('page_number');
 		expect(options.qs).not.toHaveProperty('before');
 	});

@@ -1,15 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import {
-	API_BASE_URL_V2,
 	buildMcpToolName,
 	contentToString,
 	createBearerFetch,
+	DEFAULT_API_ORIGIN,
 	describeToolCallErrorHint,
 	describeTransportErrorHint,
+	getApiBaseUrlV2FromOrigin,
 	getSelectedTools,
 	isStructuredContent,
 	listAllMcpTools,
@@ -49,7 +51,7 @@ vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', async (importOrigi
 function createLoadOptionsContext(
 	httpRequestWithAuthentication: (...args: unknown[]) => unknown,
 	params: Record<string, unknown> = {},
-	credentials: Record<string, unknown> = {},
+	credentials: Record<string, unknown> = { apiKey: 'secret-key' },
 ) {
 	return {
 		helpers: { httpRequestWithAuthentication },
@@ -81,7 +83,7 @@ describe('resolveMcpAuth', () => {
 
 		const auth = await resolveMcpAuth(context, 0);
 
-		expect(auth).toEqual({ token: 'secret-key' });
+		expect(auth).toEqual({ token: 'secret-key', apiOrigin: DEFAULT_API_ORIGIN });
 		expect(getCredentials).toHaveBeenCalledWith('haystackEnterpriseApi');
 	});
 
@@ -143,7 +145,10 @@ describe('resolveMcpAuth', () => {
 describe('createBearerFetch', () => {
 	it('sets the Authorization header on every request, preserving the other headers', async () => {
 		const baseFetch = vi.fn(async () => okResponse());
-		const fetchWithAuth = createBearerFetch({ token: 'secret-key' }, baseFetch);
+		const fetchWithAuth = createBearerFetch(
+			{ token: 'secret-key', apiOrigin: DEFAULT_API_ORIGIN },
+			baseFetch,
+		);
 
 		await fetchWithAuth('https://example.test/mcp', {
 			method: 'POST',
@@ -162,7 +167,10 @@ describe('createBearerFetch', () => {
 
 	it('returns a 401 as-is when the auth has no refresh (API key)', async () => {
 		const baseFetch = vi.fn(async () => unauthorizedResponse());
-		const fetchWithAuth = createBearerFetch({ token: 'bad-key' }, baseFetch);
+		const fetchWithAuth = createBearerFetch(
+			{ token: 'bad-key', apiOrigin: DEFAULT_API_ORIGIN },
+			baseFetch,
+		);
 
 		const response = await fetchWithAuth('https://example.test/mcp');
 
@@ -175,7 +183,10 @@ describe('createBearerFetch', () => {
 			.fn(async () => okResponse())
 			.mockImplementationOnce(async () => unauthorizedResponse());
 		const refresh = vi.fn(async () => 'fresh-token');
-		const fetchWithAuth = createBearerFetch({ token: 'stale-token', refresh }, baseFetch);
+		const fetchWithAuth = createBearerFetch(
+			{ token: 'stale-token', apiOrigin: DEFAULT_API_ORIGIN, refresh },
+			baseFetch,
+		);
 
 		const response = await fetchWithAuth('https://example.test/mcp');
 		await fetchWithAuth('https://example.test/mcp');
@@ -191,7 +202,7 @@ describe('createBearerFetch', () => {
 	it('surfaces the original 401 without retrying when the refresh fails', async () => {
 		const baseFetch = vi.fn(async () => unauthorizedResponse());
 		const fetchWithAuth = createBearerFetch(
-			{ token: 'stale-token', refresh: async () => undefined },
+			{ token: 'stale-token', apiOrigin: DEFAULT_API_ORIGIN, refresh: async () => undefined },
 			baseFetch,
 		);
 
@@ -204,7 +215,7 @@ describe('createBearerFetch', () => {
 	it('does not loop when the refreshed token is also rejected', async () => {
 		const baseFetch = vi.fn(async () => unauthorizedResponse());
 		const fetchWithAuth = createBearerFetch(
-			{ token: 'stale-token', refresh: async () => 'fresh-token' },
+			{ token: 'stale-token', apiOrigin: DEFAULT_API_ORIGIN, refresh: async () => 'fresh-token' },
 			baseFetch,
 		);
 
@@ -212,6 +223,20 @@ describe('createBearerFetch', () => {
 
 		expect(response.status).toBe(401);
 		expect(baseFetch).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('getApiBaseUrlV2FromOrigin', () => {
+	it('appends /api/v2 to a bare origin', () => {
+		expect(getApiBaseUrlV2FromOrigin('https://host.example.com')).toBe(
+			'https://host.example.com/api/v2',
+		);
+	});
+
+	it('strips /api/v1 before appending /api/v2', () => {
+		expect(getApiBaseUrlV2FromOrigin('https://host.example.com/api/v1/')).toBe(
+			'https://host.example.com/api/v2',
+		);
 	});
 });
 
@@ -420,6 +445,7 @@ describe('loadWorkspaceOptions', () => {
 			getNode: () => node,
 			getNodeParameter: (_name: string, fallback?: unknown) => fallback,
 			getCurrentNodeParameter: () => undefined,
+			getCredentials: async () => ({ apiKey: 'secret-key' }),
 		} as unknown as ILoadOptionsFunctions;
 
 		const error = await loadWorkspaceOptions(context).catch((caught: unknown) => caught);
@@ -447,6 +473,7 @@ describe('loadWorkspaceOptions', () => {
 			getNode: () => node,
 			getNodeParameter: (_name: string, fallback?: unknown) => fallback,
 			getCurrentNodeParameter: () => undefined,
+			getCredentials: async () => ({ apiKey: 'secret-key' }),
 		} as unknown as ILoadOptionsFunctions;
 
 		await expect(loadWorkspaceOptions(context)).rejects.toMatchObject({
@@ -477,6 +504,7 @@ describe('loadWorkspaceOptions', () => {
 			getNode: () => node,
 			getNodeParameter: (_name: string, fallback?: unknown) => fallback,
 			getCurrentNodeParameter: () => undefined,
+			getCredentials: async () => ({ apiKey: 'secret-key' }),
 		} as unknown as ILoadOptionsFunctions;
 
 		const error = await loadWorkspaceOptions(context).catch((caught: unknown) => caught);
@@ -489,6 +517,7 @@ describe('loadWorkspaceOptions', () => {
 describe('loadMcpToolOptions', () => {
 	const context = {
 		getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+		getCredentials: async () => ({ apiKey: 'secret-key' }),
 	} as unknown as ILoadOptionsFunctions;
 
 	beforeEach(() => {
@@ -506,7 +535,10 @@ describe('loadMcpToolOptions', () => {
 			],
 		});
 
-		const options = await loadMcpToolOptions(context, 'workspace-1', { token: 'secret-key' });
+		const options = await loadMcpToolOptions(context, 'workspace-1', {
+			token: 'secret-key',
+			apiOrigin: DEFAULT_API_ORIGIN,
+		});
 
 		expect(options).toEqual([
 			{ name: 'search', value: 'search', description: 'Search the knowledge base' },
@@ -515,7 +547,7 @@ describe('loadMcpToolOptions', () => {
 		// The bearer token travels via the transport's `fetch` option (so it can change after an
 		// OAuth2 refresh), not a static `requestInit` header — exercise that fetch to check it.
 		expect(TransportMock).toHaveBeenCalledWith(
-			new URL(`${API_BASE_URL_V2}/workspaces/workspace-1/mcp`),
+			new URL(`${getApiBaseUrlV2FromOrigin(DEFAULT_API_ORIGIN)}/workspaces/workspace-1/mcp`),
 			expect.objectContaining({ fetch: expect.any(Function) }),
 		);
 		const transportOptions = TransportMock.mock.calls[0][1] as { fetch: typeof fetch };
@@ -530,12 +562,59 @@ describe('loadMcpToolOptions', () => {
 		expect(mockClose).toHaveBeenCalledTimes(1);
 	});
 
+	it("uses the Server URL from the credential (resolved into the auth's apiOrigin) for the MCP endpoint", async () => {
+		mockListTools.mockResolvedValue({ tools: [{ name: 'search' }] });
+		const customContext = {
+			getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+			getNodeParameter: (_name: string, fallback?: unknown) => fallback,
+			getCurrentNodeParameter: () => undefined,
+			getCredentials: async () => ({
+				apiKey: 'secret-key',
+				serverUrl: 'https://self-hosted.example.com',
+			}),
+		} as unknown as ILoadOptionsFunctions;
+
+		const auth = await resolveMcpAuth(customContext, 0);
+		await loadMcpToolOptions(customContext, 'workspace-1', auth);
+
+		expect(auth.apiOrigin).toBe('https://self-hosted.example.com');
+		expect(TransportMock).toHaveBeenCalledWith(
+			new URL('https://self-hosted.example.com/api/v2/workspaces/workspace-1/mcp'),
+			expect.objectContaining({ fetch: expect.any(Function) }),
+		);
+	});
+
+	it("derives the MCP endpoint from the OAuth2 credential's Server URL, which includes /api/v1", async () => {
+		mockListTools.mockResolvedValue({ tools: [{ name: 'search' }] });
+		const customContext = {
+			getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+			getNodeParameter: (name: string, fallback?: unknown) =>
+				name === 'authentication' ? 'oAuth2' : fallback,
+			getCurrentNodeParameter: () => undefined,
+			getCredentials: async () => ({
+				serverUrl: 'https://self-hosted.example.com/api/v1',
+				oauthTokenData: { access_token: 'oauth-token' },
+			}),
+		} as unknown as ILoadOptionsFunctions;
+
+		const auth = await resolveMcpAuth(customContext, 0);
+		await loadMcpToolOptions(customContext, 'workspace-1', auth);
+
+		expect(TransportMock).toHaveBeenCalledWith(
+			new URL('https://self-hosted.example.com/api/v2/workspaces/workspace-1/mcp'),
+			expect.objectContaining({ fetch: expect.any(Function) }),
+		);
+	});
+
 	it('follows nextCursor to collect tools across multiple pages', async () => {
 		mockListTools
 			.mockResolvedValueOnce({ tools: [{ name: 'page-1-tool' }], nextCursor: 'cursor-2' })
 			.mockResolvedValueOnce({ tools: [{ name: 'page-2-tool' }] });
 
-		const options = await loadMcpToolOptions(context, 'workspace-1', { token: 'secret-key' });
+		const options = await loadMcpToolOptions(context, 'workspace-1', {
+			token: 'secret-key',
+			apiOrigin: DEFAULT_API_ORIGIN,
+		});
 
 		expect(options.map((o) => o.name)).toEqual(['page-1-tool', 'page-2-tool']);
 		expect(mockListTools).toHaveBeenNthCalledWith(1, undefined, undefined);
@@ -546,7 +625,10 @@ describe('loadMcpToolOptions', () => {
 		mockListTools.mockRejectedValue(new Error('boom'));
 
 		await expect(
-			loadMcpToolOptions(context, 'workspace-1', { token: 'secret-key' }),
+			loadMcpToolOptions(context, 'workspace-1', {
+				token: 'secret-key',
+				apiOrigin: DEFAULT_API_ORIGIN,
+			}),
 		).rejects.toThrow('boom');
 		expect(mockClose).toHaveBeenCalledTimes(1);
 	});
@@ -555,7 +637,10 @@ describe('loadMcpToolOptions', () => {
 		mockConnect.mockRejectedValue(new Error('connection refused'));
 
 		await expect(
-			loadMcpToolOptions(context, 'workspace-1', { token: 'secret-key' }),
+			loadMcpToolOptions(context, 'workspace-1', {
+				token: 'secret-key',
+				apiOrigin: DEFAULT_API_ORIGIN,
+			}),
 		).rejects.toThrow('connection refused');
 	});
 
@@ -563,7 +648,10 @@ describe('loadMcpToolOptions', () => {
 		mockConnect.mockRejectedValue(new StreamableHTTPError(404, 'Not Found'));
 
 		await expect(
-			loadMcpToolOptions(context, 'workspace-1', { token: 'secret-key' }),
+			loadMcpToolOptions(context, 'workspace-1', {
+				token: 'secret-key',
+				apiOrigin: DEFAULT_API_ORIGIN,
+			}),
 		).rejects.toThrow('Streamable HTTP error: Not Found');
 	});
 
@@ -571,7 +659,10 @@ describe('loadMcpToolOptions', () => {
 		mockConnect.mockRejectedValue(new StreamableHTTPError(403, 'Forbidden'));
 
 		await expect(
-			loadMcpToolOptions(context, 'workspace-1', { token: 'secret-key' }),
+			loadMcpToolOptions(context, 'workspace-1', {
+				token: 'secret-key',
+				apiOrigin: DEFAULT_API_ORIGIN,
+			}),
 		).rejects.toThrow(/doesn't have access to this workspace.*org-wide one/s);
 	});
 
@@ -579,7 +670,10 @@ describe('loadMcpToolOptions', () => {
 		mockConnect.mockRejectedValue(new StreamableHTTPError(401, 'Unauthorized'));
 
 		await expect(
-			loadMcpToolOptions(context, 'workspace-1', { token: 'secret-key' }),
+			loadMcpToolOptions(context, 'workspace-1', {
+				token: 'secret-key',
+				apiOrigin: DEFAULT_API_ORIGIN,
+			}),
 		).rejects.toThrow(/API key.*valid/);
 	});
 });

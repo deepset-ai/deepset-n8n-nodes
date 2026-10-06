@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IExecuteFunctions, ILoadOptionsFunctions, ISupplyDataFunctions } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { HaystackEnterpriseMcp } from '../../nodes/HaystackEnterpriseMcp/HaystackEnterpriseMcp.node';
 import { buildMcpToolName } from '../../nodes/HaystackEnterpriseMcp/utils';
 

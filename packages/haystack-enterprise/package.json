@@ -1,60 +1,63 @@
 {
-    "name": "n8n-nodes-haystack-enterprise",
-    "version": "0.1.0",
-    "description": "N8n community node package for integrating with Haystack Enterprise Platform.",
-    "license": "MIT",
-    "homepage": "https://www.deepset.ai",
-    "keywords": [
-        "n8n-community-node-package",
-        "deepset",
-        "haystack",
-        "haystack enterprise",
-        "ai"
-    ],
-    "author": {
-        "name": "deepset",
-        "email": "service@deepset.ai"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/deepset-ai/deepset-n8n-nodes.git",
-        "directory": "packages/haystack-enterprise"
-    },
-    "scripts": {
-        "build": "n8n-node build",
-        "build:watch": "tsc --watch",
-        "dev": "n8n-node dev",
-        "lint": "eslint nodes credentials package.json && eslint --config eslint.test.config.mjs test",
-        "lint:fix": "eslint nodes credentials package.json --fix && eslint --config eslint.test.config.mjs test --fix",
-        "test": "vitest run",
-        "cloud-scan": "node scripts/cloud-scan.mjs",
-        "release": "n8n-node release",
-        "prepublishOnly": "n8n-node prerelease"
-    },
-    "files": [
-        "dist"
-    ],
-    "n8n": {
-        "n8nNodesApiVersion": 1,
-        "strict": true,
-        "credentials": [
-            "dist/credentials/HaystackEnterpriseApi.credentials.js",
-            "dist/credentials/HaystackEnterpriseOAuth2Api.credentials.js"
-        ],
-        "nodes": [
-            "dist/nodes/HaystackEnterprise/HaystackEnterpriseAi.node.js"
-        ]
-    },
-    "devDependencies": {
-        "@n8n/node-cli": "^0.41.2",
-        "@n8n/scan-community-package": "*",
-        "eslint": "9.39.5",
-        "prettier": "3.9.6",
-        "release-it": "^20.2.1",
-        "typescript": "5.9.3",
-        "vitest": "^3.0.0"
-    },
-    "peerDependencies": {
-        "n8n-workflow": "*"
-    }
+	"name": "n8n-nodes-haystack-enterprise",
+	"version": "0.1.0",
+	"description": "N8n community node package for integrating with Haystack Enterprise Platform.",
+	"license": "MIT",
+	"homepage": "https://www.deepset.ai",
+	"keywords": [
+		"n8n-community-node-package",
+		"deepset",
+		"haystack",
+		"haystack enterprise",
+		"ai"
+	],
+	"author": {
+		"name": "deepset",
+		"email": "service@deepset.ai"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/deepset-ai/deepset-n8n-nodes.git",
+		"directory": "packages/haystack-enterprise"
+	},
+	"scripts": {
+		"build": "n8n-node build",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "eslint nodes credentials package.json && eslint --config eslint.test.config.mjs test",
+		"lint:fix": "eslint nodes credentials package.json --fix && eslint --config eslint.test.config.mjs test --fix",
+		"test": "vitest run",
+		"cloud-scan": "node scripts/cloud-scan.mjs",
+		"release": "n8n-node release",
+		"prepublishOnly": "n8n-node prerelease"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"aiNodeSdkVersion": 1,
+		"strict": true,
+		"credentials": [
+			"dist/credentials/HaystackEnterpriseApi.credentials.js",
+			"dist/credentials/HaystackEnterpriseOAuth2Api.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/HaystackEnterprise/HaystackEnterpriseAi.node.js",
+			"dist/nodes/HaystackEnterpriseChatModel/HaystackEnterpriseChatModel.node.js"
+		]
+	},
+	"devDependencies": {
+		"@n8n/node-cli": "^0.41.2",
+		"@n8n/scan-community-package": "*",
+		"eslint": "9.39.5",
+		"prettier": "3.9.6",
+		"release-it": "^20.2.1",
+		"typescript": "5.9.3",
+		"vitest": "^3.0.0"
+	},
+	"peerDependencies": {
+		"@n8n/ai-node-sdk": "*",
+		"n8n-workflow": "*"
+	}
 }

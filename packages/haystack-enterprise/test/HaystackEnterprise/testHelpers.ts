@@ -1,5 +1,5 @@
-import { vi } from 'vitest';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { vi } from 'vitest';
 
 /**
  * Minimal fake IExecuteFunctions context shared by the resource execute()
@@ -16,6 +16,7 @@ export function createExecuteContext(
 	httpRequestWithAuthentication: (...args: unknown[]) => unknown,
 	extraHelpers: Record<string, unknown> = {},
 	extraContext: Record<string, unknown> = {},
+	credentials: Record<string, unknown> = { apiKey: 'test-key' },
 ) {
 	const httpRequestMock = vi.fn(httpRequestWithAuthentication);
 
@@ -24,6 +25,7 @@ export function createExecuteContext(
 		getNode: () => ({ name: 'Haystack Enterprise AI' }),
 		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
 			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
+		getCredentials: async () => credentials,
 		...extraContext,
 	} as unknown as IExecuteFunctions;
 

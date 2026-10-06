@@ -54,15 +54,17 @@ export class HaystackEnterpriseOAuth2Api implements ICredentialType {
 				'Whether to let n8n register itself as an OAuth2 client automatically (RFC 7591) instead of pasting in a client ID and secret created by hand. Turn this off only if your Haystack Enterprise deployment does not offer dynamic client registration.',
 		},
 		{
-			// Same field as oAuth2Api's, re-declared to give it the Haystack Enterprise default.
+			// Same field as oAuth2Api's, re-declared to give it the Haystack Enterprise default and to
+			// show it regardless of the DCR toggle: besides driving DCR discovery, the nodes derive the
+			// API base URL for every request from it (like the API key credential's Server URL), so a
+			// self-hosted user with a hand-created client still needs to be able to set it.
 			displayName: 'Server URL',
 			name: 'serverUrl',
 			type: 'string',
 			default: 'https://api.cloud.deepset.ai/api/v1',
 			required: true,
-			displayOptions: { show: { useDynamicClientRegistration: [true] } },
 			description:
-				'The Haystack Enterprise API base URL. n8n discovers the authorization server from it (via /.well-known/oauth-protected-resource) and registers itself there. Change this only for a self-hosted or non-production Haystack Enterprise API.',
+				'The Haystack Enterprise API base URL. The nodes send their requests here, and with Dynamic Client Registration on, n8n also discovers the authorization server from it (via /.well-known/oauth-protected-resource) and registers itself there. Change this only for a self-hosted or non-production Haystack Enterprise API.',
 		},
 		{
 			// Same field as oAuth2Api's (shown only when DCR is off), re-declared to default to the

@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
 import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { describe, expect, it, vi } from 'vitest';
+
 import {
 	apiRequest,
 	consumeSseStream,
@@ -9,6 +10,8 @@ import {
 	extractStreamErrorDetail,
 	extractWorkspaceList,
 	fetchPaginatedResults,
+	getApiBaseUrlFromCredentials,
+	getApiBaseUrlV1FromOrigin,
 	getCredentialType,
 	loadDeploymentOptions,
 	loadDeploymentOptionsWithAllOption,
@@ -16,6 +19,7 @@ import {
 	loadIndexOptions,
 	loadSearchSessionOptions,
 	loadWorkspaceOptions,
+	normalizeApiOrigin,
 	parseJsonField,
 	withServiceActivationRetry,
 } from '../../nodes/HaystackEnterprise/utils';
@@ -23,6 +27,7 @@ import { FakeStream } from './testHelpers';
 
 function createContext<T = ILoadOptionsFunctions>(
 	httpRequestWithAuthentication: (...args: unknown[]) => unknown,
+	credentials: IDataObject = { apiKey: 'test-key' },
 ): T {
 	return {
 		helpers: { httpRequestWithAuthentication },
@@ -31,19 +36,53 @@ function createContext<T = ILoadOptionsFunctions>(
 		// fake — always falls back to the default 'apiKey', same as real n8n does for an unset
 		// parameter.
 		getNodeParameter: (_name: string, _itemIndex: number, fallback?: unknown) => fallback,
+		getCredentials: async () => credentials,
 	} as unknown as T;
 }
 
 function createLoadOptionsContext(
 	httpRequestWithAuthentication: (...args: unknown[]) => unknown,
 	workspaceName = 'ws',
+	credentials: IDataObject = { apiKey: 'test-key' },
 ): ILoadOptionsFunctions {
 	return {
 		helpers: { httpRequestWithAuthentication },
 		getNode: () => ({ name: 'Haystack Enterprise AI' }),
 		getNodeParameter: (name: string) => (name === 'workspaceName' ? workspaceName : undefined),
+		getCredentials: async () => credentials,
 	} as unknown as ILoadOptionsFunctions;
 }
+
+describe('normalizeApiOrigin', () => {
+	it('trims whitespace and trailing slashes', () => {
+		expect(normalizeApiOrigin('  https://haystack.example.com/  ')).toBe(
+			'https://haystack.example.com',
+		);
+	});
+});
+
+describe('getApiBaseUrlFromCredentials', () => {
+	it('defaults to production when serverUrl is missing', () => {
+		expect(getApiBaseUrlFromCredentials({ apiKey: 'k' })).toBe(
+			'https://api.cloud.deepset.ai/api/v1',
+		);
+	});
+
+	it('derives v1 from a custom server URL', () => {
+		expect(getApiBaseUrlFromCredentials({ apiKey: 'k', serverUrl: 'https://dev.internal/' })).toBe(
+			'https://dev.internal/api/v1',
+		);
+	});
+
+	it('does not double /api/v1 when the credential already includes it', () => {
+		expect(
+			getApiBaseUrlFromCredentials({ apiKey: 'k', serverUrl: 'https://dev.internal/api/v1/' }),
+		).toBe('https://dev.internal/api/v1');
+		expect(getApiBaseUrlV1FromOrigin('https://dev.internal/api/v1')).toBe(
+			'https://dev.internal/api/v1',
+		);
+	});
+});
 
 describe('extractWorkspaceList', () => {
 	it('accepts a bare array response', () => {
@@ -194,9 +233,11 @@ describe('getCredentialType', () => {
 describe('apiRequest', () => {
 	it("authenticates with the OAuth2 credential type when the node's Authentication is OAuth2", async () => {
 		const httpRequestWithAuthentication = vi.fn(async () => ({}));
+		const getCredentials = vi.fn(async () => ({ oauthTokenData: { access_token: 'token' } }));
 		const context = {
 			helpers: { httpRequestWithAuthentication },
 			getNode: () => ({ name: 'Haystack Enterprise AI' }),
+			getCredentials,
 			getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
 				name === 'authentication' ? 'oAuth2' : fallback,
 		} as unknown as IExecuteFunctions;
@@ -206,6 +247,46 @@ describe('apiRequest', () => {
 		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'haystackEnterpriseOAuth2Api',
 			expect.objectContaining({ method: 'GET', url: expect.stringContaining('/workspaces') }),
+		);
+		// The base URL must come from the credential that's actually attached (the OAuth2 one).
+		expect(getCredentials).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
+	});
+
+	it("derives the API base URL from the OAuth2 credential's Server URL (n8n's DCR field, which includes /api/v1)", async () => {
+		const httpRequestWithAuthentication = vi.fn(async () => ({}));
+		const context = {
+			helpers: { httpRequestWithAuthentication },
+			getNode: () => ({ name: 'Haystack Enterprise AI' }),
+			getCredentials: async () => ({
+				serverUrl: 'https://self-hosted.example.com/api/v1',
+				oauthTokenData: { access_token: 'token' },
+			}),
+			getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
+				name === 'authentication' ? 'oAuth2' : fallback,
+		} as unknown as IExecuteFunctions;
+
+		await apiRequest.call(context, 'GET', '/workspaces');
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseOAuth2Api',
+			expect.objectContaining({ url: 'https://self-hosted.example.com/api/v1/workspaces' }),
+		);
+	});
+
+	it('uses the Server URL from credentials when building the request URL', async () => {
+		const httpRequestWithAuthentication = vi.fn(async () => ({ ok: true }));
+		const context = createContext(httpRequestWithAuthentication, {
+			apiKey: 'test-key',
+			serverUrl: 'https://self-hosted.example.com',
+		});
+
+		await apiRequest.call(context, 'GET', '/workspaces');
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseApi',
+			expect.objectContaining({
+				url: 'https://self-hosted.example.com/api/v1/workspaces',
+			}),
 		);
 	});
 
@@ -309,6 +390,30 @@ describe('apiRequest', () => {
 
 		await expect(apiRequest.call(context, 'GET', '/workspaces')).rejects.toMatchObject({
 			description: 'Something else went wrong',
+		});
+	});
+
+	it('surfaces OpenAI-style `{ error: { message } }` bodies as the NodeApiError description', async () => {
+		const context = createContext(async () => {
+			throw Object.assign(new Error('Request failed with status code 500'), {
+				response: {
+					status: 500,
+					data: {
+						error: {
+							message: 'Internal server error',
+							type: 'server_error',
+							param: null,
+							code: null,
+						},
+					},
+				},
+			});
+		});
+
+		await expect(
+			apiRequest.call(context, 'POST', '/workspaces/ws/deployments/v1/chat/completions'),
+		).rejects.toMatchObject({
+			description: 'Internal server error',
 		});
 	});
 
@@ -521,6 +626,30 @@ describe('extractStreamErrorDetail', () => {
 		).toEqual({
 			message: 'missing component X',
 			data: { errors: ['missing component X', 'invalid config Y'] },
+		});
+	});
+
+	it('uses an OpenAI-style `{ message }` payload as the message, keeping the full payload as data', () => {
+		expect(
+			extractStreamErrorDetail({ message: 'Upstream pipeline failed', type: 'server_error' }),
+		).toEqual({
+			message: 'Upstream pipeline failed',
+			data: { message: 'Upstream pipeline failed', type: 'server_error' },
+		});
+	});
+
+	it('uses an OpenAI-style `{ error: { message } }` envelope as the message', () => {
+		const payload = {
+			error: {
+				message: 'Internal server error',
+				type: 'server_error',
+				param: null,
+				code: null,
+			},
+		};
+		expect(extractStreamErrorDetail(payload)).toEqual({
+			message: 'Internal server error',
+			data: payload,
 		});
 	});
 

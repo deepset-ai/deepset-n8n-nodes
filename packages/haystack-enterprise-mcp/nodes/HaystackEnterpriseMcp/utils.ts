@@ -1,3 +1,6 @@
+import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
+import type { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js';
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,24 +9,63 @@ import type {
 	ISupplyDataFunctions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import {
 	StreamableHTTPClientTransport,
 	StreamableHTTPError,
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { ErrorCode, McpError, type Tool } from '@modelcontextprotocol/sdk/types.js';
-import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
-import type { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js';
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-export const API_BASE_URL_V1 = 'https://api.cloud.deepset.ai/api/v1';
-export const API_BASE_URL_V2 = 'https://api.cloud.deepset.ai/api/v2';
+// Kept in sync by hand with packages/haystack-enterprise/nodes/HaystackEnterprise/utils.ts
+// (DEFAULT_API_ORIGIN / normalizeApiOrigin / getApiOriginFromCredentials / getApiBaseUrlV1FromOrigin).
+export const DEFAULT_API_ORIGIN = 'https://api.cloud.deepset.ai';
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
 const OAUTH2_CREDENTIAL_NAME = 'haystackEnterpriseOAuth2Api';
 const MCP_CLIENT_NAME = 'n8n-nodes-haystack-enterprise-mcp';
 const MCP_CLIENT_VERSION = '0.1.0';
 
 type McpContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions;
+
+export function normalizeApiOrigin(serverUrl: string): string {
+	return serverUrl.trim().replace(/\/+$/, '');
+}
+
+export function getApiOriginFromCredentials(credentials: IDataObject): string {
+	const serverUrl = credentials.serverUrl;
+	if (typeof serverUrl === 'string' && serverUrl.trim() !== '') {
+		return normalizeApiOrigin(serverUrl);
+	}
+	return DEFAULT_API_ORIGIN;
+}
+
+/** Strips a trailing `/api/v1` or `/api/v2` so versioned base URLs are not doubled. */
+function apiOriginWithoutVersionPath(origin: string): string {
+	const withoutVersion = normalizeApiOrigin(origin).replace(/\/api\/v[12]$/i, '');
+	return withoutVersion === '' ? DEFAULT_API_ORIGIN : withoutVersion;
+}
+
+export function getApiBaseUrlV1FromOrigin(origin: string): string {
+	return `${apiOriginWithoutVersionPath(origin)}/api/v1`;
+}
+
+export function getApiBaseUrlV2FromOrigin(origin: string): string {
+	return `${apiOriginWithoutVersionPath(origin)}/api/v2`;
+}
+
+/**
+ * Both credential types carry a `serverUrl`: the API key credential's is the API origin; the
+ * OAuth2 credential's is n8n's DCR "Server URL" (the protected resource, i.e. `<origin>/api/v1`).
+ * apiOriginWithoutVersionPath() strips the version path so either form yields the same base.
+ */
+export async function getApiOriginForContext(context: McpContext, itemIndex = 0): Promise<string> {
+	const credentialType =
+		getAuthenticationMode(context, itemIndex) === 'oAuth2'
+			? OAUTH2_CREDENTIAL_NAME
+			: CREDENTIAL_NAME;
+	const credentials = await context.getCredentials(credentialType);
+	return getApiOriginFromCredentials(credentials);
+}
 
 /**
  * ILoadOptionsFunctions.getNodeParameter() takes (name, fallback) — there's only ever one "item"
@@ -57,6 +99,8 @@ function getAuthenticationMode(context: McpContext, itemIndex: number): 'apiKey'
 export interface McpAuth {
 	/** The bearer token to send on every request. */
 	token: string;
+	/** API origin from the active credential's Server URL (see getApiOriginFromCredentials()). */
+	apiOrigin: string;
 	/**
 	 * Only set for OAuth2. Called after the MCP server rejects `token` with a 401; resolves to a
 	 * freshly refreshed access token (already persisted on the credential by n8n), or `undefined`
@@ -68,7 +112,10 @@ export interface McpAuth {
 export async function resolveMcpAuth(context: McpContext, itemIndex: number): Promise<McpAuth> {
 	if (getAuthenticationMode(context, itemIndex) === 'apiKey') {
 		const credentials = await context.getCredentials(CREDENTIAL_NAME);
-		return { token: credentials.apiKey as string };
+		return {
+			token: credentials.apiKey as string,
+			apiOrigin: getApiOriginFromCredentials(credentials),
+		};
 	}
 
 	// `oauthTokenData` is the token response n8n stored when the user clicked "Connect" (and
@@ -85,6 +132,7 @@ export async function resolveMcpAuth(context: McpContext, itemIndex: number): Pr
 
 	return {
 		token: accessToken,
+		apiOrigin: getApiOriginFromCredentials(credentials),
 		refresh: async () => {
 			// n8n's own helper: refreshes via the stored refresh token and persists the result on the
 			// credential, exactly as httpRequestWithAuthentication() would after a 401. Throws if there
@@ -151,7 +199,7 @@ export function createMcpTransport(
 	auth: McpAuth,
 	signal?: AbortSignal,
 ): { client: Client; transport: StreamableHTTPClientTransport; mcpUrl: string } {
-	const mcpUrl = `${API_BASE_URL_V2}/workspaces/${workspaceId}/mcp`;
+	const mcpUrl = `${getApiBaseUrlV2FromOrigin(auth.apiOrigin)}/workspaces/${workspaceId}/mcp`;
 	const client = new Client({ name: MCP_CLIENT_NAME, version: MCP_CLIENT_VERSION });
 	const transport = new StreamableHTTPClientTransport(new URL(mcpUrl), {
 		fetch: createBearerFetch(auth),
@@ -385,12 +433,13 @@ export async function loadWorkspaceOptions(
 	// httpRequestWithAuthentication() handles OAuth2 end to end, including refresh.
 	const credentialType =
 		getAuthenticationMode(context, 0) === 'oAuth2' ? OAUTH2_CREDENTIAL_NAME : CREDENTIAL_NAME;
+	const apiOrigin = await getApiOriginForContext(context);
 
 	let response: unknown;
 	try {
 		response = await context.helpers.httpRequestWithAuthentication.call(context, credentialType, {
 			method: 'GET',
-			url: `${API_BASE_URL_V1}/workspaces`,
+			url: `${getApiBaseUrlV1FromOrigin(apiOrigin)}/workspaces`,
 			json: true,
 		});
 	} catch (caught) {

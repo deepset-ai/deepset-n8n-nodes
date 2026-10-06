@@ -19,8 +19,15 @@ export const serviceOperations: INodeProperties[] = [
 				name: 'Chat (Streaming)',
 				value: 'chatStream',
 				description:
-					'Run a chat query against a deployed service and receive the answer incrementally, as it is generated',
+					'Run a chat query against a service and receive the answer incrementally, as it is generated',
 				action: 'Chat with a service streaming',
+			},
+			{
+				name: 'Chat Completions',
+				value: 'chatCompletions',
+				description:
+					'Run an OpenAI-style chat completion against a service. Clients send the full conversation in messages.',
+				action: 'Create a chat completion',
 			},
 			{
 				name: 'Get',
@@ -35,10 +42,17 @@ export const serviceOperations: INodeProperties[] = [
 				action: 'Get many services',
 			},
 			{
+				name: 'List Models (Chat Completions)',
+				value: 'listModels',
+				description:
+					'List workspace services as OpenAI-compatible models to use it with Chat Completions (`model` parameter)',
+				action: 'List models for chat completions',
+			},
+			{
 				name: 'Search (Streaming)',
 				value: 'searchStream',
 				description:
-					'Run a search query against a deployed service and receive the answer incrementally, as it is generated',
+					'Run a search query against a service and receive the answer incrementally, as it is generated',
 				action: 'Search a service streaming',
 			},
 		],
@@ -60,7 +74,8 @@ const commonAdditionalFields: INodeProperties[] = [
 		name: 'filters',
 		type: 'json',
 		default: '',
-		description: 'Haystack Enterprise filters to narrow down the search. See the Haystack Enterprise filtering logic docs.',
+		description:
+			'Haystack Enterprise filters to narrow down the search. See the Haystack Enterprise filtering logic docs.',
 	},
 	{
 		displayName: 'Params (JSON)',
@@ -74,7 +89,8 @@ const commonAdditionalFields: INodeProperties[] = [
 		name: 'viewPrompts',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to add the runtime prompts of all nodes to the response (runs the pipeline in debug mode)',
+		description:
+			'Whether to add the runtime prompts of all nodes to the response (runs the pipeline in debug mode)',
 	},
 ];
 
@@ -89,7 +105,8 @@ const streamingAdditionalFields: INodeProperties[] = [
 		name: 'includeResult',
 		type: 'boolean',
 		default: true,
-		description: 'Whether to stream a final event containing the complete pipeline result (answers/documents)',
+		description:
+			'Whether to stream a final event containing the complete pipeline result (answers/documents)',
 	},
 	{
 		displayName: 'Include Tool Calls',
@@ -110,12 +127,13 @@ const streamingAdditionalFields: INodeProperties[] = [
 		name: 'includeReasoning',
 		type: 'boolean',
 		default: false,
-		description: "Whether to stream the pipeline's intermediate reasoning output, if the underlying model supports it",
+		description:
+			"Whether to stream the pipeline's intermediate reasoning output, if the underlying model supports it",
 	},
 ];
 
 export const serviceFields: INodeProperties[] = [
-	// Get / Search (Streaming) / Chat (Streaming)
+	// Get / Search (Streaming) / Chat (Streaming) / Chat Completions
 	{
 		displayName: 'Service Name or ID',
 		name: 'deploymentId',
@@ -131,7 +149,7 @@ export const serviceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['service'],
-				operation: ['get', 'searchStream', 'chatStream'],
+				operation: ['get', 'searchStream', 'chatStream', 'chatCompletions'],
 			},
 		},
 	},
@@ -145,7 +163,7 @@ export const serviceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['service'],
-				operation: ['searchStream', 'chatStream'],
+				operation: ['searchStream', 'chatStream', 'chatCompletions'],
 			},
 		},
 	},
@@ -160,7 +178,7 @@ export const serviceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['service'],
-				operation: ['searchStream', 'chatStream'],
+				operation: ['searchStream', 'chatStream', 'chatCompletions'],
 				waitForActivation: [true],
 			},
 		},
@@ -350,7 +368,7 @@ export const serviceFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description:
-			'The ID of an existing search session to continue, for chat history. Leave empty to start a new session automatically — its ID is returned in the output\'s search_session_id field, ready to reuse on the next call to continue the conversation.',
+			"The ID of an existing search session to continue, for chat history. Leave empty to start a new session automatically — its ID is returned in the output's search_session_id field, ready to reuse on the next call to continue the conversation.",
 		displayOptions: {
 			show: {
 				resource: ['service'],
@@ -392,9 +410,172 @@ export const serviceFields: INodeProperties[] = [
 				type: 'number',
 				typeOptions: { minValue: 0 },
 				default: 3,
-				description: 'The number of most recent chat history items (query and answer) to include in the chat',
+				description:
+					'The number of most recent chat history items (query and answer) to include in the chat',
 			},
 			...streamingAdditionalFields,
+		],
+	},
+	// Chat Completions
+	{
+		displayName: 'Messages Input',
+		name: 'messagesInput',
+		type: 'options',
+		options: [
+			{ name: 'Define Below', value: 'fields' },
+			{ name: 'JSON', value: 'json' },
+		],
+		default: 'fields',
+		description:
+			'How to provide the conversation. Use JSON for multimodal content parts, tool-call-only assistant messages, or a messages array from a previous node.',
+		displayOptions: {
+			show: {
+				resource: ['service'],
+				operation: ['chatCompletions'],
+			},
+		},
+	},
+	{
+		displayName: 'Messages',
+		name: 'messages',
+		type: 'fixedCollection',
+		typeOptions: { multipleValues: true, sortable: true },
+		placeholder: 'Add Message',
+		default: { message: [{ role: 'user', content: '' }] },
+		required: true,
+		description:
+			'Conversation history sent to the service. Include prior turns for multi-turn chat.',
+		displayOptions: {
+			show: {
+				resource: ['service'],
+				operation: ['chatCompletions'],
+				messagesInput: ['fields'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Message',
+				name: 'message',
+				values: [
+					{
+						displayName: 'Role',
+						name: 'role',
+						type: 'options',
+						options: [
+							{ name: 'Assistant', value: 'assistant' },
+							{ name: 'System', value: 'system' },
+							{ name: 'Tool', value: 'tool' },
+							{ name: 'User', value: 'user' },
+						],
+						default: 'user',
+						description: 'The role of the message sender',
+					},
+					{
+						displayName: 'Content',
+						name: 'content',
+						type: 'string',
+						default: '',
+						typeOptions: { rows: 3 },
+						description:
+							'The message text. For tool-call-only assistant messages or multimodal content parts, use JSON input instead.',
+					},
+					{
+						displayName: 'Tool Call ID',
+						name: 'toolCallId',
+						type: 'string',
+						default: '',
+						description:
+							'The ID of the tool call this message is the result of. Required on tool messages.',
+						displayOptions: {
+							show: {
+								role: ['tool'],
+							},
+						},
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Messages',
+		name: 'messagesJson',
+		type: 'json',
+		default: '[{"role": "user", "content": ""}]',
+		required: true,
+		description:
+			'Conversation history as a JSON array of OpenAI-style messages (`role`, `content`, and optionally `tool_calls` / `tool_call_id`). Content may be a string or a content-parts array (`text`, `image_url` with a base64 data URL, `file` with a workspace file_id).',
+		displayOptions: {
+			show: {
+				resource: ['service'],
+				operation: ['chatCompletions'],
+				messagesInput: ['json'],
+			},
+		},
+	},
+	{
+		displayName: 'Stream',
+		name: 'stream',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to receive the response as Server-Sent Events. When off (the default), a single JSON chat completion is returned once generation finishes.',
+		displayOptions: {
+			show: {
+				resource: ['service'],
+				operation: ['chatCompletions'],
+			},
+		},
+	},
+	{
+		displayName: 'Simplify Output',
+		name: 'simplify',
+		type: 'boolean',
+		default: true,
+		description:
+			'Whether to return the assistant message content (and tool calls, if any) instead of the full OpenAI chat completion object — or, when Stream is on, instead of one item per SSE chunk',
+		displayOptions: {
+			show: {
+				resource: ['service'],
+				operation: ['chatCompletions'],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['service'],
+				operation: ['chatCompletions'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Extra Parameters (JSON)',
+				name: 'extraParameters',
+				type: 'json',
+				default: '{}',
+				description: 'Other OpenAI fields forwarded as-is. Merged over the named fields below.',
+			},
+			{
+				displayName: 'Max Completion Tokens',
+				name: 'maxCompletionTokens',
+				type: 'number',
+				typeOptions: { minValue: 1 },
+				default: 512,
+				description: 'The maximum number of tokens to generate',
+			},
+			{
+				displayName: 'Top P',
+				name: 'topP',
+				type: 'number',
+				typeOptions: { minValue: 0, maxValue: 1, numberPrecision: 2 },
+				default: 1,
+				description: 'Nucleus sampling probability mass',
+			},
 		],
 	},
 ];

@@ -1,5 +1,5 @@
-import { Readable } from 'node:stream';
 import type { IExecuteFunctions, IHttpRequestOptions } from 'n8n-workflow';
+import { Readable } from 'node:stream';
 
 export interface ContractTestContextOptions {
 	/** Flat parameter map — `getNodeParameter(name, _itemIndex, fallback)` reads from this, falling back like real n8n does when the parameter is absent. */
@@ -26,7 +26,9 @@ function toErrorLike(status: number, data: unknown): Error {
  * (File's `get`) — see the comment on that case in `src/registry/file.ts` for
  * why that's not just a missing feature here.
  */
-async function realHttpRequestWithAuthentication(requestOptions: IHttpRequestOptions): Promise<unknown> {
+async function realHttpRequestWithAuthentication(
+	requestOptions: IHttpRequestOptions,
+): Promise<unknown> {
 	const url = new URL(requestOptions.url);
 	for (const [key, value] of Object.entries(requestOptions.qs ?? {})) {
 		if (value !== undefined && value !== null) {
@@ -50,7 +52,11 @@ async function realHttpRequestWithAuthentication(requestOptions: IHttpRequestOpt
 			authorization: 'Bearer contract-test-token',
 			...(hasBody && !isFormData ? { 'content-type': 'application/json' } : {}),
 		},
-		body: isFormData ? (requestOptions.body as FormData) : hasBody ? JSON.stringify(requestOptions.body) : undefined,
+		body: isFormData
+			? (requestOptions.body as FormData)
+			: hasBody
+				? JSON.stringify(requestOptions.body)
+				: undefined,
 	});
 
 	if (!response.ok) {
@@ -85,13 +91,17 @@ async function realHttpRequestWithAuthentication(requestOptions: IHttpRequestOpt
  * `test/HaystackEnterprise/Service.execute.test.ts`), but with a real HTTP
  * layer instead of a mocked one.
  */
-export function buildContractTestContext({ params }: ContractTestContextOptions): IExecuteFunctions {
+export function buildContractTestContext({
+	params,
+}: ContractTestContextOptions): IExecuteFunctions {
 	// `utils.ts` calls this as `this.helpers.httpRequestWithAuthentication.call(this, credentialName, requestOptions)`
 	// — i.e. `Function.prototype.call` on the function itself, so this must be
 	// a plain function (matching the real n8n helper's shape and the repo's
 	// existing unit-test stubs), not an object with its own `.call` method.
-	const httpRequestWithAuthentication = (_credentialName: string, requestOptions: IHttpRequestOptions) =>
-		realHttpRequestWithAuthentication(requestOptions);
+	const httpRequestWithAuthentication = (
+		_credentialName: string,
+		requestOptions: IHttpRequestOptions,
+	) => realHttpRequestWithAuthentication(requestOptions);
 
 	return {
 		getNode: () => ({ name: 'Haystack Enterprise AI (contract test)' }),

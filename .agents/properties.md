@@ -1,15 +1,18 @@
 # Properties, expressions, and dynamic options
 
 ## Expressions
-Parameter values can be expressions when they start with `=`. Everything
-inside `{{ ... }}` is evaluated as JavaScript. Common (but not all)
-special variables:
+
+Parameter values can be expressions when they start with `=`. Everything inside `{{ ... }}` is
+evaluated as JavaScript. Common (but not all) special variables:
+
 - `$value` - the value of the current parameter
 - `$parameter` - object with all of the parameter values (key = name)
 - `$credentials` - object with all of the credential values
 
 ## displayOptions
+
 You can show or hide parameters based on other parameters using `displayOptions`:
+
 ```typescript
 {
   // ...
@@ -21,7 +24,9 @@ You can show or hide parameters based on other parameters using `displayOptions`
   },
 }
 ```
+
 Using condition:
+
 ```typescript
 {
   // ...
@@ -33,7 +38,9 @@ Using condition:
   },
 }
 ```
+
 Hide example:
+
 ```typescript
 {
   // ...
@@ -46,7 +53,9 @@ Hide example:
   },
 }
 ```
+
 You can also show/hide based on the node's version using `@version`:
+
 ```typescript
 {
   displayOptions: {
@@ -59,11 +68,14 @@ You can also show/hide based on the node's version using `@version`:
 ```
 
 ## Loading dynamic options
-Most properties are entirely defined in the code, but sometimes some
-data needs to be fetched dynamically. For that case, you can use one of:
+
+Most properties are entirely defined in the code, but sometimes some data needs to be fetched
+dynamically. For that case, you can use one of:
 
 ### loadOptionsMethod
+
 For `options` / `multiOptions`:
+
 ```typescript
 {
   displayName: 'Category',
@@ -76,20 +88,24 @@ For `options` / `multiOptions`:
   description: 'Choose a category',
 }
 ```
+
 Node class:
+
 ```typescript
 methods = {
-  loadOptions: {
-    async getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-      // Make an API call and return an array of { name, value }
-      return [];
-    },
-  },
+	loadOptions: {
+		async getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			// Make an API call and return an array of { name, value }
+			return [];
+		},
+	},
 };
 ```
 
 ### resourceLocator
+
 Used when the user can either choose from a list or specify an ID manually:
+
 ```typescript
 {
   displayName: 'Tool',
@@ -116,20 +132,23 @@ Used when the user can either choose from a list or specify an ID manually:
   ],
 }
 ```
+
 Node class:
+
 ```typescript
 methods = {
-  listSearch: {
-    async getTools(this: ILoadOptionsFunctions) {
-      // Return items suitable for a searchable list
-    },
-  },
+	listSearch: {
+		async getTools(this: ILoadOptionsFunctions) {
+			// Return items suitable for a searchable list
+		},
+	},
 };
 ```
 
 ### resourceMapper
-Use when the **schema is dynamic**, e.g. Google Sheets, where columns
-can change:
+
+Use when the **schema is dynamic**, e.g. Google Sheets, where columns can change:
+
 ```typescript
 {
   displayName: 'Parameters',
@@ -162,13 +181,16 @@ can change:
   },
 }
 ```
+
 Node class:
+
 ```typescript
 export async function getToolParameters(
-  this: ILoadOptionsFunctions,
+	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
-  // Implementation omitted; build fields based on the external tool
-  return { fields: [] };
+	// Implementation omitted; build fields based on the external tool
+	return { fields: [] };
 }
 ```
+
 Use `resourceMapper` **only when necessary**, as it is more advanced.

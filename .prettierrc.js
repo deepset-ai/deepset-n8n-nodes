@@ -1,4 +1,13 @@
+/** @type {import('prettier').Config} */
 module.exports = {
+	plugins: ['@ianvs/prettier-plugin-sort-imports'],
+
+	/**
+	 * https://github.com/IanVS/prettier-plugin-sort-imports#importorder
+	 */
+	importOrder: ['<TYPES>', '<BUILTIN_MODULES>', '<THIRD_PARTY_MODULES>', '', '^[.]'],
+	importOrderTypeScriptVersion: '5.0.0',
+
 	/**
 	 * https://prettier.io/docs/en/options.html#semicolons
 	 */
@@ -48,4 +57,17 @@ module.exports = {
 	 * https://prettier.io/docs/en/options.html#print-width
 	 */
 	printWidth: 100,
+
+	overrides: [
+		{
+			files: ['*.md', '*.mdx'],
+			options: {
+				/**
+				 * https://prettier.io/docs/en/options.html#prose-wrap
+				 * Reflow prose in READMEs and other docs (default "preserve" leaves long lines).
+				 */
+				proseWrap: 'always',
+			},
+		},
+	],
 };

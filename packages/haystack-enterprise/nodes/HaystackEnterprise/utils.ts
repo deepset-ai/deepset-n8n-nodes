@@ -5,13 +5,14 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	ISupplyDataFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
 const OAUTH2_CREDENTIAL_NAME = 'haystackEnterpriseOAuth2Api';
-const PRODUCTION_API_BASE_URL = 'https://api.cloud.deepset.ai/api/v1';
+export const DEFAULT_API_ORIGIN = 'https://api.cloud.deepset.ai';
 
 /**
  * ILoadOptionsFunctions.getNodeParameter() takes (name, fallback) — there's only ever one "item"
@@ -19,20 +20,20 @@ const PRODUCTION_API_BASE_URL = 'https://api.cloud.deepset.ai/api/v1';
  * former with the latter's argument order would silently pass the item index as the fallback.
  * getCurrentNodeParameter() only exists on the load-options context, so it's the discriminator.
  */
-function isLoadOptionsContext(
-	context: IExecuteFunctions | ILoadOptionsFunctions,
-): context is ILoadOptionsFunctions {
+type NodeContext = IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions;
+
+function isLoadOptionsContext(context: NodeContext): context is ILoadOptionsFunctions {
 	return typeof (context as Partial<ILoadOptionsFunctions>).getCurrentNodeParameter === 'function';
 }
 
 /**
- * The node offers API Key and OAuth2 as alternate credential types, picked via the
- * "Authentication" node parameter (see HaystackEnterpriseAi.node.ts) — this resolves that choice
- * to the credential type name httpRequestWithAuthentication() should authenticate with. Read at
- * item index 0: "Authentication" is a static top-level dropdown, not a per-item expression. Falls
- * back to API Key for workflows saved before the parameter existed.
+ * The nodes offer API Key and OAuth2 as alternate credential types, picked via the
+ * "Authentication" node parameter — this resolves that choice to the credential type name
+ * httpRequestWithAuthentication() / getCredentials() should use. Read at item index 0:
+ * "Authentication" is a static top-level dropdown, not a per-item expression. Falls back to API
+ * Key for workflows saved before the parameter existed.
  */
-export function getCredentialType(context: IExecuteFunctions | ILoadOptionsFunctions): string {
+export function getCredentialType(context: NodeContext): string {
 	const authentication = isLoadOptionsContext(context)
 		? context.getNodeParameter('authentication', 'apiKey')
 		: context.getNodeParameter('authentication', 0, 'apiKey');
@@ -41,29 +42,70 @@ export function getCredentialType(context: IExecuteFunctions | ILoadOptionsFunct
 
 let apiBaseUrlOverride: string | undefined;
 
+export function normalizeApiOrigin(serverUrl: string): string {
+	return serverUrl.trim().replace(/\/+$/, '');
+}
+
+export function getApiOriginFromCredentials(credentials: IDataObject): string {
+	const serverUrl = credentials.serverUrl;
+	if (typeof serverUrl === 'string' && serverUrl.trim() !== '') {
+		return normalizeApiOrigin(serverUrl);
+	}
+	return DEFAULT_API_ORIGIN;
+}
+
+/** Strips a trailing `/api/v1` or `/api/v2` so versioned base URLs are not doubled. */
+function apiOriginWithoutVersionPath(origin: string): string {
+	const withoutVersion = normalizeApiOrigin(origin).replace(/\/api\/v[12]$/i, '');
+	return withoutVersion === '' ? DEFAULT_API_ORIGIN : withoutVersion;
+}
+
+export function getApiBaseUrlV1FromOrigin(origin: string): string {
+	return `${apiOriginWithoutVersionPath(origin)}/api/v1`;
+}
+
+export function getApiBaseUrlFromCredentials(credentials: IDataObject): string {
+	return getApiBaseUrlV1FromOrigin(getApiOriginFromCredentials(credentials));
+}
+
 /**
- * Test-only escape hatch — lets the contract-tests package point requests at
- * a local Prism mock or an ephemeral environment instead of production. Not
- * `process.env`-based deliberately: reading `process.env` directly here would
- * let any environment variable on the host process affect this cloud-eligible
- * package's requests, which is exactly what
- * `@n8n/community-nodes/no-restricted-globals` guards against. Only
- * `contract-tests` (a private, non-published dev package with no cloud
- * eligibility constraints) ever calls this, from its own `setupFiles` hook.
+ * Test-only escape hatch for targeting local Prism mocks or ephemeral environments.
+ * Deliberately avoids `process.env` so host environment variables cannot affect
+ * requests from this cloud-eligible package (`@n8n/community-nodes/no-restricted-globals`).
  */
 export function setApiBaseUrlOverrideForTests(url: string | undefined): void {
 	apiBaseUrlOverride = url;
 }
 
-export function getApiBaseUrl(): string {
-	return apiBaseUrlOverride ?? PRODUCTION_API_BASE_URL;
+/**
+ * Both credential types carry a `serverUrl`: the API key credential's is the API origin; the
+ * OAuth2 credential's is n8n's DCR "Server URL" (the protected resource, i.e. `<origin>/api/v1`).
+ * getApiBaseUrlFromCredentials() strips a trailing `/api/v1` so either form yields the same base.
+ */
+export async function getApiBaseUrlForContext(context: NodeContext): Promise<string> {
+	if (apiBaseUrlOverride) {
+		return apiBaseUrlOverride;
+	}
+	const credentials = await context.getCredentials(getCredentialType(context));
+	return getApiBaseUrlFromCredentials(credentials);
+}
+
+/** Deployment chat completions use OpenAI-style `{ error: { message, type, ... } }` bodies. */
+function extractOpenAiNestedErrorMessage(data: IDataObject): string | undefined {
+	const nested = data.error;
+	if (!nested || typeof nested !== 'object' || Array.isArray(nested)) {
+		return undefined;
+	}
+	const message = (nested as IDataObject).message;
+	return typeof message === 'string' && message.length > 0 ? message : undefined;
 }
 
 /**
  * Haystack Enterprise's API reports errors as `{ "errors": string[] }` (and some
  * endpoints use FastAPI's default `{ "detail": ... }` shape), neither of
  * which `NodeApiError` recognizes out of the box — it only special-cases
- * `data.message` / `data.error.message`, then falls back to matching the
+ * `data.message` / `data.error.message` (the latter is not always applied
+ * when the failure is already wrapped), then falls back to matching the
  * raw HTTP error's own top-level `.message` (e.g. "Request failed with
  * status code 500") first, since `message` sorts before `detail`/`errors`
  * in its key-priority list. That silently swallows the real API error.
@@ -113,6 +155,11 @@ function extractApiErrorDetail(
 			if (messages.length > 0) {
 				return messages.join('; ');
 			}
+		}
+
+		const openAiMessage = extractOpenAiNestedErrorMessage(data as IDataObject);
+		if (openAiMessage) {
+			return openAiMessage;
 		}
 
 		const message = (data as IDataObject).message;
@@ -219,7 +266,7 @@ function describeApiAuthErrorHint(
  * can tell a "Service" (deployments) call apart from any other resource.
  */
 async function withApiErrorWrapping<T>(
-	context: IExecuteFunctions | ILoadOptionsFunctions,
+	context: NodeContext,
 	endpoint: string,
 	fn: () => Promise<T>,
 	extractOptions: { firstErrorOnly?: boolean } = {},
@@ -257,14 +304,15 @@ async function withApiErrorWrapping<T>(
  * Haystack Enterprise API the same way (base URL, credential, error wrapping).
  */
 export async function apiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: NodeContext,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	options: Partial<IHttpRequestOptions> = {},
 ): Promise<unknown> {
+	const apiBaseUrl = await getApiBaseUrlForContext(this);
 	const requestOptions: IHttpRequestOptions = {
 		method,
-		url: `${getApiBaseUrl()}${endpoint}`,
+		url: `${apiBaseUrl}${endpoint}`,
 		json: true,
 		...options,
 	};
@@ -272,6 +320,55 @@ export async function apiRequest(
 	return withApiErrorWrapping(this, endpoint, () =>
 		this.helpers.httpRequestWithAuthentication.call(this, getCredentialType(this), requestOptions),
 	);
+}
+
+/**
+ * The raw bearer token for code paths that can't go through httpRequestWithAuthentication() — the
+ * Chat Model sub-node hands a static key to @n8n/ai-node-sdk, which has no auth hook of its own.
+ *
+ * For OAuth2 the stored access token may have expired and nothing downstream can refresh it, so
+ * one cheap authenticated request is made first: on a 401 n8n refreshes the token and persists it
+ * (see n8n-core's requestOAuth2()), and getCredentials() then returns the fresh one. Deliberately
+ * not an unconditional refreshOAuth2Token(): refresh tokens rotate, so refreshing on every run
+ * would race between concurrent executions sharing the credential.
+ */
+export async function resolveBearerToken(context: ISupplyDataFunctions): Promise<string> {
+	if (getCredentialType(context) === CREDENTIAL_NAME) {
+		const credentials = await context.getCredentials(CREDENTIAL_NAME);
+		const apiKey = credentials.apiKey;
+		if (typeof apiKey !== 'string' || apiKey === '') {
+			throw new NodeOperationError(
+				context.getNode(),
+				'The Haystack Enterprise API credential is missing an API key.',
+			);
+		}
+		return apiKey;
+	}
+
+	const credentialsBefore = await context.getCredentials(OAUTH2_CREDENTIAL_NAME);
+	if (!readAccessToken(credentialsBefore)) {
+		throw new NodeOperationError(
+			context.getNode(),
+			'The Haystack Enterprise OAuth2 credential is not connected yet. Open the credential and click "Connect".',
+		);
+	}
+
+	await apiRequest.call(context, 'GET', '/workspaces');
+
+	const accessToken = readAccessToken(await context.getCredentials(OAUTH2_CREDENTIAL_NAME));
+	if (!accessToken) {
+		throw new NodeOperationError(
+			context.getNode(),
+			'Failed to obtain an access token from the Haystack Enterprise OAuth2 credential. Reconnect the credential.',
+		);
+	}
+	return accessToken;
+}
+
+function readAccessToken(credentials: IDataObject): string | undefined {
+	const accessToken = (credentials.oauthTokenData as { access_token?: unknown } | undefined)
+		?.access_token;
+	return typeof accessToken === 'string' && accessToken !== '' ? accessToken : undefined;
 }
 
 /**
@@ -324,12 +421,13 @@ export async function apiRequestStream(
 		this,
 		endpoint,
 		async () => {
+			const apiBaseUrl = await getApiBaseUrlForContext(this);
 			const response = (await this.helpers.httpRequestWithAuthentication.call(
 				this,
 				getCredentialType(this),
 				{
 					method,
-					url: `${getApiBaseUrl()}${endpoint}`,
+					url: `${apiBaseUrl}${endpoint}`,
 					json: true,
 					body,
 					encoding: 'stream',
@@ -412,9 +510,11 @@ export async function consumeSseStream(
 
 /**
  * A mid-stream SSE `error` event's `error` field arrives either as a plain
- * string or as Haystack Enterprise's `{ errors: string[] }` shape (see
- * extractApiErrorDetail() above) — never both, and not always the latter, so
- * this falls back to a generic message when neither shape yields one. `data`
+ * string, as Haystack Enterprise's `{ errors: string[] }` shape (see
+ * extractApiErrorDetail() above), as an OpenAI `{ message }` object, or as
+ * `{ error: { message } }` on chat-completions streams — never more than one
+ * of those, and not always
+ * present, so this falls back to a generic message when none yields one. `data`
  * is whatever raw payload was passed in, for callers to attach to
  * `NodeApiError`/`NodeOperationError`'s `.context.data` (n8n's "Error data"
  * section) so the full event is still visible even when the message had to
@@ -429,12 +529,20 @@ export function extractStreamErrorDetail(error: IDataObject[string]): {
 	}
 
 	if (error && typeof error === 'object') {
-		const errors = (error as IDataObject).errors;
+		const payload = error as IDataObject;
+		const errors = payload.errors;
 		if (Array.isArray(errors)) {
 			const message = errors.find((item): item is string => typeof item === 'string');
 			if (message) {
 				return { message, data: error };
 			}
+		}
+		if (typeof payload.message === 'string') {
+			return { message: payload.message, data: error };
+		}
+		const openAiMessage = extractOpenAiNestedErrorMessage(payload);
+		if (openAiMessage) {
+			return { message: openAiMessage, data: error };
 		}
 	}
 

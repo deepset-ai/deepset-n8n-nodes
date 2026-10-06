@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { createApiDocsNotice } from '../shared';
 
 const apiDocsNotice = createApiDocsNotice('file');
@@ -15,16 +16,36 @@ export const fileOperations: INodeProperties[] = [
 			},
 		},
 		options: [
-			{ name: 'Delete', value: 'delete', description: 'Delete a file by ID', action: 'Delete a file' },
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a file by ID',
+				action: 'Delete a file',
+			},
 			{
 				name: 'Delete Many',
 				value: 'deleteMany',
 				description: 'Delete files by name, or all files in the workspace',
 				action: 'Delete many files',
 			},
-			{ name: 'Get', value: 'get', description: 'Get the contents of a file', action: 'Get a file' },
-			{ name: 'Get Many', value: 'getAll', description: 'List files in a workspace', action: 'Get many files' },
-			{ name: 'Get Meta', value: 'getMeta', description: 'Get the metadata of a file', action: 'Get file metadata' },
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get the contents of a file',
+				action: 'Get a file',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'List files in a workspace',
+				action: 'Get many files',
+			},
+			{
+				name: 'Get Meta',
+				value: 'getMeta',
+				description: 'Get the metadata of a file',
+				action: 'Get file metadata',
+			},
 			{
 				name: 'Update Meta',
 				value: 'updateMeta',
@@ -37,7 +58,12 @@ export const fileOperations: INodeProperties[] = [
 				description: 'Update the metadata of multiple files at once',
 				action: 'Update metadata for multiple files',
 			},
-			{ name: 'Upload', value: 'upload', description: 'Upload a file, or create a text file', action: 'Upload a file' },
+			{
+				name: 'Upload',
+				value: 'upload',
+				description: 'Upload a file, or create a text file',
+				action: 'Upload a file',
+			},
 		],
 		default: 'getAll',
 	},
@@ -134,9 +160,21 @@ export const fileFields: INodeProperties[] = [
 		name: 'writeMode',
 		type: 'options',
 		options: [
-			{ name: 'Keep', value: 'KEEP', description: 'Keep both files if a file with the same name already exists' },
-			{ name: 'Overwrite', value: 'OVERWRITE', description: 'Overwrite all files with the same name' },
-			{ name: 'Fail', value: 'FAIL', description: 'Fail if a file with the same name already exists' },
+			{
+				name: 'Keep',
+				value: 'KEEP',
+				description: 'Keep both files if a file with the same name already exists',
+			},
+			{
+				name: 'Overwrite',
+				value: 'OVERWRITE',
+				description: 'Overwrite all files with the same name',
+			},
+			{
+				name: 'Fail',
+				value: 'FAIL',
+				description: 'Fail if a file with the same name already exists',
+			},
 		],
 		default: 'KEEP',
 		displayOptions: {
@@ -151,7 +189,8 @@ export const fileFields: INodeProperties[] = [
 		name: 'metadata',
 		type: 'json',
 		default: '{}',
-		description: 'Metadata to attach to the file, as a JSON object. Usable as filters during search.',
+		description:
+			'Metadata to attach to the file, as a JSON object. Usable as filters during search.',
 		displayOptions: {
 			show: {
 				resource: ['file'],
@@ -292,7 +331,8 @@ export const fileFields: INodeProperties[] = [
 			{ name: 'Text', value: 'text' },
 		],
 		default: 'binary',
-		description: 'Whether to return the file as binary data (works for any file type) or as plain text',
+		description:
+			'Whether to return the file as binary data (works for any file type) or as plain text',
 		displayOptions: {
 			show: {
 				resource: ['file'],
@@ -315,10 +355,16 @@ export const fileFields: INodeProperties[] = [
 		},
 	},
 	// Get Meta
-	apiDocsNotice('getMeta', 'get-file-meta-api-v-1-workspaces-workspace-name-files-file-id-meta-get'),
+	apiDocsNotice(
+		'getMeta',
+		'get-file-meta-api-v-1-workspaces-workspace-name-files-file-id-meta-get',
+	),
 	fileIdField('getMeta'),
 	// Update Meta
-	apiDocsNotice('updateMeta', 'update-file-meta-api-v-1-workspaces-workspace-name-files-file-id-meta-patch'),
+	apiDocsNotice(
+		'updateMeta',
+		'update-file-meta-api-v-1-workspaces-workspace-name-files-file-id-meta-patch',
+	),
 	fileIdField('updateMeta'),
 	{
 		displayName: 'Metadata',
@@ -327,7 +373,7 @@ export const fileFields: INodeProperties[] = [
 		default: '{}',
 		required: true,
 		description:
-			'Metadata to merge into the existing metadata, as a JSON object. Set a key\'s value to null to delete that key.',
+			"Metadata to merge into the existing metadata, as a JSON object. Set a key's value to null to delete that key.",
 		displayOptions: {
 			show: {
 				resource: ['file'],
@@ -336,7 +382,10 @@ export const fileFields: INodeProperties[] = [
 		},
 	},
 	// Update Meta Bulk
-	apiDocsNotice('updateMetaBulk', 'update-file-meta-bulk-api-v-1-workspaces-workspace-name-files-update-meta-post'),
+	apiDocsNotice(
+		'updateMetaBulk',
+		'update-file-meta-bulk-api-v-1-workspaces-workspace-name-files-update-meta-post',
+	),
 	{
 		displayName: 'Files',
 		name: 'filesMetadata',
@@ -390,7 +439,8 @@ export const fileFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'e.g. report.pdf, notes.txt',
-		description: 'Comma-separated list of file names to delete. Leave empty and enable "Delete All Files" to delete every file in the workspace.',
+		description:
+			'Comma-separated list of file names to delete. Leave empty and enable "Delete All Files" to delete every file in the workspace.',
 		displayOptions: {
 			show: {
 				resource: ['file'],
@@ -403,7 +453,8 @@ export const fileFields: INodeProperties[] = [
 		name: 'deleteAll',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to delete every file in the workspace. Required to be enabled when File Names is empty, as a safety guard against accidental deletion.',
+		description:
+			'Whether to delete every file in the workspace. Required to be enabled when File Names is empty, as a safety guard against accidental deletion.',
 		displayOptions: {
 			show: {
 				resource: ['file'],
