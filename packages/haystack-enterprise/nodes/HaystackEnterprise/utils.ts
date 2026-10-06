@@ -60,84 +60,70 @@ export async function getApiBaseUrlForContext(
 	return getApiBaseUrlFromCredentials(credentials);
 }
 
-/** Deployment chat completions use OpenAI-style `{ error: { message, type, ... } }` bodies. */
-function extractOpenAiNestedErrorMessage(data: IDataObject): string | undefined {
-	const nested = data.error;
-	if (!nested || typeof nested !== 'object' || Array.isArray(nested)) {
-		return undefined;
-	}
-	const message = (nested as IDataObject).message;
+/**
+ * n8n and this package load different copies of n8n-workflow, so instanceof
+ * misses the NodeApiError that httpRequestWithAuthentication throws.
+ */
+export function isNodeApiError(error: unknown): error is NodeApiError {
+	return error instanceof NodeApiError || (error instanceof Error && error.name === 'NodeApiError');
+}
+
+function textFromErrorItem(item: unknown): string | undefined {
+	if (typeof item === 'string' && item.length > 0) return item;
+	if (!item || typeof item !== 'object' || Array.isArray(item)) return undefined;
+	const record = item as IDataObject;
+	const message = record.message ?? record.msg;
 	return typeof message === 'string' && message.length > 0 ? message : undefined;
 }
 
+function joinErrorItems(items: unknown[], firstOnly: boolean): string | undefined {
+	const messages = items
+		.map(textFromErrorItem)
+		.filter((message): message is string => message !== undefined);
+	if (messages.length === 0) return undefined;
+	return firstOnly ? messages[0] : messages.join('; ');
+}
+
 /**
- * Haystack Enterprise's API reports errors as `{ "errors": string[] }` (and some
- * endpoints use FastAPI's default `{ "detail": ... }` shape), neither of
- * which `NodeApiError` recognizes out of the box — it only special-cases
- * `data.message` / `data.error.message` (the latter is not always applied
- * when the failure is already wrapped), then falls back to matching the
- * raw HTTP error's own top-level `.message` (e.g. "Request failed with
- * status code 500") first, since `message` sorts before `detail`/`errors`
- * in its key-priority list. That silently swallows the real API error.
- *
- * On top of that, `this.helpers.httpRequestWithAuthentication()` already
- * wraps the raw HTTP failure in its own `NodeApiError` before we ever see
- * it (see n8n-core's `authentication.ts`). The raw error's response body
- * does NOT survive on `.cause` — `ExecutionBaseError`'s class-field
- * declarations (`cause;` with no initializer) reset it to `undefined`
- * right after `super()` runs, clobbering the native `Error` cause the
- * constructor just set — but that same constructor separately copies the
- * response body onto `.context.data` before the clobbering happens, and
- * that assignment survives. So `.context.data` is the reliable path to
- * Haystack Enterprise's actual error body, not `.cause` or `.response`.
+ * Message from a hub API error body. application_utils.py returns one of:
+ * - `{ errors: [string | { message }] }` for a normal HTTPException
+ * - `{ details: [{ message }] }` for HTTPValidationException, or FastAPI's `{ detail: [{ msg }] }`
+ * - `{ error: { message, type, param, code } }` on OpenAI-compatible chat completions
  */
-function extractApiErrorDetail(
-	error: unknown,
-	options: { firstErrorOnly?: boolean } = {},
-): string | undefined {
-	const wrappedData = error instanceof NodeApiError ? error.context?.data : undefined;
-	const rawData =
-		error instanceof Error
-			? (error as { response?: { data?: unknown } }).response?.data
-			: undefined;
+function messageFromApiBody(data: unknown, firstOnly = false): string | undefined {
+	if (!data || typeof data !== 'object' || Array.isArray(data)) return undefined;
+	const body = data as IDataObject;
 
-	for (const data of [wrappedData, rawData]) {
-		if (!data || typeof data !== 'object') {
-			continue;
-		}
-
-		const errors = (data as IDataObject).errors;
-		if (Array.isArray(errors)) {
-			const messages = errors.filter((message): message is string => typeof message === 'string');
-			if (messages.length > 0) {
-				return options.firstErrorOnly ? messages[0] : messages.join('; ');
-			}
-		}
-
-		const detail = (data as IDataObject).detail;
-		if (typeof detail === 'string') {
-			return detail;
-		}
-		if (Array.isArray(detail)) {
-			const messages = detail
-				.map((item) => (item && typeof item === 'object' ? (item as IDataObject).msg : undefined))
-				.filter((msg): msg is string => typeof msg === 'string');
-			if (messages.length > 0) {
-				return messages.join('; ');
-			}
-		}
-
-		const openAiMessage = extractOpenAiNestedErrorMessage(data as IDataObject);
-		if (openAiMessage) {
-			return openAiMessage;
-		}
-
-		const message = (data as IDataObject).message;
-		if (typeof message === 'string') {
-			return message;
-		}
+	if (Array.isArray(body.errors)) {
+		const message = joinErrorItems(body.errors, firstOnly);
+		if (message) return message;
+	}
+	if (Array.isArray(body.details)) {
+		const message = joinErrorItems(body.details, firstOnly);
+		if (message) return message;
+	}
+	if (typeof body.detail === 'string' && body.detail.length > 0) return body.detail;
+	if (Array.isArray(body.detail)) {
+		const message = joinErrorItems(body.detail, firstOnly);
+		if (message) return message;
 	}
 
+	const nested = body.error;
+	if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+		const message = (nested as IDataObject).message;
+		if (typeof message === 'string' && message.length > 0) return message;
+	}
+	return typeof body.message === 'string' && body.message.length > 0 ? body.message : undefined;
+}
+
+/** The response body n8n copied onto the error, or the raw HTTP response body. */
+function apiErrorBody(error: unknown): unknown {
+	if (!error || typeof error !== 'object') return undefined;
+	const wrapped = (error as { context?: { data?: unknown } }).context?.data;
+	if (wrapped && typeof wrapped === 'object') return wrapped;
+	if (error instanceof Error) {
+		return (error as { response?: { data?: unknown } }).response?.data;
+	}
 	return undefined;
 }
 
@@ -155,29 +141,9 @@ const RESOURCE_PERMISSION_ENDPOINTS: ReadonlyArray<{ pattern: RegExp; resource: 
 ];
 
 /**
- * Turns an authorization failure into a short, standalone hint — mirrors the
- * Haystack Enterprise MCP node's describeTransportErrorHint. Every
- * workspace-scoped dropdown (deployments, files, indexes, search sessions)
- * is populated from a workspace picker that lists every workspace in the
- * organization regardless of what the configured API key can actually
- * reach, so hitting 401/403 here almost always means a workspace-scoped key
- * was used with the wrong workspace, or the key itself is invalid.
- *
- * A 403 on one of RESOURCE_PERMISSION_ENDPOINTS is ambiguous in a second way
- * on top of that: the same key can see the workspace fine but still be
- * denied that specific resource — the generic workspace-access wording
- * would be actively misleading there, so those cases get a hint naming both
- * possibilities instead.
- *
- * `httpCode` isn't always reliable — NodeApiError resolves it by hunting for
- * a status-shaped key (statusCode/status/code/...) somewhere in the raw
- * error object, and that hunt can come up empty depending on exactly how
- * n8n's HTTP client shapes the failure. Haystack Enterprise's own error text ("Forbidden"
- * / "Unauthorized", from its `{ errors: [...] }` body) is a second, more
- * direct signal that doesn't depend on that lookup succeeding, so `description`
- * (already extracted from that body) is checked as a fallback classifier.
- *
- * Returns '' for anything else so callers surface that error as-is.
+ * Hint for 401/403. The workspace picker lists every workspace, so these are
+ * usually a bad API key or a key without access to this workspace or resource.
+ * The status code is sometimes missing, so the body text is a fallback.
  */
 function describeApiAuthErrorHint(
 	httpCode: string | null,
@@ -204,37 +170,18 @@ function describeApiAuthErrorHint(
 }
 
 /**
- * Runs `fn` (an authenticated HTTP call), normalizing any failure into a
- * NodeApiError with Haystack Enterprise's real error detail as its `.description`.
- * `httpRequestWithAuthentication()` already throws a NodeApiError itself, so
- * `.description` is set by mutating that instance in place — constructing a
- * new one instead would return the input verbatim (NodeApiError's
- * constructor is a no-op passthrough when given an existing NodeApiError,
- * ignoring any options passed in) while also silently dropping
- * `.context.data`, which n8n's UI renders as its own "Error data" section.
- *
- * Also normalizes `.message` to always be a real, useful string. Haystack Enterprise's
- * error bodies (e.g. a bare `{ errors: [...] }` with no top-level "message"
- * string) can end up assigned verbatim to NodeApiError's own `.message`
- * instead of a string — n8n's "problem loading the parameter options"
- * popover renders `.message` directly and string-coerces a stray object
- * into the literal text "[object Object]". That coercion can also have
- * already happened *upstream* of us — e.g. if the underlying HTTP client
- * itself does something like `new Error(body)` with an object `body`, the
- * native `Error` constructor stringifies it immediately, so by the time we
- * see it `.message` is already the real *string* "[object Object]", not an
- * object — a plain `typeof !== 'string'` check can't catch that. A
- * classified auth hint always replaces `.message` with real, actionable
- * text regardless; otherwise this falls back to the extracted description
- * (or a generic message) whenever `.message` is missing, non-string, or is
- * that exact literal.
- *
- * Takes `context` as a plain parameter rather than a `this` parameter so
- * callers can invoke it directly (`withApiErrorWrapping(this, endpoint, fn)`)
- * instead of via `.call()`, which would erase `fn`'s generic return type to
- * `unknown`. `endpoint` is threaded through purely so describeApiAuthErrorHint
- * can tell a "Service" (deployments) call apart from any other resource.
+ * "Full message" in the node error view is `error.messages`, not `.message`.
+ * Replace that list so it shows the API text instead of "Request failed with status code …".
  */
+function showErrorText(error: NodeApiError, text: string): void {
+	error.message = text;
+	error.description = text;
+	if (Array.isArray(error.messages)) {
+		error.messages.splice(0, error.messages.length, text);
+	}
+}
+
+/** Call directly, not via `.call()`, so `fn`'s return type is preserved. */
 async function withApiErrorWrapping<T>(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
 	endpoint: string,
@@ -244,25 +191,21 @@ async function withApiErrorWrapping<T>(
 	try {
 		return await fn();
 	} catch (caught) {
-		const description = extractApiErrorDetail(caught, extractOptions);
-		const error =
-			caught instanceof NodeApiError
-				? caught
-				: new NodeApiError(
-						context.getNode(),
-						caught as JsonObject,
-						description ? { description } : {},
-					);
+		const description = messageFromApiBody(apiErrorBody(caught), extractOptions.firstErrorOnly);
+		// Keep n8n's error. A new NodeApiError would replace the message with generic status text.
+		const error = isNodeApiError(caught)
+			? caught
+			: new NodeApiError(
+					context.getNode(),
+					caught as JsonObject,
+					description ? { message: description } : {},
+				);
 
-		if (caught instanceof NodeApiError && description) {
-			error.description = description;
-		}
-
-		const authHint = describeApiAuthErrorHint(error.httpCode, endpoint, description);
-		if (authHint) {
-			error.message = authHint;
+		const shown = describeApiAuthErrorHint(error.httpCode, endpoint, description) || description;
+		if (shown) {
+			showErrorText(error, shown);
 		} else if (typeof error.message !== 'string' || error.message === '[object Object]') {
-			error.message = description ?? 'The Haystack Enterprise API request failed.';
+			error.message = 'The Haystack Enterprise API request failed.';
 		}
 
 		throw error;
@@ -327,10 +270,7 @@ async function loadOptionsApiRequest(
  * search session ID via an `X-Search-Session-Id` header when one wasn't
  * passed in the request, since it's created automatically in that case.
  *
- * Uses `firstErrorOnly` (rather than apiRequest()'s join-all-messages
- * description) so the NodeApiError's description surfaces a single readable
- * sentence for the chat-stream operation — the full `errors`
- * array is still available in `.context.data` for n8n's "Error data" section.
+ * A failed stream request shows the first API error; the full body stays in Error data.
  */
 export async function apiRequestStream(
 	this: IExecuteFunctions,
@@ -429,45 +369,16 @@ export async function consumeSseStream(
 	});
 }
 
-/**
- * A mid-stream SSE `error` event's `error` field arrives either as a plain
- * string, as Haystack Enterprise's `{ errors: string[] }` shape (see
- * extractApiErrorDetail() above), as an OpenAI `{ message }` object, or as
- * `{ error: { message } }` on chat-completions streams — never more than one
- * of those, and not always
- * present, so this falls back to a generic message when none yields one. `data`
- * is whatever raw payload was passed in, for callers to attach to
- * `NodeApiError`/`NodeOperationError`'s `.context.data` (n8n's "Error data"
- * section) so the full event is still visible even when the message had to
- * fall back.
- */
+/** Message from a mid-stream SSE error event. `data` is the raw payload for Error data. */
 export function extractStreamErrorDetail(error: IDataObject[string]): {
 	message: string;
 	data: IDataObject[string];
 } {
-	if (typeof error === 'string') {
+	if (typeof error === 'string' && error.length > 0) {
 		return { message: error, data: error };
 	}
-
-	if (error && typeof error === 'object') {
-		const payload = error as IDataObject;
-		const errors = payload.errors;
-		if (Array.isArray(errors)) {
-			const message = errors.find((item): item is string => typeof item === 'string');
-			if (message) {
-				return { message, data: error };
-			}
-		}
-		if (typeof payload.message === 'string') {
-			return { message: payload.message, data: error };
-		}
-		const openAiMessage = extractOpenAiNestedErrorMessage(payload);
-		if (openAiMessage) {
-			return { message: openAiMessage, data: error };
-		}
-	}
-
-	return { message: 'The stream returned an unknown error', data: error };
+	const message = messageFromApiBody(error, true);
+	return { message: message ?? 'The stream returned an unknown error', data: error };
 }
 
 const SERVICE_ACTIVATING_HTTP_CODE = '591';
@@ -666,8 +577,9 @@ const RETRY_BACKOFF_FACTOR = 1.5;
 /**
  * Retries `fn` with growing backoff while it fails with HTTP 591 (the service
  * is inactive and is being activated), for up to `maxWaitMs` in total, then
- * throws a fresh NodeApiError for whatever it last failed with. Runs `fn`
- * exactly once when `enabled` is false.
+ * rethrows that failure unchanged when it is already a NodeApiError, so its
+ * message is not replaced by the generic status text. Runs `fn` exactly
+ * once when `enabled` is false.
  */
 export async function withServiceActivationRetry<T>(
 	this: IExecuteFunctions,
@@ -687,12 +599,16 @@ export async function withServiceActivationRetry<T>(
 			return await fn();
 		} catch (error) {
 			const isServiceActivating =
-				error instanceof NodeApiError && error.httpCode === SERVICE_ACTIVATING_HTTP_CODE;
+				isNodeApiError(error) && error.httpCode === SERVICE_ACTIVATING_HTTP_CODE;
 			const elapsedMs = Date.now() - startedAt;
 			if (isServiceActivating && elapsedMs < maxWaitMs) {
 				await sleep(Math.min(delayMs, maxWaitMs - elapsedMs));
 				delayMs = Math.min(delayMs * RETRY_BACKOFF_FACTOR, MAX_RETRY_DELAY_MS);
 				continue;
+			}
+			if (isNodeApiError(error)) {
+				// eslint-disable-next-line @n8n/community-nodes/require-node-api-error -- already a NodeApiError; constructing a new one replaces .message with the generic status text
+				throw error;
 			}
 			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
