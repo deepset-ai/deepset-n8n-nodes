@@ -20,11 +20,11 @@ function toErrorLike(status: number, data: unknown): Error {
  * `haystack-enterprise/nodes/HaystackEnterprise/utils.ts`'s `apiRequest`/
  * `apiRequestStream` actually send: JSON method/url/qs/body, `FormData` bodies
  * (File's `upload`), the `encoding: 'stream'` case for the *-stream
- * endpoints, and `returnFullResponse` alongside it (`apiRequestStream()`
- * reads the search session ID off the response headers). Does NOT handle
- * `encoding: 'arraybuffer'`/`returnFullResponse` for a non-streamed response
- * (File's `get`) — see the comment on that case in `src/registry/file.ts` for
- * why that's not just a missing feature here.
+ * endpoints, and `returnFullResponse` for both streamed and JSON responses
+ * (`apiRequestStream()` and Service's `chat` read the search session ID off
+ * the response headers). Does NOT handle `encoding: 'arraybuffer'` (File's
+ * `get`) — see the comment on that case in `src/registry/file.ts` for why
+ * that's not just a missing feature here.
  */
 async function realHttpRequestWithAuthentication(
 	requestOptions: IHttpRequestOptions,
@@ -82,7 +82,15 @@ async function realHttpRequestWithAuthentication(
 	}
 
 	const text = await response.text();
-	return text ? JSON.parse(text) : undefined;
+	const body: unknown = text ? JSON.parse(text) : undefined;
+	if (requestOptions.returnFullResponse) {
+		return {
+			body,
+			headers: Object.fromEntries(response.headers.entries()),
+			statusCode: response.status,
+		};
+	}
+	return body;
 }
 
 /**

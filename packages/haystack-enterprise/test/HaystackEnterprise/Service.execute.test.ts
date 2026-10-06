@@ -287,7 +287,7 @@ describe('executeService — chat', () => {
 				deploymentId: 'dep-1',
 				query: 'hello',
 				searchSessionId: '',
-				additionalFields: { chatHistoryGranularity: 'query_answer' },
+				additionalFields: { chatHistoryGranularity: 'QUERY_ANSWER' },
 				waitForActivation: false,
 				maxWaitMinutes: 5,
 			},
@@ -303,7 +303,7 @@ describe('executeService — chat', () => {
 			string,
 			{ body: Record<string, unknown> },
 		];
-		expect(options.body).toEqual({ queries: ['hello'], chat_history_granularity: 'query_answer' });
+		expect(options.body).toEqual({ queries: ['hello'], chat_history_granularity: 'QUERY_ANSWER' });
 	});
 
 	it('sends an existing search session ID and keeps it on the output', async () => {
@@ -582,7 +582,7 @@ describe('executeService — streaming (chatStream)', () => {
 				deploymentId: 'dep-1',
 				query: 'hello',
 				simplify: true,
-				additionalFields: { chatHistoryGranularity: 'all_messages' },
+				additionalFields: { chatHistoryGranularity: 'ALL_MESSAGES' },
 				searchSessionId: 'existing-session',
 				waitForActivation: false,
 				maxWaitMinutes: 5,
@@ -607,7 +607,7 @@ describe('executeService — streaming (chatStream)', () => {
 			body: {
 				query: 'hello',
 				search_session_id: 'existing-session',
-				chat_history_granularity: 'all_messages',
+				chat_history_granularity: 'ALL_MESSAGES',
 			},
 		});
 		expect(result).toEqual([{ json: { content: 'Hi', search_session_id: 'existing-session' } }]);

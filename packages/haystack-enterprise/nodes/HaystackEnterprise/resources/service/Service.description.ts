@@ -1,8 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-// TODO: unlike File/Index/SearchSession, none of this resource's operations
-// have an apiDocsNotice() (see resources/shared.ts) linking the Haystack
-// Enterprise API docs. Add these before release.
+import { createApiDocsNotice } from '../shared';
+
+const apiDocsNotice = createApiDocsNotice('service');
+
+// TODO: Get, Get Many and List Models have no apiDocsNotice() yet (see
+// resources/shared.ts). Add them once their pages are published in the
+// Haystack Enterprise API docs.
 export const serviceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -67,7 +71,7 @@ const commonAdditionalFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'e.g. 3fa85f64-..., 3fa85f64-...',
-		description: 'Comma-separated temporary file IDs to pass as pipeline input.',
+		description: 'Comma-separated temporary file IDs to pass as pipeline input',
 	},
 	{
 		displayName: 'Filters (JSON)',
@@ -109,17 +113,17 @@ const chatHistoryGranularityField: INodeProperties = {
 	displayName: 'Chat History Granularity',
 	name: 'chatHistoryGranularity',
 	type: 'options',
-	default: 'query_answer',
+	default: 'QUERY_ANSWER',
 	description: 'Which messages from each previous turn to include in the chat history',
 	options: [
 		{
 			name: 'All Messages',
-			value: 'all_messages',
+			value: 'ALL_MESSAGES',
 			description: 'Replay every message from the chat history to the pipeline',
 		},
 		{
 			name: 'Query and Answer',
-			value: 'query_answer',
+			value: 'QUERY_ANSWER',
 			description: 'Include only the user query and the final answer from each turn',
 		},
 	],
@@ -164,6 +168,18 @@ const streamingAdditionalFields: INodeProperties[] = [
 ];
 
 export const serviceFields: INodeProperties[] = [
+	apiDocsNotice(
+		'chat',
+		'chat-api-v-1-workspaces-workspace-name-deployments-deployment-id-chat-post',
+	),
+	apiDocsNotice(
+		'chatStream',
+		'chat-stream-api-v-1-workspaces-workspace-name-deployments-deployment-id-chat-stream-post',
+	),
+	apiDocsNotice(
+		'chatCompletions',
+		'chat-completions-api-v-1-workspaces-workspace-name-deployments-v-1-chat-completions-post',
+	),
 	// Get / Chat / Chat (Streaming) / Chat Completions
 	{
 		displayName: 'Service Name or ID',
