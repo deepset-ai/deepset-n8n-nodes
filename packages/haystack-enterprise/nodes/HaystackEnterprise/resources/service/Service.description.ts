@@ -4,9 +4,6 @@ import { createApiDocsNotice } from '../shared';
 
 const apiDocsNotice = createApiDocsNotice('service');
 
-// TODO: Get, Get Many and List Models have no apiDocsNotice() yet (see
-// resources/shared.ts). Add them once their pages are published in the
-// Haystack Enterprise API docs.
 export const serviceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -179,6 +176,15 @@ export const serviceFields: INodeProperties[] = [
 	apiDocsNotice(
 		'chatCompletions',
 		'chat-completions-api-v-1-workspaces-workspace-name-deployments-v-1-chat-completions-post',
+	),
+	apiDocsNotice(
+		'get',
+		'get-deployment-api-v-1-workspaces-workspace-name-deployments-deployment-id-get',
+	),
+	apiDocsNotice('getAll', 'list-deployments-api-v-1-workspaces-workspace-name-deployments-get'),
+	apiDocsNotice(
+		'listModels',
+		'list-models-api-v-1-workspaces-workspace-name-deployments-v-1-models-get',
 	),
 	// Get / Chat / Chat (Streaming) / Chat Completions
 	{

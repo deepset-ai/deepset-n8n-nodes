@@ -1,15 +1,11 @@
 import type { ContractResourceSuite } from './types';
 
 import { executeService } from '../../../haystack-enterprise/nodes/HaystackEnterprise/resources/service/Service.execute';
-import { CONTRACT_TEST_UUID } from './caseFactories';
+import { CONTRACT_TEST_UUID, cursorPaginationCases } from './caseFactories';
 
 const CONTRACT_TEST_DEPLOYMENT_ID = CONTRACT_TEST_UUID;
 
 /**
- * TODO: `get`, `getAll` and `listModels` have no cases yet. Their paths
- * (`/deployments`, `/deployments/{deployment_id}`, `/deployments/v1/models/`)
- * are in the published spec now, so add them next.
- *
  * `/chat-stream` declares a bodiless 200 in the spec, so Prism answers with
  * an empty body: the node sees zero SSE events and returns an empty
  * aggregate. That still validates the request shape, which is what these
@@ -19,6 +15,48 @@ export const serviceSuite: ContractResourceSuite = {
 	resource: 'service',
 	handler: executeService,
 	cases: [
+		{
+			operation: 'get',
+			description: 'GET /deployments/{deployment_id}',
+			params: {
+				workspaceName: 'contract-test-workspace',
+				deploymentId: CONTRACT_TEST_DEPLOYMENT_ID,
+			},
+		},
+		{
+			// Every optional query param omitted — only limit + page_number are sent.
+			operation: 'getAll',
+			description: 'GET /deployments (no optional query params)',
+			params: {
+				workspaceName: 'contract-test-workspace',
+				returnAll: false,
+				limit: 5,
+			},
+		},
+		{
+			// `field`/`order` have enum constraints in the spec, so a wrong value
+			// here would fail against Prism.
+			operation: 'getAll',
+			description: 'GET /deployments (with filter + sort query params)',
+			params: {
+				workspaceName: 'contract-test-workspace',
+				returnAll: false,
+				limit: 5,
+				filters: {
+					groupLabel: 'PRODUCTION',
+					odataFilter: "status eq 'DEPLOYED'",
+				},
+				sort: { field: 'name', order: 'ASC' },
+			},
+		},
+		...cursorPaginationCases('/deployments'),
+		{
+			operation: 'listModels',
+			description: 'GET /deployments/v1/models/',
+			params: {
+				workspaceName: 'contract-test-workspace',
+			},
+		},
 		{
 			// The example-workflow shape: one query, no session, no additional fields.
 			operation: 'chat',
