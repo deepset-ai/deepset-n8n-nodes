@@ -1,0 +1,108 @@
+{
+	"name": "Haystack Enterprise AI – using chat with form trigger",
+	"nodes": [
+		{
+			"parameters": {
+				"formTitle": "Ask your knowledge base",
+				"formDescription": "Ask questions or request information, summaries, or reports in natural language. This workflow sends a one-off Chat query to your Haystack Enterprise AI service, which processes the request and returns an AI-generated response based on the configured pipeline and its capabilities.",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "What do you want to know?",
+							"fieldType": "textarea",
+							"requiredField": true,
+							"placeholder": "e.g. Summarize the key findings across last quarter's incident reports"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "e5f6a7b8-0001-4c1c-9c1c-000000000001",
+			"name": "On form submission",
+			"type": "n8n-nodes-base.formTrigger",
+			"typeVersion": 2.2,
+			"position": [-700, 0],
+			"webhookId": "e5f6a7b8-0001-4c1c-9c1c-000000000099"
+		},
+		{
+			"parameters": {
+				"workspaceName": "my-workspace",
+				"resource": "service",
+				"operation": "chat",
+				"deploymentId": "my-first-service",
+				"query": "={{ $json['What do you want to know?'] }}",
+				"searchSessionId": "",
+				"additionalFields": {}
+			},
+			"id": "e5f6a7b8-0002-4c1c-9c1c-000000000002",
+			"name": "Haystack Enterprise AI",
+			"type": "CUSTOM.haystackEnterpriseAi",
+			"typeVersion": 1,
+			"position": [-480, 0],
+			"credentials": {
+				"haystackEnterpriseApi": {
+					"name": "Haystack Enterprise API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "completion",
+				"respondWith": "showText",
+				"responseText": "={{ $json.results[0].answers[0].answer }}",
+				"options": {}
+			},
+			"id": "e5f6a7b8-0003-4c1c-9c1c-000000000003",
+			"name": "Show Summary",
+			"type": "n8n-nodes-base.form",
+			"typeVersion": 2.3,
+			"position": [-260, 0]
+		},
+		{
+			"parameters": {
+				"content": "## Chat queries\n\nSends a single query to a deployed service via **Chat** (`/chat`).\n\n1. **Search session ID:** Leave this blank for a one-off question. The platform creates a session and returns its ID in `search_session_id`; this workflow does not reuse that session. To continue a conversation, reuse the search session ID. See `chat-with-auto-created-search-session-example.json`.\n2. **Complete response vs. streaming:** Chat returns the result as one complete JSON response. To stream the answer token by token into a chat UI, use **Chat (Streaming)** with a Chat Trigger configured for streaming responses.",
+				"height": 380,
+				"width": 460
+			},
+			"id": "e5f6a7b8-0004-4c1c-9c1c-000000000004",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-700, 220]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"On form submission": {
+			"main": [
+				[
+					{
+						"node": "Haystack Enterprise AI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Haystack Enterprise AI": {
+			"main": [
+				[
+					{
+						"node": "Show Summary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"tags": [
+		{
+			"name": "Haystack Enterprise"
+		}
+	]
+}

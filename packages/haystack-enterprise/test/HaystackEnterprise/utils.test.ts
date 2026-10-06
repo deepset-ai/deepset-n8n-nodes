@@ -346,6 +346,78 @@ describe('apiRequest', () => {
 		});
 	});
 
+	it('reads { errors } from a NodeApiError created by a different n8n-workflow copy and replaces Full message', async () => {
+		class ForeignNodeApiError extends Error {
+			httpCode = '409';
+			description?: string;
+			messages = ['Request failed with status code 409'];
+			context = { data: { errors: ["Deployment 'my test service' has no active revision."] } };
+
+			constructor() {
+				super('Your request is invalid or could not be processed by the service');
+				this.name = 'NodeApiError';
+			}
+		}
+
+		const foreign = new ForeignNodeApiError();
+		const context = createContext(async () => {
+			throw foreign;
+		});
+
+		await expect(
+			apiRequest.call(context, 'POST', '/workspaces/ws/deployments/dep/chat'),
+		).rejects.toBe(foreign);
+		expect(foreign.message).toBe("Deployment 'my test service' has no active revision.");
+		expect(foreign.messages).toEqual(["Deployment 'my test service' has no active revision."]);
+	});
+
+	it('joins validation { details: [{ message }] } entries', async () => {
+		const context = createContext(async () => {
+			throw Object.assign(new Error('Request failed with status code 400'), {
+				response: {
+					status: 400,
+					data: {
+						details: [
+							{ code: 'INVALID_YAML', message: 'invalid yaml' },
+							{ code: 'MISSING_INPUT', message: 'query is required' },
+						],
+					},
+				},
+			});
+		});
+
+		await expect(
+			apiRequest.call(context, 'POST', '/workspaces/ws/pipelines'),
+		).rejects.toMatchObject({
+			message: 'invalid yaml; query is required',
+		});
+	});
+
+	it('shows the API detail as the error message, not n8n’s generic status text', async () => {
+		const node = { name: 'Haystack Enterprise AI' };
+		const context = createContext(async () => {
+			throwPreWrapped(
+				node,
+				Object.assign(new Error('Request failed with status code 409'), {
+					response: {
+						status: 409,
+						data: { errors: ['This service has no runnable revision.'] },
+					},
+				}),
+			);
+		});
+		Object.assign(context, { getNode: () => node });
+
+		await expect(
+			apiRequest.call(context, 'POST', '/workspaces/ws/deployments/dep/chat'),
+		).rejects.toMatchObject({
+			httpCode: '409',
+			message: 'This service has no runnable revision.',
+			description: 'This service has no runnable revision.',
+			messages: ['This service has no runnable revision.'],
+		});
+	});
+
 	it('surfaces a string `detail` from the error response as the NodeApiError description', async () => {
 		const context = createContext(async () => {
 			throw Object.assign(new Error('Request failed with status code 500'), {
@@ -653,10 +725,14 @@ describe('extractStreamErrorDetail', () => {
 		});
 	});
 
-	it('falls back to a generic message when there is no recognizable `errors` array, while still keeping the raw payload as data', () => {
+	it('uses a FastAPI string `detail` and falls back when the payload has no message', () => {
 		expect(extractStreamErrorDetail({ detail: 'something else' })).toEqual({
-			message: 'The stream returned an unknown error',
+			message: 'something else',
 			data: { detail: 'something else' },
+		});
+		expect(extractStreamErrorDetail({ type: 'error' })).toEqual({
+			message: 'The stream returned an unknown error',
+			data: { type: 'error' },
 		});
 		expect(extractStreamErrorDetail(undefined)).toEqual({
 			message: 'The stream returned an unknown error',

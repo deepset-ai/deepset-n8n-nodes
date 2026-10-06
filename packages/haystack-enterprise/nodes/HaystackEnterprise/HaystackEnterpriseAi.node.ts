@@ -21,6 +21,7 @@ import { executeSearchSession } from './resources/searchSession/SearchSession.ex
 import { serviceFields, serviceOperations } from './resources/service/Service.description';
 import { executeService } from './resources/service/Service.execute';
 import {
+	isNodeApiError,
 	loadDeploymentOptions,
 	loadDeploymentOptionsWithAllOption,
 	loadFileOptions,
@@ -195,13 +196,13 @@ export class HaystackEnterpriseAi implements INodeType {
 				if (caught instanceof NodeOperationError) {
 					throw new NodeOperationError(this.getNode(), caught.message, { itemIndex: i });
 				}
-				// NodeApiError's constructor is a no-op passthrough when given an existing
-				// NodeApiError (see utils.ts's withApiErrorWrapping for the same gotcha), so
-				// mutating .context.itemIndex directly is the only way to attach it here.
-				if (caught instanceof NodeApiError) {
-					const error = caught;
-					error.context.itemIndex = i;
-					throw error;
+				// Don't construct a new NodeApiError here. Its constructor replaces
+				// .message with the generic status text, and instanceof misses the
+				// NodeApiError n8n threw from its own copy of n8n-workflow.
+				if (isNodeApiError(caught)) {
+					if (caught.context) caught.context.itemIndex = i;
+					// eslint-disable-next-line @n8n/community-nodes/require-node-api-error -- already a NodeApiError; constructing a new one replaces .message with the generic status text
+					throw caught;
 				}
 				throw new NodeApiError(this.getNode(), caught as JsonObject, { itemIndex: i });
 			}

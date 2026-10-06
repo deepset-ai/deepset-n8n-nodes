@@ -8,8 +8,8 @@ Initial release.
   Many
 - **Index** resource: Get, Get Many
 - **Search Session** resource: Create, Get Many, Delete
-- **Service** resource: Get, Get Many, List Models (Chat Completions), Search (Streaming), Chat
-  (Streaming), Chat Completions
+- **Service** resource: Get, Get Many, List Models (Chat Completions), Chat, Chat (Streaming), Chat
+  Completions
 - **Haystack Enterprise Chat Model**: language-model sub-node for n8n's AI Agent, using Chat
   Completions on a Haystack Enterprise service
 - **Authentication**: choose API Key or OAuth2 on the node. The OAuth2 credential registers your n8n

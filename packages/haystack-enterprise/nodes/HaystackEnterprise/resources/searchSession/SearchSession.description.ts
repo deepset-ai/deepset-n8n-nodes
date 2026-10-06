@@ -40,9 +40,11 @@ export const searchSessionOperations: INodeProperties[] = [
 ];
 
 export const searchSessionFields: INodeProperties[] = [
-	// TODO: unlike Delete/Get Many, Create has no apiDocsNotice() (see
-	// resources/shared.ts) linking the Haystack Enterprise API docs. The
-	// deployment path is currently excluded from the OpenAPI schema
+	// Create
+	apiDocsNotice(
+		'create',
+		'create-search-session-api-v-1-workspaces-workspace-name-deployments-deployment-id-search-sessions-post',
+	),
 	{
 		displayName: 'Service Name or ID',
 		name: 'deploymentId',
