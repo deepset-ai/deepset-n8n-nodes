@@ -8,24 +8,26 @@ import { buildMcpToolName } from '../../nodes/HaystackEnterpriseMcp/utils';
 
 const NODE_NAME = 'Haystack Enterprise MCP';
 
-const { mockConnect, mockListTools, mockCallTool, mockClose, ClientMock, TransportMock } = vi.hoisted(() => {
-	const mockConnect = vi.fn();
-	const mockListTools = vi.fn();
-	const mockCallTool = vi.fn();
-	const mockClose = vi.fn();
-	const ClientMock = vi.fn().mockImplementation(() => ({
-		connect: mockConnect,
-		listTools: mockListTools,
-		callTool: mockCallTool,
-		close: mockClose,
-	}));
-	const TransportMock = vi.fn();
-	return { mockConnect, mockListTools, mockCallTool, mockClose, ClientMock, TransportMock };
-});
+const { mockConnect, mockListTools, mockCallTool, mockClose, ClientMock, TransportMock } =
+	vi.hoisted(() => {
+		const mockConnect = vi.fn();
+		const mockListTools = vi.fn();
+		const mockCallTool = vi.fn();
+		const mockClose = vi.fn();
+		const ClientMock = vi.fn().mockImplementation(() => ({
+			connect: mockConnect,
+			listTools: mockListTools,
+			callTool: mockCallTool,
+			close: mockClose,
+		}));
+		const TransportMock = vi.fn();
+		return { mockConnect, mockListTools, mockCallTool, mockClose, ClientMock, TransportMock };
+	});
 
 vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({ Client: ClientMock }));
 vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js')>();
+	const actual =
+		await importOriginal<typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js')>();
 	return { ...actual, StreamableHTTPClientTransport: TransportMock };
 });
 // n8n-core is a peer dependency resolved against n8n's own install at runtime
@@ -43,14 +45,52 @@ vi.mock('n8n-core', () => ({
 	},
 }));
 
+/**
+ * Credentials keyed by credential type name, the way the real `getCredentials(type)` resolves
+ * them — the node asks for `haystackEnterpriseApi` or `haystackEnterpriseOAuth2Api` depending on
+ * its "Authentication" parameter.
+ */
+const API_KEY_CREDENTIALS = { haystackEnterpriseApi: { apiKey: 'secret-key' } };
+const OAUTH2_CREDENTIALS = {
+	haystackEnterpriseOAuth2Api: { oauthTokenData: { access_token: 'oauth-token' } },
+};
+
+function createGetCredentials(credentials: Record<string, Record<string, unknown>>) {
+	return vi.fn(async (type: string) => {
+		const found = credentials[type];
+		if (!found) throw new Error(`Credentials of type "${type}" are not set`);
+		return found;
+	});
+}
+
+/**
+ * Reads the Authorization header the node's transport would actually send, by invoking the
+ * `fetch` wrapper it handed to the (mocked) StreamableHTTPClientTransport against a stubbed
+ * global fetch. `responses` are what that stubbed fetch answers with, in order.
+ */
+async function sentAuthorizationHeaders(responses: Response[]): Promise<Array<string | null>> {
+	const transportOptions = TransportMock.mock.calls.at(-1)?.[1] as { fetch: typeof fetch };
+	const fetchSpy = vi.spyOn(globalThis, 'fetch');
+	for (const response of responses) fetchSpy.mockResolvedValueOnce(response);
+	try {
+		await transportOptions.fetch('https://example.test/mcp');
+		return fetchSpy.mock.calls.map(([, init]: unknown[]) =>
+			new Headers((init as RequestInit | undefined)?.headers).get('authorization'),
+		);
+	} finally {
+		fetchSpy.mockRestore();
+	}
+}
+
 function createSupplyDataContext(
 	params: Record<string, unknown>,
-	credentials: Record<string, unknown> = { apiKey: 'secret-key' },
+	credentials: Record<string, Record<string, unknown>> = API_KEY_CREDENTIALS,
 	signal?: AbortSignal,
+	helpers: Record<string, unknown> = {},
 ) {
 	return {
 		getNode: () => ({ name: NODE_NAME }),
-		getCredentials: async () => credentials,
+		getCredentials: createGetCredentials(credentials),
 		getNodeParameter: vi.fn((name: string, _itemIndex: number, fallback?: unknown) =>
 			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
 		),
@@ -59,18 +99,23 @@ function createSupplyDataContext(
 		addOutputData: vi.fn(),
 		logAiEvent: vi.fn(),
 		addExecutionHints: vi.fn(),
+		helpers,
 	} as unknown as ISupplyDataFunctions;
 }
 
 function createExecuteContext(
 	items: Array<Record<string, unknown>>,
 	params: Record<string, unknown>,
-	options: { credentials?: Record<string, unknown>; signal?: AbortSignal; continueOnFail?: boolean } = {},
+	options: {
+		credentials?: Record<string, Record<string, unknown>>;
+		signal?: AbortSignal;
+		continueOnFail?: boolean;
+	} = {},
 ) {
-	const { credentials = { apiKey: 'secret-key' }, signal, continueOnFail = false } = options;
+	const { credentials = API_KEY_CREDENTIALS, signal, continueOnFail = false } = options;
 	return {
 		getNode: () => ({ name: NODE_NAME }),
-		getCredentials: async () => credentials,
+		getCredentials: createGetCredentials(credentials),
 		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
 			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
 		getExecutionCancelSignal: () => signal,
@@ -79,15 +124,21 @@ function createExecuteContext(
 	} as unknown as IExecuteFunctions;
 }
 
+// Mirrors the real load-options context's shape: `getNodeParameter(name, fallback)` (no
+// itemIndex) plus a `getCurrentNodeParameter`, which is how utils.ts tells it apart from an
+// execute context.
 function createLoadOptionsContext(
 	params: Record<string, unknown>,
-	credentials: Record<string, unknown> = { apiKey: 'secret-key' },
+	credentials: Record<string, Record<string, unknown>> = API_KEY_CREDENTIALS,
 	httpRequestWithAuthentication?: (...args: unknown[]) => unknown,
 ) {
 	return {
 		getNode: () => ({ name: NODE_NAME }),
-		getCredentials: async () => credentials,
-		getNodeParameter: vi.fn((name: string) => params[name]),
+		getCredentials: createGetCredentials(credentials),
+		getNodeParameter: vi.fn((name: string, fallback?: unknown) =>
+			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
+		),
+		getCurrentNodeParameter: () => undefined,
 		helpers: { httpRequestWithAuthentication },
 	} as unknown as ILoadOptionsFunctions;
 }
@@ -125,13 +176,73 @@ describe('HaystackEnterpriseMcp', () => {
 		it('requires a workspace and an API key', async () => {
 			const context = createSupplyDataContext({ workspaceId: '' });
 
-			await expect(node.supplyData.call(context, 0)).rejects.toThrow(/workspace and a valid credential/);
+			await expect(node.supplyData.call(context, 0)).rejects.toThrow(
+				/workspace and a valid credential/,
+			);
+		});
+
+		it('sends the API key as the bearer token by default (Authentication unset = API Key)', async () => {
+			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
+			const context = createSupplyDataContext({ workspaceId: 'ws-1' });
+
+			await node.supplyData.call(context, 0);
+
+			expect(context.getCredentials).toHaveBeenCalledWith('haystackEnterpriseApi');
+			expect(await sentAuthorizationHeaders([new Response('{}')])).toEqual(['Bearer secret-key']);
+		});
+
+		it('sends the stored OAuth2 access token as the bearer token when Authentication is OAuth2', async () => {
+			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
+			const context = createSupplyDataContext(
+				{ workspaceId: 'ws-1', authentication: 'oAuth2' },
+				OAUTH2_CREDENTIALS,
+			);
+
+			await node.supplyData.call(context, 0);
+
+			expect(context.getCredentials).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
+			expect(context.getCredentials).not.toHaveBeenCalledWith('haystackEnterpriseApi');
+			expect(await sentAuthorizationHeaders([new Response('{}')])).toEqual(['Bearer oauth-token']);
+		});
+
+		it("refreshes an expired OAuth2 token through n8n's refreshOAuth2Token helper and retries the MCP request", async () => {
+			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
+			const refreshOAuth2Token = vi.fn(async () => ({ access_token: 'fresh-token' }));
+			const context = createSupplyDataContext(
+				{ workspaceId: 'ws-1', authentication: 'oAuth2' },
+				OAUTH2_CREDENTIALS,
+				undefined,
+				{ refreshOAuth2Token },
+			);
+
+			await node.supplyData.call(context, 0);
+
+			expect(
+				await sentAuthorizationHeaders([new Response('', { status: 401 }), new Response('{}')]),
+			).toEqual(['Bearer oauth-token', 'Bearer fresh-token']);
+			expect(refreshOAuth2Token).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
+		});
+
+		it('tells the user to Connect the OAuth2 credential when it has no access token yet', async () => {
+			const context = createSupplyDataContext(
+				{ workspaceId: 'ws-1', authentication: 'oAuth2' },
+				{
+					haystackEnterpriseOAuth2Api: {},
+				},
+			);
+
+			await expect(node.supplyData.call(context, 0)).rejects.toThrow(/not connected yet.*Connect/);
+			expect(mockConnect).not.toHaveBeenCalled();
 		});
 
 		it('refuses to run if the execution was already cancelled', async () => {
 			const controller = new AbortController();
 			controller.abort();
-			const context = createSupplyDataContext({ workspaceId: 'ws-1' }, undefined, controller.signal);
+			const context = createSupplyDataContext(
+				{ workspaceId: 'ws-1' },
+				undefined,
+				controller.signal,
+			);
 
 			await expect(node.supplyData.call(context, 0)).rejects.toThrow(/cancelled/);
 			expect(mockConnect).not.toHaveBeenCalled();
@@ -140,13 +251,19 @@ describe('HaystackEnterpriseMcp', () => {
 		it('passes the execution cancel signal to the transport and to listTools', async () => {
 			const controller = new AbortController();
 			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
-			const context = createSupplyDataContext({ workspaceId: 'ws-1' }, undefined, controller.signal);
+			const context = createSupplyDataContext(
+				{ workspaceId: 'ws-1' },
+				undefined,
+				controller.signal,
+			);
 
 			await node.supplyData.call(context, 0);
 
 			expect(TransportMock).toHaveBeenCalledWith(
 				expect.any(URL),
-				expect.objectContaining({ requestInit: expect.objectContaining({ signal: controller.signal }) }),
+				expect.objectContaining({
+					requestInit: expect.objectContaining({ signal: controller.signal }),
+				}),
 			);
 			expect(mockListTools).toHaveBeenCalledWith(undefined, { signal: controller.signal });
 		});
@@ -163,7 +280,9 @@ describe('HaystackEnterpriseMcp', () => {
 			const error = await node.supplyData.call(context, 0).catch((caught: unknown) => caught);
 
 			expect(error).toBeInstanceOf(NodeOperationError);
-			expect((error as NodeOperationError).messages.join(' ')).toMatch(/Failed to connect.*ws-1.*ECONNREFUSED/s);
+			expect((error as NodeOperationError).messages.join(' ')).toMatch(
+				/Failed to connect.*ws-1.*ECONNREFUSED/s,
+			);
 		});
 
 		it('adds a credential hint when connecting fails with a 401', async () => {
@@ -214,7 +333,11 @@ describe('HaystackEnterpriseMcp', () => {
 		it('exposes all tools when "include" mode is "all" (the default)', async () => {
 			mockListTools.mockResolvedValue({
 				tools: [
-					{ name: 'search', description: 'Search', inputSchema: { type: 'object', properties: {} } },
+					{
+						name: 'search',
+						description: 'Search',
+						inputSchema: { type: 'object', properties: {} },
+					},
 					{ name: 'chat', description: 'Chat', inputSchema: { type: 'object', properties: {} } },
 				],
 			});
@@ -237,17 +360,23 @@ describe('HaystackEnterpriseMcp', () => {
 
 			const { response } = await node.supplyData.call(context, 0);
 
-			expect((response.getTools()[0] as { name: string }).name).toBe('Haystack_Enterprise_MCP_Customer_Support_Bot_');
+			expect((response.getTools()[0] as { name: string }).name).toBe(
+				'Haystack_Enterprise_MCP_Customer_Support_Bot_',
+			);
 			expect((response.getTools()[0] as { name: string }).name).toMatch(/^[a-zA-Z0-9_-]+$/);
 		});
 
 		it('still calls the real MCP tool name even though the exposed tool name is sanitized', async () => {
-			mockListTools.mockResolvedValue({ tools: [{ name: 'Customer Support Bot!', inputSchema: {} }] });
+			mockListTools.mockResolvedValue({
+				tools: [{ name: 'Customer Support Bot!', inputSchema: {} }],
+			});
 			mockCallTool.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
 			const context = createSupplyDataContext({ workspaceId: 'ws-1' });
 
 			const { response } = await node.supplyData.call(context, 0);
-			await (response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }).func({});
+			await (
+				response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }
+			).func({});
 
 			expect(mockCallTool).toHaveBeenCalledWith(
 				{ name: 'Customer Support Bot!', arguments: {} },
@@ -263,11 +392,17 @@ describe('HaystackEnterpriseMcp', () => {
 					{ name: 'chat', inputSchema: {} },
 				],
 			});
-			const context = createSupplyDataContext({ workspaceId: 'ws-1', include: 'selected', includeTools: ['chat'] });
+			const context = createSupplyDataContext({
+				workspaceId: 'ws-1',
+				include: 'selected',
+				includeTools: ['chat'],
+			});
 
 			const { response } = await node.supplyData.call(context, 0);
 
-			expect(response.getTools().map((tool: { name: string }) => tool.name)).toEqual([buildMcpToolName(NODE_NAME, 'chat')]);
+			expect(response.getTools().map((tool: { name: string }) => tool.name)).toEqual([
+				buildMcpToolName(NODE_NAME, 'chat'),
+			]);
 		});
 
 		it('excludes the listed tools when "include" mode is "except"', async () => {
@@ -277,11 +412,17 @@ describe('HaystackEnterpriseMcp', () => {
 					{ name: 'chat', inputSchema: {} },
 				],
 			});
-			const context = createSupplyDataContext({ workspaceId: 'ws-1', include: 'except', excludeTools: ['chat'] });
+			const context = createSupplyDataContext({
+				workspaceId: 'ws-1',
+				include: 'except',
+				excludeTools: ['chat'],
+			});
 
 			const { response } = await node.supplyData.call(context, 0);
 
-			expect(response.getTools().map((tool: { name: string }) => tool.name)).toEqual([buildMcpToolName(NODE_NAME, 'search')]);
+			expect(response.getTools().map((tool: { name: string }) => tool.name)).toEqual([
+				buildMcpToolName(NODE_NAME, 'search'),
+			]);
 		});
 
 		it('throws when none of the selected tools are available and closes the client', async () => {
@@ -298,9 +439,15 @@ describe('HaystackEnterpriseMcp', () => {
 
 		it('throws when "except" mode excludes every available tool and closes the client', async () => {
 			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
-			const context = createSupplyDataContext({ workspaceId: 'ws-1', include: 'except', excludeTools: ['search'] });
+			const context = createSupplyDataContext({
+				workspaceId: 'ws-1',
+				include: 'except',
+				excludeTools: ['search'],
+			});
 
-			await expect(node.supplyData.call(context, 0)).rejects.toThrow(/All available tools were excluded/);
+			await expect(node.supplyData.call(context, 0)).rejects.toThrow(
+				/All available tools were excluded/,
+			);
 			expect(mockClose).toHaveBeenCalledTimes(1);
 		});
 
@@ -312,7 +459,10 @@ describe('HaystackEnterpriseMcp', () => {
 
 			const { response } = await node.supplyData.call(context, 0);
 
-			expect((response.getTools()[0] as { schema: unknown }).schema).toEqual({ type: 'object', properties: {} });
+			expect((response.getTools()[0] as { schema: unknown }).schema).toEqual({
+				type: 'object',
+				properties: {},
+			});
 		});
 
 		it("calls the tool's func by invoking client.callTool and returns the stringified content", async () => {
@@ -321,7 +471,9 @@ describe('HaystackEnterpriseMcp', () => {
 			const context = createSupplyDataContext({ workspaceId: 'ws-1' });
 
 			const { response } = await node.supplyData.call(context, 0);
-			const result = await (response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }).func({
+			const result = await (
+				response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }
+			).func({
 				query: 'hello',
 			});
 
@@ -344,7 +496,9 @@ describe('HaystackEnterpriseMcp', () => {
 			);
 
 			const { response } = await node.supplyData.call(context, 0);
-			await (response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }).func({});
+			await (
+				response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }
+			).func({});
 
 			expect(mockCallTool).toHaveBeenCalledWith(expect.anything(), undefined, {
 				timeout: 5000,
@@ -361,7 +515,9 @@ describe('HaystackEnterpriseMcp', () => {
 			const context = createSupplyDataContext({ workspaceId: 'ws-1' });
 
 			const { response } = await node.supplyData.call(context, 0);
-			const result = await (response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }).func({});
+			const result = await (
+				response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }
+			).func({});
 
 			expect(result).toBe('the answer\n{"citations":["doc-1"]}');
 		});
@@ -372,7 +528,9 @@ describe('HaystackEnterpriseMcp', () => {
 			const context = createSupplyDataContext({ workspaceId: 'ws-1' });
 
 			const { response } = await node.supplyData.call(context, 0);
-			const result = await (response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }).func({});
+			const result = await (
+				response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }
+			).func({});
 
 			expect(result).toBe('{"citations":["doc-1"]}');
 		});
@@ -383,7 +541,9 @@ describe('HaystackEnterpriseMcp', () => {
 			const context = createSupplyDataContext({ workspaceId: 'ws-1' });
 
 			const { response } = await node.supplyData.call(context, 0);
-			await (response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }).func({
+			await (
+				response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }
+			).func({
 				query: 'hello',
 			});
 
@@ -393,7 +553,10 @@ describe('HaystackEnterpriseMcp', () => {
 			expect(context.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
 				[{ json: { tool: 'search', response: 'the answer' } }],
 			]);
-			expect(context.logAiEvent).toHaveBeenCalledWith('ai-tool-called', expect.stringContaining('search'));
+			expect(context.logAiEvent).toHaveBeenCalledWith(
+				'ai-tool-called',
+				expect.stringContaining('search'),
+			);
 		});
 
 		it("wraps a tool call failure with the tool's name and traces it via addOutputData", async () => {
@@ -404,7 +567,9 @@ describe('HaystackEnterpriseMcp', () => {
 			const { response } = await node.supplyData.call(context, 0);
 
 			await expect(
-				(response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }).func({}),
+				(
+					response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }
+				).func({}),
 			).rejects.toThrow(/Haystack Enterprise Platform tool "search" failed: pipeline error/);
 			expect(context.addOutputData).toHaveBeenCalledWith(
 				NodeConnectionTypes.AiTool,
@@ -425,7 +590,9 @@ describe('HaystackEnterpriseMcp', () => {
 			const { response } = await node.supplyData.call(context, 0);
 
 			await expect(
-				(response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }).func({}),
+				(
+					response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }
+				).func({}),
 			).rejects.toThrow(/Haystack Enterprise Platform tool "search" failed: the pipeline crashed/);
 			expect(context.addOutputData).toHaveBeenCalledWith(
 				NodeConnectionTypes.AiTool,
@@ -443,19 +610,25 @@ describe('HaystackEnterpriseMcp', () => {
 			const { response } = await node.supplyData.call(context, 0);
 
 			await expect(
-				(response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }).func({}),
+				(
+					response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }
+				).func({}),
 			).rejects.toThrow(/reported an error with no message/);
 		});
 
 		it('adds a self-correction hint when a tool call fails with InvalidParams', async () => {
 			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
-			mockCallTool.mockRejectedValue(new McpError(ErrorCode.InvalidParams, "'sender' is a required property"));
+			mockCallTool.mockRejectedValue(
+				new McpError(ErrorCode.InvalidParams, "'sender' is a required property"),
+			);
 			const context = createSupplyDataContext({ workspaceId: 'ws-1' });
 
 			const { response } = await node.supplyData.call(context, 0);
 
 			await expect(
-				(response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }).func({}),
+				(
+					response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }
+				).func({}),
 			).rejects.toThrow(/didn't match this tool's expected parameters/);
 		});
 
@@ -467,7 +640,9 @@ describe('HaystackEnterpriseMcp', () => {
 			const { response } = await node.supplyData.call(context, 0);
 
 			await expect(
-				(response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }).func({}),
+				(
+					response.getTools()[0] as { func: (input: Record<string, unknown>) => Promise<string> }
+				).func({}),
 			).rejects.toThrow(/refresh the "Tools to Include"\/"Tools to Exclude" list/);
 		});
 
@@ -488,11 +663,17 @@ describe('HaystackEnterpriseMcp', () => {
 
 		it('does not warn when every selected tool is still available', async () => {
 			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
-			const context = createSupplyDataContext({ workspaceId: 'ws-1', include: 'selected', includeTools: ['search'] });
+			const context = createSupplyDataContext({
+				workspaceId: 'ws-1',
+				include: 'selected',
+				includeTools: ['search'],
+			});
 
 			await node.supplyData.call(context, 0);
 
-			expect(context.addExecutionHints).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+			expect(context.addExecutionHints).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'warning' }),
+			);
 		});
 
 		it('flags tools that are missing a description', async () => {
@@ -555,7 +736,9 @@ describe('HaystackEnterpriseMcp', () => {
 		it('calls the matching tool by its raw pipeline name and returns the response', async () => {
 			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
 			mockCallTool.mockResolvedValue({ content: [{ type: 'text', text: 'the answer' }] });
-			const context = createExecuteContext([{ tool: 'search', query: 'hello' }], { workspaceId: 'ws-1' });
+			const context = createExecuteContext([{ tool: 'search', query: 'hello' }], {
+				workspaceId: 'ws-1',
+			});
 
 			const [returnData] = await node.execute.call(context);
 
@@ -589,7 +772,9 @@ describe('HaystackEnterpriseMcp', () => {
 			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
 			const context = createExecuteContext([{ tool: 'does-not-exist' }], { workspaceId: 'ws-1' });
 
-			await expect(node.execute.call(context)).rejects.toThrow(/not one of the tools currently exposed/);
+			await expect(node.execute.call(context)).rejects.toThrow(
+				/not one of the tools currently exposed/,
+			);
 		});
 
 		it('respects the "Tools to Include"/"Tools to Exclude" filter', async () => {
@@ -605,13 +790,17 @@ describe('HaystackEnterpriseMcp', () => {
 				excludeTools: ['chat'],
 			});
 
-			await expect(node.execute.call(context)).rejects.toThrow(/not one of the tools currently exposed/);
+			await expect(node.execute.call(context)).rejects.toThrow(
+				/not one of the tools currently exposed/,
+			);
 		});
 
 		it('excludes the "tool" field itself from the arguments sent to callTool', async () => {
 			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
 			mockCallTool.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
-			const context = createExecuteContext([{ tool: 'search', query: 'hello' }], { workspaceId: 'ws-1' });
+			const context = createExecuteContext([{ tool: 'search', query: 'hello' }], {
+				workspaceId: 'ws-1',
+			});
 
 			await node.execute.call(context);
 
@@ -641,16 +830,25 @@ describe('HaystackEnterpriseMcp', () => {
 
 		it('throws when the tool call reports isError', async () => {
 			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
-			mockCallTool.mockResolvedValue({ isError: true, content: [{ type: 'text', text: 'crashed' }] });
+			mockCallTool.mockResolvedValue({
+				isError: true,
+				content: [{ type: 'text', text: 'crashed' }],
+			});
 			const context = createExecuteContext([{ tool: 'search' }], { workspaceId: 'ws-1' });
 
-			await expect(node.execute.call(context)).rejects.toThrow(/Haystack Enterprise Platform tool "search" failed: crashed/);
+			await expect(node.execute.call(context)).rejects.toThrow(
+				/Haystack Enterprise Platform tool "search" failed: crashed/,
+			);
 		});
 
 		it('pushes an error item instead of throwing when continueOnFail is enabled', async () => {
 			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
 			mockCallTool.mockRejectedValue(new Error('pipeline error'));
-			const context = createExecuteContext([{ tool: 'search' }], { workspaceId: 'ws-1' }, { continueOnFail: true });
+			const context = createExecuteContext(
+				[{ tool: 'search' }],
+				{ workspaceId: 'ws-1' },
+				{ continueOnFail: true },
+			);
 
 			const [returnData] = await node.execute.call(context);
 
@@ -663,7 +861,10 @@ describe('HaystackEnterpriseMcp', () => {
 			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
 			mockCallTool.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
 			const context = createExecuteContext(
-				[{ tool: 'search', a: 1 }, { tool: 'search', a: 2 }],
+				[
+					{ tool: 'search', a: 1 },
+					{ tool: 'search', a: 2 },
+				],
 				{ workspaceId: 'ws-1' },
 			);
 
@@ -679,7 +880,9 @@ describe('HaystackEnterpriseMcp', () => {
 			process.env.N8N_DEPLOYMENT_TYPE = 'cloud';
 			const context = createLoadOptionsContext({ workspaceId: 'ws-1' });
 
-			await expect(node.methods.loadOptions.getAvailableMcpTools.call(context)).rejects.toThrow(/self-hosted/);
+			await expect(node.methods.loadOptions.getAvailableMcpTools.call(context)).rejects.toThrow(
+				/self-hosted/,
+			);
 		});
 
 		it('returns an empty list when no workspace is selected yet', async () => {
@@ -693,15 +896,31 @@ describe('HaystackEnterpriseMcp', () => {
 			mockListTools.mockResolvedValue({
 				tools: [{ name: 'search', description: 'Search the knowledge base' }],
 			});
-			const context = createLoadOptionsContext({ workspaceId: 'ws-1' }, { apiKey: 'secret-key' });
+			const context = createLoadOptionsContext({ workspaceId: 'ws-1' });
 
 			const options = await node.methods.loadOptions.getAvailableMcpTools.call(context);
 
-			expect(options).toEqual([{ name: 'search', value: 'search', description: 'Search the knowledge base' }]);
+			expect(options).toEqual([
+				{ name: 'search', value: 'search', description: 'Search the knowledge base' },
+			]);
 			expect(TransportMock).toHaveBeenCalledWith(
 				expect.objectContaining({ href: expect.stringContaining('/workspaces/ws-1/mcp') }),
-				expect.objectContaining({ requestInit: { headers: { Authorization: 'Bearer secret-key' } } }),
+				expect.objectContaining({ fetch: expect.any(Function) }),
 			);
+			expect(await sentAuthorizationHeaders([new Response('{}')])).toEqual(['Bearer secret-key']);
+		});
+
+		it('lists tools using the OAuth2 access token when Authentication is OAuth2', async () => {
+			mockListTools.mockResolvedValue({ tools: [{ name: 'search', description: 'Search' }] });
+			const context = createLoadOptionsContext(
+				{ workspaceId: 'ws-1', authentication: 'oAuth2' },
+				OAUTH2_CREDENTIALS,
+			);
+
+			await node.methods.loadOptions.getAvailableMcpTools.call(context);
+
+			expect(context.getCredentials).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
+			expect(await sentAuthorizationHeaders([new Response('{}')])).toEqual(['Bearer oauth-token']);
 		});
 
 		it('turns a 403 from a workspace the API key cannot access into a sensible hint, instead of the raw transport error', async () => {

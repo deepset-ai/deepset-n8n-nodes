@@ -78,6 +78,10 @@ npm run dev -- --external-n8n
 N8N_DEV_RELOAD=true N8N_USER_FOLDER=~/.n8n-node-cli n8n start
 ```
 
+### Testing OAuth2 locally
+
+The OAuth2 credential's dynamic client registration sends your n8n instance's callback URL to Haystack Enterprise, which only accepts `https://` callbacks — except on `localhost`, so a plain `http://localhost:5678` n8n works as-is. If your n8n runs elsewhere (e.g. in Docker on another host name), make sure the **OAuth Redirect URL** shown on the credential is either `localhost` or HTTPS (n8n derives it from `N8N_EDITOR_BASE_URL`/`WEBHOOK_URL`). To test against a non-production Haystack Enterprise API, change the credential's **Server URL** to that API's `/api/v1` base URL — discovery and registration follow from it automatically.
+
 ### Example workflows
 
 [`test/examples/`](./test/examples) has a ready-made workflow for trying out the node once it's loaded into your n8n instance:
@@ -99,19 +103,36 @@ to an n8n AI Agent as tools:
 
 ## Credentials
 
-You need a Haystack Enterprise API credential, which requires an API key:
+The node's **Authentication** dropdown offers two ways to authenticate.
+
+### OAuth2 (sign in with your Haystack Enterprise account)
+
+Choose **OAuth2** on the node and create a "Haystack Enterprise OAuth2 API" credential. With the default settings there is nothing to copy or paste:
+
+1. Leave **Use Dynamic Client Registration** on and **Server URL** at `https://api.cloud.deepset.ai/api/v1` (change it only for a self-hosted or non-production Haystack Enterprise API).
+2. Click **Connect** and sign in with your Haystack Enterprise account.
+
+Behind the scenes n8n discovers Haystack Enterprise's authorization server from the Server URL ([RFC 9728](https://www.rfc-editor.org/rfc/rfc9728.html)/[RFC 8414](https://www.rfc-editor.org/rfc/rfc8414.html)) and registers your n8n instance as its own OAuth2 client ([RFC 7591](https://www.rfc-editor.org/rfc/rfc7591.html), "dynamic client registration") using your instance's callback URL, `https://<your-n8n-host>/rest/oauth2-credential/callback`. Each n8n instance gets its own client; no client ID or secret is ever shared or shipped with this package. The MCP connection then runs as the signed-in user, with that user's workspace access and permissions. When the access token expires, the node refreshes it and retries the MCP request automatically.
+
+**Manual OAuth2 client (fallback).** If your Haystack Enterprise deployment does not offer dynamic client registration, turn **Use Dynamic Client Registration** off. The standard OAuth2 fields appear so you can paste in a client created by hand in your identity provider (for self-hosted Haystack Enterprise, that's its Authentik instance — Authentik 2026.8 or later for the dynamic flow above): the authorization and token URLs, client ID/secret, and the scopes (defaults to `openid profile email offline_access`, which is what Haystack Enterprise needs). Register this n8n instance's callback URL shown on the credential as a redirect URI on that client.
+
+### API Key
+
+Choose **API Key** on the node (the default) and create a "Haystack Enterprise API" credential:
 
 1. In Haystack Enterprise Platform, go to Settings → API Keys and generate a key.
-2. In n8n, create a "Haystack Enterprise API" credential and paste the key in.
+2. In n8n, paste the key into the credential.
 
 The key needs at least workspace and search permissions.
 
-This is the same credential type used by
+### Shared with n8n-nodes-haystack-enterprise
+
+Both credential types are the same ones used by
 [n8n-nodes-haystack-enterprise](https://www.npmjs.com/package/n8n-nodes-haystack-enterprise),
-so if you have both packages installed you only need to configure it once. The
-two packages currently duplicate the credential's source file by hand rather
-than sharing it via a common dependency, because that dependency would make
-`n8n-nodes-haystack-enterprise` ineligible for n8n Cloud (cloud-eligible
+so if you have both packages installed you only need to configure them once.
+The two packages currently duplicate the credentials' source files by hand
+rather than sharing them via a common dependency, because that dependency would
+make `n8n-nodes-haystack-enterprise` ineligible for n8n Cloud (cloud-eligible
 packages can't declare runtime dependencies). Once this package is also
 cloud-eligible (or that restriction no longer applies), the two should be
 unified into one shared package.
@@ -122,6 +143,10 @@ least one pipeline as a tool, under Settings → Workspace → MCP.
 ## Compatibility
 
 Requires a self-hosted n8n instance. Not compatible with n8n Cloud.
+
+OAuth2 with dynamic client registration relies on n8n's own OAuth2 credential
+support for it, which shipped in n8n 1.119 (October 2025); on older n8n
+versions, use an API key or a manually created OAuth2 client.
 
 ## Usage
 
@@ -165,9 +190,9 @@ Or from the repo root, to run tests for every package in the workspace: `npm run
 
 ## Resources
 
-* [n8n community nodes documentation](https://docs.n8n.io/integrations/#community-nodes)
-* [Use your pipelines as MCP tools](https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool)
+- [n8n community nodes documentation](https://docs.n8n.io/integrations/#community-nodes)
+- [Use your pipelines as MCP tools](https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool)
 
 ## Version history
 
-* **0.1.0** — Initial release.
+- **0.1.0** — Initial release.

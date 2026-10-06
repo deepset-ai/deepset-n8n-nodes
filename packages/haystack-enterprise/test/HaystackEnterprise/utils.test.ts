@@ -9,6 +9,7 @@ import {
 	extractStreamErrorDetail,
 	extractWorkspaceList,
 	fetchPaginatedResults,
+	getCredentialType,
 	loadDeploymentOptions,
 	loadDeploymentOptionsWithAllOption,
 	loadFileOptions,
@@ -20,7 +21,9 @@ import {
 } from '../../nodes/HaystackEnterprise/utils';
 import { FakeStream } from './testHelpers';
 
-function createContext<T = ILoadOptionsFunctions>(httpRequestWithAuthentication: (...args: unknown[]) => unknown): T {
+function createContext<T = ILoadOptionsFunctions>(
+	httpRequestWithAuthentication: (...args: unknown[]) => unknown,
+): T {
 	return {
 		helpers: { httpRequestWithAuthentication },
 		getNode: () => ({ name: 'Haystack Enterprise AI' }),
@@ -44,7 +47,10 @@ function createLoadOptionsContext(
 
 describe('extractWorkspaceList', () => {
 	it('accepts a bare array response', () => {
-		expect(extractWorkspaceList([{ name: 'a' }, { name: 'b' }])).toEqual([{ name: 'a' }, { name: 'b' }]);
+		expect(extractWorkspaceList([{ name: 'a' }, { name: 'b' }])).toEqual([
+			{ name: 'a' },
+			{ name: 'b' },
+		]);
 	});
 
 	it('returns an empty list for a non-array response', () => {
@@ -118,7 +124,6 @@ describe('loadWorkspaceOptions', () => {
 });
 
 describe('loadDeploymentOptions', () => {
-
 	// The exact scenario reported: a workspace the API key has no access to
 	// selected in "Workspace Name or ID", then opening "Service Name or ID".
 	it('throws a NodeOperationError with the resource-specific hint on a 403, not a raw NodeApiError', async () => {
@@ -157,7 +162,53 @@ describe('loadDeploymentOptionsWithAllOption', () => {
 	});
 });
 
+describe('getCredentialType', () => {
+	it('defaults to the API key credential when the Authentication parameter is unset (pre-OAuth2 workflows)', () => {
+		expect(getCredentialType(createContext<IExecuteFunctions>(vi.fn()))).toBe(
+			'haystackEnterpriseApi',
+		);
+	});
+
+	it('picks the OAuth2 credential on an execute context, reading item index 0', () => {
+		const getNodeParameter = vi.fn(() => 'oAuth2');
+		const context = { getNodeParameter } as unknown as IExecuteFunctions;
+
+		expect(getCredentialType(context)).toBe('haystackEnterpriseOAuth2Api');
+		expect(getNodeParameter).toHaveBeenCalledWith('authentication', 0, 'apiKey');
+	});
+
+	it('picks the OAuth2 credential on a load-options context, using its (name, fallback) signature', () => {
+		// The real ILoadOptionsFunctions.getNodeParameter() has no itemIndex parameter; passing one
+		// would silently become the fallback value. getCurrentNodeParameter() marks this context type.
+		const getNodeParameter = vi.fn(() => 'oAuth2');
+		const context = {
+			getNodeParameter,
+			getCurrentNodeParameter: vi.fn(),
+		} as unknown as ILoadOptionsFunctions;
+
+		expect(getCredentialType(context)).toBe('haystackEnterpriseOAuth2Api');
+		expect(getNodeParameter).toHaveBeenCalledWith('authentication', 'apiKey');
+	});
+});
+
 describe('apiRequest', () => {
+	it("authenticates with the OAuth2 credential type when the node's Authentication is OAuth2", async () => {
+		const httpRequestWithAuthentication = vi.fn(async () => ({}));
+		const context = {
+			helpers: { httpRequestWithAuthentication },
+			getNode: () => ({ name: 'Haystack Enterprise AI' }),
+			getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
+				name === 'authentication' ? 'oAuth2' : fallback,
+		} as unknown as IExecuteFunctions;
+
+		await apiRequest.call(context, 'GET', '/workspaces');
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseOAuth2Api',
+			expect.objectContaining({ method: 'GET', url: expect.stringContaining('/workspaces') }),
+		);
+	});
+
 	// This is the shape n8n's helpers.httpRequestWithAuthentication() actually
 	// throws in production: it catches the raw HTTP failure itself and
 	// immediately wraps it in its own NodeApiError (see n8n-core's
@@ -177,13 +228,16 @@ describe('apiRequest', () => {
 	// which NodeApiError recognizes by default, so without explicit extraction
 	// the real API error is discarded in favor of the generic "Request failed
 	// with status code 500" HTTP client message.
-	it('surfaces deepset\'s `errors` array from the pre-wrapped NodeApiError as the description', async () => {
+	it("surfaces deepset's `errors` array from the pre-wrapped NodeApiError as the description", async () => {
 		const node = { name: 'Haystack Enterprise AI' };
 		const context = createContext(async () => {
 			throwPreWrapped(
 				node,
 				Object.assign(new Error('Request failed with status code 500'), {
-					response: { status: 500, data: { errors: ['Pipeline execution failed: missing component X'] } },
+					response: {
+						status: 500,
+						data: { errors: ['Pipeline execution failed: missing component X'] },
+					},
 				}),
 			);
 		});
@@ -214,7 +268,10 @@ describe('apiRequest', () => {
 	it('surfaces a string `detail` from the error response as the NodeApiError description', async () => {
 		const context = createContext(async () => {
 			throw Object.assign(new Error('Request failed with status code 500'), {
-				response: { status: 500, data: { detail: 'Pipeline execution failed: missing component X' } },
+				response: {
+					status: 500,
+					data: { detail: 'Pipeline execution failed: missing component X' },
+				},
 			});
 		});
 
@@ -304,22 +361,27 @@ describe('apiRequest', () => {
 		['GET', '/workspaces/ws-1/indexes/my-index', 'index'],
 		['GET', '/workspaces/ws-1/files/file-1', 'file'],
 		['DELETE', '/workspaces/ws-1/search_sessions/session-1', 'search session'],
-	] as const)('mentions both possible causes for a 403 on a %s %s endpoint', async (method, endpoint, resource) => {
-		const node = { name: 'Haystack Enterprise AI' };
-		const context = createContext(async () => {
-			throwPreWrapped(
-				node,
-				Object.assign(new Error('Request failed with status code 403'), {
-					response: { status: 403, data: { errors: ['Forbidden'] } },
-				}),
-			);
-		});
-		Object.assign(context, { getNode: () => node });
+	] as const)(
+		'mentions both possible causes for a 403 on a %s %s endpoint',
+		async (method, endpoint, resource) => {
+			const node = { name: 'Haystack Enterprise AI' };
+			const context = createContext(async () => {
+				throwPreWrapped(
+					node,
+					Object.assign(new Error('Request failed with status code 403'), {
+						response: { status: 403, data: { errors: ['Forbidden'] } },
+					}),
+				);
+			});
+			Object.assign(context, { getNode: () => node });
 
-		await expect(apiRequest.call(context, method, endpoint)).rejects.toMatchObject({
-			message: expect.stringMatching(new RegExp(`can't access this workspace.*lacks permission for this ${resource}`, 's')),
-		});
-	});
+			await expect(apiRequest.call(context, method, endpoint)).rejects.toMatchObject({
+				message: expect.stringMatching(
+					new RegExp(`can't access this workspace.*lacks permission for this ${resource}`, 's'),
+				),
+			});
+		},
+	);
 
 	it('replaces the message with a credential hint on a 401', async () => {
 		const context = createContext(async () => {
@@ -344,7 +406,7 @@ describe('apiRequest', () => {
 	// an earlier assignment (`this.message = errorResponse.message`) can have
 	// already set it to a raw, non-string object — which string-coerces to
 	// exactly that literal text wherever it's rendered as a string.
-	it('never leaves .message as a non-string object when the HTTP status code can\'t be determined', async () => {
+	it("never leaves .message as a non-string object when the HTTP status code can't be determined", async () => {
 		const node = { name: 'Haystack Enterprise AI' };
 		const context = createContext(async () => {
 			throwPreWrapped(
@@ -360,7 +422,9 @@ describe('apiRequest', () => {
 		});
 		Object.assign(context, { getNode: () => node });
 
-		const error = await apiRequest.call(context, 'GET', '/workspaces').catch((caught: unknown) => caught);
+		const error = await apiRequest
+			.call(context, 'GET', '/workspaces')
+			.catch((caught: unknown) => caught);
 
 		expect(typeof (error as { message: unknown }).message).toBe('string');
 		expect((error as Error).message).not.toBe('[object Object]');
@@ -399,7 +463,7 @@ describe('apiRequest', () => {
 	// httpCode-based check ever fires — but deepset's own error body still
 	// literally says "Forbidden"/"Unauthorized", so that text is used as a
 	// fallback signal to still produce the right hint.
-	it('classifies a 403 from the error text alone when the HTTP status code can\'t be determined', async () => {
+	it("classifies a 403 from the error text alone when the HTTP status code can't be determined", async () => {
 		const node = { name: 'Haystack Enterprise AI' };
 		const context = createContext(async () => {
 			throwPreWrapped(
@@ -419,11 +483,13 @@ describe('apiRequest', () => {
 		await expect(
 			apiRequest.call(context, 'GET', '/workspaces/ws-1/deployments/dep-1'),
 		).rejects.toMatchObject({
-			message: expect.stringMatching(/can't access this workspace.*lacks permission for this service/s),
+			message: expect.stringMatching(
+				/can't access this workspace.*lacks permission for this service/s,
+			),
 		});
 	});
 
-	it('classifies a 401 from the error text alone when the HTTP status code can\'t be determined', async () => {
+	it("classifies a 401 from the error text alone when the HTTP status code can't be determined", async () => {
 		const node = { name: 'Haystack Enterprise AI' };
 		const context = createContext(async () => {
 			throwPreWrapped(
@@ -484,7 +550,6 @@ describe('extractSearchSessionList', () => {
 });
 
 describe('loadSearchSessionOptions', () => {
-
 	it('maps sessions to name/value options, preferring title over ID', async () => {
 		const context = createLoadOptionsContext(async () => ({
 			search_sessions: [
@@ -515,7 +580,9 @@ describe('consumeSseStream', () => {
 		const stream = new FakeStream();
 		const events: IDataObject[] = [];
 
-		const done = consumeSseStream(stream as unknown as NodeJS.ReadableStream, (event) => events.push(event));
+		const done = consumeSseStream(stream as unknown as NodeJS.ReadableStream, (event) =>
+			events.push(event),
+		);
 		stream.emit(
 			'data',
 			'data: {"type":"delta","delta":{"text":"Hel"}}\n\ndata: {"type":"delta","delta":{"text":"lo"}}\n\n',
@@ -533,7 +600,9 @@ describe('consumeSseStream', () => {
 		const stream = new FakeStream();
 		const events: IDataObject[] = [];
 
-		const done = consumeSseStream(stream as unknown as NodeJS.ReadableStream, (event) => events.push(event));
+		const done = consumeSseStream(stream as unknown as NodeJS.ReadableStream, (event) =>
+			events.push(event),
+		);
 		stream.emit('data', 'data: {"type":"delta",');
 		stream.emit('data', '"delta":{"text":"hi"}}\n\n');
 		stream.emit('end');
@@ -546,7 +615,9 @@ describe('consumeSseStream', () => {
 		const stream = new FakeStream();
 		const events: IDataObject[] = [];
 
-		const done = consumeSseStream(stream as unknown as NodeJS.ReadableStream, (event) => events.push(event));
+		const done = consumeSseStream(stream as unknown as NodeJS.ReadableStream, (event) =>
+			events.push(event),
+		);
 		stream.emit('data', ': keep-alive\n\ndata: not valid json\n\ndata: {"type":"ping"}\n\n');
 		stream.emit('end');
 		await done;
@@ -558,7 +629,9 @@ describe('consumeSseStream', () => {
 		const stream = new FakeStream();
 		const events: IDataObject[] = [];
 
-		const done = consumeSseStream(stream as unknown as NodeJS.ReadableStream, (event) => events.push(event));
+		const done = consumeSseStream(stream as unknown as NodeJS.ReadableStream, (event) =>
+			events.push(event),
+		);
 		stream.emit('data', 'data: {"type":"ping"}\r\n\r\n');
 		stream.emit('end');
 		await done;
@@ -580,7 +653,9 @@ describe('consumeSseStream', () => {
 
 describe('extractPaginatedList', () => {
 	it('reads the data array', () => {
-		expect(extractPaginatedList({ data: [{ id: 'a' }], has_more: false, total: 1 })).toEqual([{ id: 'a' }]);
+		expect(extractPaginatedList({ data: [{ id: 'a' }], has_more: false, total: 1 })).toEqual([
+			{ id: 'a' },
+		]);
 	});
 
 	it('returns an empty list for a non-matching response', () => {
@@ -595,7 +670,11 @@ describe('fetchPaginatedResults', () => {
 		createContext<IExecuteFunctions>(httpRequestWithAuthentication);
 
 	it('fetches a single page when returnAll is false, using the given limit and page_number 1', async () => {
-		const httpRequestWithAuthentication = vi.fn(async () => ({ data: [{ id: 'a' }], has_more: true, total: 5 }));
+		const httpRequestWithAuthentication = vi.fn(async () => ({
+			data: [{ id: 'a' }],
+			has_more: true,
+			total: 5,
+		}));
 		const context = createExecuteContext(httpRequestWithAuthentication);
 
 		const result = await fetchPaginatedResults(
@@ -648,7 +727,11 @@ describe('fetchPaginatedResults', () => {
 	});
 
 	it('stops after the first page when it already reports has_more: false, even with returnAll on', async () => {
-		const httpRequestWithAuthentication = vi.fn(async () => ({ data: [], has_more: false, total: 0 }));
+		const httpRequestWithAuthentication = vi.fn(async () => ({
+			data: [],
+			has_more: false,
+			total: 0,
+		}));
 		const context = createExecuteContext(httpRequestWithAuthentication);
 
 		const result = await fetchPaginatedResults(
@@ -686,13 +769,9 @@ describe('fetchPaginatedResults', () => {
 });
 
 describe('loadFileOptions', () => {
-
 	it('maps files to name/value options, preferring the file name over its ID', async () => {
 		const context = createLoadOptionsContext(async () => ({
-			data: [
-				{ file_id: 'f1', name: 'report.pdf' },
-				{ file_id: 'f2' },
-			],
+			data: [{ file_id: 'f1', name: 'report.pdf' }, { file_id: 'f2' }],
 			has_more: false,
 			total: 2,
 		}));
@@ -727,7 +806,9 @@ describe('loadIndexOptions', () => {
 			total: 1,
 		}));
 
-		expect(await loadIndexOptions(context)).toEqual([{ name: 'my-index (DEPLOYED)', value: 'my-index' }]);
+		expect(await loadIndexOptions(context)).toEqual([
+			{ name: 'my-index (DEPLOYED)', value: 'my-index' },
+		]);
 	});
 
 	it('omits the status suffix when desired_status is missing or not a string', async () => {
@@ -757,7 +838,9 @@ describe('loadIndexOptions', () => {
 });
 
 describe('parseJsonField', () => {
-	const context = { getNode: () => ({ name: 'Haystack Enterprise AI' }) } as unknown as IExecuteFunctions;
+	const context = {
+		getNode: () => ({ name: 'Haystack Enterprise AI' }),
+	} as unknown as IExecuteFunctions;
 
 	it('returns undefined for an empty or whitespace-only string', () => {
 		expect(parseJsonField.call(context, 0, 'Filters (JSON)', '')).toBeUndefined();
@@ -774,7 +857,9 @@ describe('parseJsonField', () => {
 	});
 
 	it('throws a NodeOperationError naming the offending field when the JSON is invalid', () => {
-		expect(() => parseJsonField.call(context, 0, 'Filters (JSON)', '{not valid')).toThrow(NodeOperationError);
+		expect(() => parseJsonField.call(context, 0, 'Filters (JSON)', '{not valid')).toThrow(
+			NodeOperationError,
+		);
 		expect(() => parseJsonField.call(context, 0, 'Filters (JSON)', '{not valid')).toThrow(
 			/"Filters \(JSON\)" is not valid JSON/,
 		);
@@ -782,13 +867,15 @@ describe('parseJsonField', () => {
 });
 
 describe('withServiceActivationRetry', () => {
-	const context = { getNode: () => ({ name: 'Haystack Enterprise AI' }) } as unknown as IExecuteFunctions;
+	const context = {
+		getNode: () => ({ name: 'Haystack Enterprise AI' }),
+	} as unknown as IExecuteFunctions;
 
 	function activatingError() {
-		return new NodeApiError(context.getNode(), { httpCode: '591', message: 'Service is not active' } as unknown as Record<
-			string,
-			unknown
-		>);
+		return new NodeApiError(context.getNode(), {
+			httpCode: '591',
+			message: 'Service is not active',
+		} as unknown as Record<string, unknown>);
 	}
 
 	it('runs fn exactly once and rethrows when enabled is false, even for a 591', async () => {
@@ -796,7 +883,9 @@ describe('withServiceActivationRetry', () => {
 			throw activatingError();
 		});
 
-		await expect(withServiceActivationRetry.call(context, fn, false, 60_000)).rejects.toBeInstanceOf(NodeApiError);
+		await expect(
+			withServiceActivationRetry.call(context, fn, false, 60_000),
+		).rejects.toBeInstanceOf(NodeApiError);
 		expect(fn).toHaveBeenCalledTimes(1);
 	});
 
@@ -809,13 +898,15 @@ describe('withServiceActivationRetry', () => {
 
 	it('does not retry a non-591 error, even with retries enabled', async () => {
 		const fn = vi.fn(async () => {
-			throw new NodeApiError(context.getNode(), { httpCode: '500', message: 'boom' } as unknown as Record<
-				string,
-				unknown
-			>);
+			throw new NodeApiError(context.getNode(), {
+				httpCode: '500',
+				message: 'boom',
+			} as unknown as Record<string, unknown>);
 		});
 
-		await expect(withServiceActivationRetry.call(context, fn, true, 60_000)).rejects.toBeInstanceOf(NodeApiError);
+		await expect(withServiceActivationRetry.call(context, fn, true, 60_000)).rejects.toBeInstanceOf(
+			NodeApiError,
+		);
 		expect(fn).toHaveBeenCalledTimes(1);
 	});
 

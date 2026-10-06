@@ -8,9 +8,13 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport, StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import {
+	StreamableHTTPClientTransport,
+	StreamableHTTPError,
+} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { ErrorCode, McpError, type Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
+import type { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js';
 
 export const API_BASE_URL_V1 = 'https://api.cloud.deepset.ai/api/v1';
 export const API_BASE_URL_V2 = 'https://api.cloud.deepset.ai/api/v2';
@@ -19,55 +23,120 @@ const OAUTH2_CREDENTIAL_NAME = 'haystackEnterpriseOAuth2Api';
 const MCP_CLIENT_NAME = 'n8n-nodes-haystack-enterprise-mcp';
 const MCP_CLIENT_VERSION = '0.1.0';
 
+type McpContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions;
+
 /**
- * The node offers API Key and OAuth2 as alternate credential types, picked via the
- * "Authentication" node parameter (see HaystackEnterpriseMcp.node.ts). Resolves that choice to a
- * raw bearer token string, since the MCP SDK's transport takes a plain Authorization header,
- * bypassing n8n's own HTTP helper — unlike the declarative haystack-enterprise package, which
- * just names the OAuth2 credential type in httpRequestWithAuthentication() and lets n8n handle
- * auth end to end, we need the actual access token here.
- *
- * For OAuth2, httpRequestWithAuthentication() is what actually knows how to refresh an expired
- * token and persist the refreshed one — a direct getCredentials() call would return a stale one
- * — so this makes one cheap authenticated call to force that refresh, then reads the (now
- * current) token back off the credential.
- * ponytail: one extra request per MCP connect; refresh-on-401 instead if that overhead matters.
+ * ILoadOptionsFunctions.getNodeParameter() takes (name, fallback) — there's only ever one "item"
+ * in a loadOptions call — while the execute/supplyData contexts take (name, itemIndex, fallback).
+ * Calling the former with the latter's argument order would silently pass the item index as the
+ * fallback. getCurrentNodeParameter() only exists on the load-options context, so it's the
+ * discriminator.
  */
-function getAuthenticationMode(
-	context: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
-	itemIndex: number,
-): string {
-	// ILoadOptionsFunctions.getNodeParameter() has no itemIndex parameter (there's only ever one
-	// "item" in a loadOptions call) — cast to IExecuteFunctions's shape to call it uniformly here
-	// with the other two contexts, which do take one.
-	return (context as IExecuteFunctions).getNodeParameter('authentication', itemIndex, 'apiKey') as string;
+function isLoadOptionsContext(context: McpContext): context is ILoadOptionsFunctions {
+	return typeof (context as Partial<ILoadOptionsFunctions>).getCurrentNodeParameter === 'function';
 }
 
-export async function getBearerToken(
-	context: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
-	itemIndex: number,
-): Promise<string> {
-	const authentication = getAuthenticationMode(context, itemIndex);
+/**
+ * Reads the node's "Authentication" dropdown (see HaystackEnterpriseMcp.node.ts). Falls back to
+ * API Key for workflows saved before the parameter existed.
+ */
+function getAuthenticationMode(context: McpContext, itemIndex: number): 'apiKey' | 'oAuth2' {
+	const authentication = isLoadOptionsContext(context)
+		? context.getNodeParameter('authentication', 'apiKey')
+		: context.getNodeParameter('authentication', itemIndex, 'apiKey');
+	return authentication === 'oAuth2' ? 'oAuth2' : 'apiKey';
+}
 
-	if (authentication !== 'oAuth2') {
+/**
+ * How to put a bearer token on the MCP server requests. The MCP SDK's transport speaks HTTP
+ * itself, bypassing n8n's httpRequestWithAuthentication() — which, for OAuth2, is the thing that
+ * knows how to refresh an expired access token and persist the new one. So unlike the declarative
+ * haystack-enterprise package (which just names the credential type and lets n8n handle auth end
+ * to end), this package needs the raw token, plus a way to get a fresh one once it expires.
+ */
+export interface McpAuth {
+	/** The bearer token to send on every request. */
+	token: string;
+	/**
+	 * Only set for OAuth2. Called after the MCP server rejects `token` with a 401; resolves to a
+	 * freshly refreshed access token (already persisted on the credential by n8n), or `undefined`
+	 * if the refresh itself failed — in which case the 401 is surfaced as-is.
+	 */
+	refresh?: () => Promise<string | undefined>;
+}
+
+export async function resolveMcpAuth(context: McpContext, itemIndex: number): Promise<McpAuth> {
+	if (getAuthenticationMode(context, itemIndex) === 'apiKey') {
 		const credentials = await context.getCredentials(CREDENTIAL_NAME);
-		return credentials.apiKey as string;
+		return { token: credentials.apiKey as string };
 	}
 
-	await context.helpers.httpRequestWithAuthentication.call(context, OAUTH2_CREDENTIAL_NAME, {
-		method: 'GET',
-		url: `${API_BASE_URL_V1}/workspaces`,
-		json: true,
-	});
-	const oauthCredentials = await context.getCredentials(OAUTH2_CREDENTIAL_NAME);
-	const accessToken = (oauthCredentials.oauthTokenData as { access_token?: string } | undefined)?.access_token;
-	if (!accessToken) {
+	// `oauthTokenData` is the token response n8n stored when the user clicked "Connect" (and
+	// overwrites on every refresh) — it's absent until then.
+	const credentials = await context.getCredentials(OAUTH2_CREDENTIAL_NAME);
+	const accessToken = (credentials.oauthTokenData as { access_token?: unknown } | undefined)
+		?.access_token;
+	if (typeof accessToken !== 'string' || !accessToken) {
 		throw new NodeOperationError(
 			context.getNode(),
-			'Failed to obtain an OAuth2 access token from the Haystack Enterprise OAuth2 API credential.',
+			'The Haystack Enterprise OAuth2 credential is not connected yet. Open the credential and click "Connect".',
 		);
 	}
-	return accessToken;
+
+	return {
+		token: accessToken,
+		refresh: async () => {
+			// n8n's own helper: refreshes via the stored refresh token and persists the result on the
+			// credential, exactly as httpRequestWithAuthentication() would after a 401. Throws if there
+			// is no refresh token (or the IdP rejects it) — the user has to reconnect in that case.
+			try {
+				const refreshed = (await context.helpers.refreshOAuth2Token.call(
+					context,
+					OAUTH2_CREDENTIAL_NAME,
+				)) as { access_token?: unknown } | undefined;
+				return typeof refreshed?.access_token === 'string' && refreshed.access_token
+					? refreshed.access_token
+					: undefined;
+			} catch {
+				return undefined;
+			}
+		},
+	};
+}
+
+/**
+ * Wraps `fetch` to set the Authorization header on every MCP request and, for OAuth2, to retry
+ * exactly once with a refreshed token when the server answers 401 — mirroring what n8n's own
+ * httpRequestWithAuthentication() does for OAuth2 credentials. Set on the transport's `fetch`
+ * option rather than passing a static header via `requestInit` so the header can change after a
+ * refresh mid-session (the transport is reused across every tool call an AI Agent makes).
+ *
+ * MCP request bodies are JSON strings, so re-sending the same `init` is safe. The global `fetch`
+ * is looked up per request (not captured once here) so anything patching it at runtime still
+ * applies.
+ */
+export function createBearerFetch(auth: McpAuth, baseFetch?: FetchLike): FetchLike {
+	let token = auth.token;
+
+	const send = async (url: string | URL, init: RequestInit | undefined, bearer: string) => {
+		const headers = new Headers(init?.headers);
+		headers.set('Authorization', `Bearer ${bearer}`);
+		return (baseFetch ?? fetch)(url, { ...init, headers });
+	};
+
+	return async (url, init) => {
+		const response = await send(url, init, token);
+		if (response.status !== 401 || !auth.refresh) {
+			return response;
+		}
+
+		const refreshedToken = await auth.refresh();
+		if (!refreshedToken) {
+			return response;
+		}
+		token = refreshedToken;
+		return send(url, init, token);
+	};
 }
 
 /**
@@ -79,13 +148,14 @@ export async function getBearerToken(
  */
 export function createMcpTransport(
 	workspaceId: string,
-	bearerToken: string,
+	auth: McpAuth,
 	signal?: AbortSignal,
 ): { client: Client; transport: StreamableHTTPClientTransport; mcpUrl: string } {
 	const mcpUrl = `${API_BASE_URL_V2}/workspaces/${workspaceId}/mcp`;
 	const client = new Client({ name: MCP_CLIENT_NAME, version: MCP_CLIENT_VERSION });
 	const transport = new StreamableHTTPClientTransport(new URL(mcpUrl), {
-		requestInit: { headers: { Authorization: `Bearer ${bearerToken}` }, signal },
+		fetch: createBearerFetch(auth),
+		requestInit: { signal },
 	});
 	return { client, transport, mcpUrl };
 }
@@ -128,7 +198,7 @@ export function normalizeMcpInputSchema(raw: unknown): Record<string, unknown> {
 export function describeTransportErrorHint(error: unknown): string {
 	if (error instanceof StreamableHTTPError) {
 		if (error.code === 401) {
-			return 'Check that the credential (API key or OAuth2) is valid.';
+			return 'Check that the API key is valid, or reconnect the OAuth2 credential.';
 		}
 		if (error.code === 403) {
 			return "This credential doesn't have access to this workspace. Use a workspace-level one for it, or an org-wide one.";
@@ -248,7 +318,9 @@ export function contentToString(content: unknown): string {
  * n8n's own MCP Client Tool node's isStructuredContent check.
  */
 export function isStructuredContent(value: unknown): value is Record<string, unknown> {
-	return value !== undefined && value !== null && typeof value === 'object' && !Array.isArray(value);
+	return (
+		value !== undefined && value !== null && typeof value === 'object' && !Array.isArray(value)
+	);
 }
 
 /**
@@ -283,7 +355,7 @@ export async function listAllMcpTools(client: Client, options?: RequestOptions):
  */
 function describeWorkspaceListErrorHint(httpCode: string | null): string {
 	if (httpCode === '401') {
-		return 'Check that the credential (API key or OAuth2) is valid.';
+		return 'Check that the API key is valid, or reconnect the OAuth2 credential.';
 	}
 	if (httpCode === '403') {
 		return "This credential doesn't have permission to list workspaces. Use one that has both workspace access and permission to list workspaces.";
@@ -308,11 +380,11 @@ function describeWorkspaceListErrorHint(httpCode: string | null): string {
 export async function loadWorkspaceOptions(
 	context: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	// This hits the v1 REST API through n8n's own HTTP helper (unlike the MCP transport in
-	// getBearerToken() above), so naming either credential type here is enough —
+	// This hits the v1 REST API through n8n's own HTTP helper (unlike the MCP transport built by
+	// createMcpTransport() above), so naming either credential type here is enough —
 	// httpRequestWithAuthentication() handles OAuth2 end to end, including refresh.
-	const authentication = getAuthenticationMode(context, 0);
-	const credentialType = authentication === 'oAuth2' ? OAUTH2_CREDENTIAL_NAME : CREDENTIAL_NAME;
+	const credentialType =
+		getAuthenticationMode(context, 0) === 'oAuth2' ? OAUTH2_CREDENTIAL_NAME : CREDENTIAL_NAME;
 
 	let response: unknown;
 	try {
@@ -336,7 +408,9 @@ export async function loadWorkspaceOptions(
 		// string-coercing that raw object — producing the literal, useless
 		// text "[object Object]" no matter how good `.message` actually is.
 		const error =
-			caught instanceof NodeApiError ? caught : new NodeApiError(context.getNode(), caught as JsonObject);
+			caught instanceof NodeApiError
+				? caught
+				: new NodeApiError(context.getNode(), caught as JsonObject);
 		const hint = describeWorkspaceListErrorHint(error.httpCode);
 		const message =
 			hint ||
@@ -348,19 +422,25 @@ export async function loadWorkspaceOptions(
 
 	const workspaces = Array.isArray(response) ? (response as IDataObject[]) : [];
 	return workspaces
-		.filter((workspace) => typeof workspace.name === 'string' && typeof workspace.workspace_id === 'string')
+		.filter(
+			(workspace) =>
+				typeof workspace.name === 'string' && typeof workspace.workspace_id === 'string',
+		)
 		.map((workspace) => {
 			const name = workspace.name as string;
-			return { name: name.charAt(0).toUpperCase() + name.slice(1), value: workspace.workspace_id as string };
+			return {
+				name: name.charAt(0).toUpperCase() + name.slice(1),
+				value: workspace.workspace_id as string,
+			};
 		});
 }
 
 export async function loadMcpToolOptions(
 	context: ILoadOptionsFunctions,
 	workspaceId: string,
-	apiKey: string,
+	auth: McpAuth,
 ): Promise<INodePropertyOptions[]> {
-	const { client, transport } = createMcpTransport(workspaceId, apiKey);
+	const { client, transport } = createMcpTransport(workspaceId, auth);
 
 	try {
 		await client.connect(transport);
@@ -369,7 +449,10 @@ export async function loadMcpToolOptions(
 		// the error's own message as-is rather than wrapping it in a synthesized
 		// one — this also shows up verbatim in n8n's "problem loading the
 		// parameter options" popover, which doesn't wrap or grow to fit long text.
-		throw new NodeOperationError(context.getNode(), describeTransportErrorHint(error) || (error as Error).message);
+		throw new NodeOperationError(
+			context.getNode(),
+			describeTransportErrorHint(error) || (error as Error).message,
+		);
 	}
 
 	try {
@@ -380,7 +463,10 @@ export async function loadMcpToolOptions(
 			description: tool.description ?? '',
 		}));
 	} catch (error) {
-		throw new NodeOperationError(context.getNode(), describeTransportErrorHint(error) || (error as Error).message);
+		throw new NodeOperationError(
+			context.getNode(),
+			describeTransportErrorHint(error) || (error as Error).message,
+		);
 	} finally {
 		await client.close();
 	}

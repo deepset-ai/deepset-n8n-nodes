@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
@@ -7,6 +7,7 @@ import {
 	API_BASE_URL_V2,
 	buildMcpToolName,
 	contentToString,
+	createBearerFetch,
 	describeToolCallErrorHint,
 	describeTransportErrorHint,
 	getSelectedTools,
@@ -15,6 +16,7 @@ import {
 	loadMcpToolOptions,
 	loadWorkspaceOptions,
 	normalizeMcpInputSchema,
+	resolveMcpAuth,
 } from '../../nodes/HaystackEnterpriseMcp/utils';
 
 const { mockConnect, mockListTools, mockClose, ClientMock, TransportMock } = vi.hoisted(() => {
@@ -32,20 +34,186 @@ const { mockConnect, mockListTools, mockClose, ClientMock, TransportMock } = vi.
 
 vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({ Client: ClientMock }));
 vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js')>();
+	const actual =
+		await importOriginal<typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js')>();
 	return { ...actual, StreamableHTTPClientTransport: TransportMock };
 });
 
-function createLoadOptionsContext(httpRequestWithAuthentication: (...args: unknown[]) => unknown) {
+/**
+ * Fake ILoadOptionsFunctions. Only 'authentication' (read by getAuthenticationMode()) is ever
+ * looked up on it — unset, it falls back to the default 'apiKey', same as real n8n does for an
+ * unset parameter. Mirrors the real load-options context's shape: `getNodeParameter(name,
+ * fallback)` (no itemIndex) and a `getCurrentNodeParameter`, which is how utils.ts tells it apart
+ * from an execute context.
+ */
+function createLoadOptionsContext(
+	httpRequestWithAuthentication: (...args: unknown[]) => unknown,
+	params: Record<string, unknown> = {},
+	credentials: Record<string, unknown> = {},
+) {
 	return {
 		helpers: { httpRequestWithAuthentication },
 		getNode: () => ({ name: 'Haystack Enterprise MCP' }),
-		// Only 'authentication' (read by getAuthenticationMode()) is ever looked up on this
-		// fake — always falls back to the default 'apiKey', same as real n8n does for an unset
-		// parameter.
-		getNodeParameter: (_name: string, _itemIndex: number, fallback?: unknown) => fallback,
+		getNodeParameter: (name: string, fallback?: unknown) =>
+			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
+		getCurrentNodeParameter: () => undefined,
+		getCredentials: async () => credentials,
 	} as unknown as ILoadOptionsFunctions;
 }
+
+function okResponse() {
+	return new Response('{}', { status: 200 });
+}
+
+function unauthorizedResponse() {
+	return new Response('', { status: 401 });
+}
+
+describe('resolveMcpAuth', () => {
+	it('uses the API key credential (with no refresh) when Authentication is API Key', async () => {
+		const getCredentials = vi.fn(async () => ({ apiKey: 'secret-key' }));
+		const context = {
+			getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+			getNodeParameter: (_name: string, fallback?: unknown) => fallback,
+			getCurrentNodeParameter: () => undefined,
+			getCredentials,
+		} as unknown as IExecuteFunctions;
+
+		const auth = await resolveMcpAuth(context, 0);
+
+		expect(auth).toEqual({ token: 'secret-key' });
+		expect(getCredentials).toHaveBeenCalledWith('haystackEnterpriseApi');
+	});
+
+	it("reads the stored OAuth2 access token when Authentication is OAuth2, using the load-options context's (name, fallback) signature", async () => {
+		const getCredentials = vi.fn(async () => ({ oauthTokenData: { access_token: 'oauth-token' } }));
+		const context = createLoadOptionsContext(vi.fn(), { authentication: 'oAuth2' });
+		Object.assign(context, { getCredentials });
+
+		const auth = await resolveMcpAuth(context, 0);
+
+		expect(auth.token).toBe('oauth-token');
+		expect(auth.refresh).toBeTypeOf('function');
+		expect(getCredentials).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
+	});
+
+	it('tells the user to Connect when the OAuth2 credential has no access token yet', async () => {
+		const context = {
+			getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+			getNodeParameter: (name: string) => (name === 'authentication' ? 'oAuth2' : undefined),
+			getCredentials: async () => ({}),
+		} as unknown as IExecuteFunctions;
+
+		await expect(resolveMcpAuth(context, 0)).rejects.toThrow(/not connected yet.*Connect/);
+	});
+
+	it("refreshes through n8n's own refreshOAuth2Token helper and returns the new access token", async () => {
+		const refreshOAuth2Token = vi.fn(async () => ({ access_token: 'fresh-token' }));
+		const context = {
+			getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+			getNodeParameter: (name: string) => (name === 'authentication' ? 'oAuth2' : undefined),
+			getCredentials: async () => ({ oauthTokenData: { access_token: 'stale-token' } }),
+			helpers: { refreshOAuth2Token },
+		} as unknown as IExecuteFunctions;
+
+		const auth = await resolveMcpAuth(context, 0);
+
+		await expect(auth.refresh?.()).resolves.toBe('fresh-token');
+		expect(refreshOAuth2Token).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
+	});
+
+	it('resolves refresh to undefined (instead of throwing) when n8n cannot refresh the token', async () => {
+		const context = {
+			getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+			getNodeParameter: (name: string) => (name === 'authentication' ? 'oAuth2' : undefined),
+			getCredentials: async () => ({ oauthTokenData: { access_token: 'stale-token' } }),
+			helpers: {
+				refreshOAuth2Token: async () => {
+					throw new Error('No refresh token');
+				},
+			},
+		} as unknown as IExecuteFunctions;
+
+		const auth = await resolveMcpAuth(context, 0);
+
+		await expect(auth.refresh?.()).resolves.toBeUndefined();
+	});
+});
+
+describe('createBearerFetch', () => {
+	it('sets the Authorization header on every request, preserving the other headers', async () => {
+		const baseFetch = vi.fn(async () => okResponse());
+		const fetchWithAuth = createBearerFetch({ token: 'secret-key' }, baseFetch);
+
+		await fetchWithAuth('https://example.test/mcp', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: '{}',
+		});
+
+		expect(baseFetch).toHaveBeenCalledTimes(1);
+		const [, init] = baseFetch.mock.calls[0] as unknown as [string, RequestInit];
+		const headers = new Headers(init.headers);
+		expect(headers.get('authorization')).toBe('Bearer secret-key');
+		expect(headers.get('content-type')).toBe('application/json');
+		expect(init.method).toBe('POST');
+		expect(init.body).toBe('{}');
+	});
+
+	it('returns a 401 as-is when the auth has no refresh (API key)', async () => {
+		const baseFetch = vi.fn(async () => unauthorizedResponse());
+		const fetchWithAuth = createBearerFetch({ token: 'bad-key' }, baseFetch);
+
+		const response = await fetchWithAuth('https://example.test/mcp');
+
+		expect(response.status).toBe(401);
+		expect(baseFetch).toHaveBeenCalledTimes(1);
+	});
+
+	it('retries once with the refreshed token after a 401, and keeps using it afterwards', async () => {
+		const baseFetch = vi
+			.fn(async () => okResponse())
+			.mockImplementationOnce(async () => unauthorizedResponse());
+		const refresh = vi.fn(async () => 'fresh-token');
+		const fetchWithAuth = createBearerFetch({ token: 'stale-token', refresh }, baseFetch);
+
+		const response = await fetchWithAuth('https://example.test/mcp');
+		await fetchWithAuth('https://example.test/mcp');
+
+		expect(response.status).toBe(200);
+		expect(refresh).toHaveBeenCalledTimes(1);
+		const sentTokens = baseFetch.mock.calls.map(([, init]: unknown[]) =>
+			new Headers((init as RequestInit).headers).get('authorization'),
+		);
+		expect(sentTokens).toEqual(['Bearer stale-token', 'Bearer fresh-token', 'Bearer fresh-token']);
+	});
+
+	it('surfaces the original 401 without retrying when the refresh fails', async () => {
+		const baseFetch = vi.fn(async () => unauthorizedResponse());
+		const fetchWithAuth = createBearerFetch(
+			{ token: 'stale-token', refresh: async () => undefined },
+			baseFetch,
+		);
+
+		const response = await fetchWithAuth('https://example.test/mcp');
+
+		expect(response.status).toBe(401);
+		expect(baseFetch).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not loop when the refreshed token is also rejected', async () => {
+		const baseFetch = vi.fn(async () => unauthorizedResponse());
+		const fetchWithAuth = createBearerFetch(
+			{ token: 'stale-token', refresh: async () => 'fresh-token' },
+			baseFetch,
+		);
+
+		const response = await fetchWithAuth('https://example.test/mcp');
+
+		expect(response.status).toBe(401);
+		expect(baseFetch).toHaveBeenCalledTimes(2);
+	});
+});
 
 describe('normalizeMcpInputSchema', () => {
 	it('passes through a valid object schema unchanged', () => {
@@ -180,12 +348,36 @@ describe('loadWorkspaceOptions', () => {
 			{ workspace_id: 'missing-name' },
 		]);
 
-		return expect(loadWorkspaceOptions(context)).resolves.toEqual([{ name: 'Has-id', value: 'id-1' }]);
+		return expect(loadWorkspaceOptions(context)).resolves.toEqual([
+			{ name: 'Has-id', value: 'id-1' },
+		]);
 	});
 
 	it('returns an empty list for a non-array response', async () => {
 		const context = createLoadOptionsContext(async () => ({ foo: 'bar' }));
 		expect(await loadWorkspaceOptions(context)).toEqual([]);
+	});
+
+	it('authenticates with the API key credential type by default', async () => {
+		const httpRequestWithAuthentication = vi.fn(async () => []);
+		await loadWorkspaceOptions(createLoadOptionsContext(httpRequestWithAuthentication));
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseApi',
+			expect.anything(),
+		);
+	});
+
+	it("authenticates with the OAuth2 credential type when the node's Authentication is OAuth2", async () => {
+		const httpRequestWithAuthentication = vi.fn(async () => []);
+		await loadWorkspaceOptions(
+			createLoadOptionsContext(httpRequestWithAuthentication, { authentication: 'oAuth2' }),
+		);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseOAuth2Api',
+			expect.anything(),
+		);
 	});
 
 	it('wraps request failures in a NodeOperationError', async () => {
@@ -226,7 +418,8 @@ describe('loadWorkspaceOptions', () => {
 				},
 			},
 			getNode: () => node,
-			getNodeParameter: (_name: string, _itemIndex: number, fallback?: unknown) => fallback,
+			getNodeParameter: (_name: string, fallback?: unknown) => fallback,
+			getCurrentNodeParameter: () => undefined,
 		} as unknown as ILoadOptionsFunctions;
 
 		const error = await loadWorkspaceOptions(context).catch((caught: unknown) => caught);
@@ -252,7 +445,8 @@ describe('loadWorkspaceOptions', () => {
 				},
 			},
 			getNode: () => node,
-			getNodeParameter: (_name: string, _itemIndex: number, fallback?: unknown) => fallback,
+			getNodeParameter: (_name: string, fallback?: unknown) => fallback,
+			getCurrentNodeParameter: () => undefined,
 		} as unknown as ILoadOptionsFunctions;
 
 		await expect(loadWorkspaceOptions(context)).rejects.toMatchObject({
@@ -267,7 +461,7 @@ describe('loadWorkspaceOptions', () => {
 	// all, an earlier internal assignment (`this.message = errorResponse.message`)
 	// can leave `.message` as a raw, non-string object instead of coercing it
 	// to a string.
-	it('never leaves .message as a non-string object when the HTTP status code can\'t be determined', async () => {
+	it("never leaves .message as a non-string object when the HTTP status code can't be determined", async () => {
 		const node = { name: 'Haystack Enterprise MCP' };
 		const context = {
 			helpers: {
@@ -281,7 +475,8 @@ describe('loadWorkspaceOptions', () => {
 				},
 			},
 			getNode: () => node,
-			getNodeParameter: (_name: string, _itemIndex: number, fallback?: unknown) => fallback,
+			getNodeParameter: (_name: string, fallback?: unknown) => fallback,
+			getCurrentNodeParameter: () => undefined,
 		} as unknown as ILoadOptionsFunctions;
 
 		const error = await loadWorkspaceOptions(context).catch((caught: unknown) => caught);
@@ -292,7 +487,9 @@ describe('loadWorkspaceOptions', () => {
 });
 
 describe('loadMcpToolOptions', () => {
-	const context = { getNode: () => ({ name: 'Haystack Enterprise MCP' }) } as unknown as ILoadOptionsFunctions;
+	const context = {
+		getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+	} as unknown as ILoadOptionsFunctions;
 
 	beforeEach(() => {
 		mockConnect.mockReset().mockResolvedValue(undefined);
@@ -309,16 +506,27 @@ describe('loadMcpToolOptions', () => {
 			],
 		});
 
-		const options = await loadMcpToolOptions(context, 'workspace-1', 'secret-key');
+		const options = await loadMcpToolOptions(context, 'workspace-1', { token: 'secret-key' });
 
 		expect(options).toEqual([
 			{ name: 'search', value: 'search', description: 'Search the knowledge base' },
 			{ name: 'no-description', value: 'no-description', description: '' },
 		]);
+		// The bearer token travels via the transport's `fetch` option (so it can change after an
+		// OAuth2 refresh), not a static `requestInit` header — exercise that fetch to check it.
 		expect(TransportMock).toHaveBeenCalledWith(
 			new URL(`${API_BASE_URL_V2}/workspaces/workspace-1/mcp`),
-			expect.objectContaining({ requestInit: { headers: { Authorization: 'Bearer secret-key' } } }),
+			expect.objectContaining({ fetch: expect.any(Function) }),
 		);
+		const transportOptions = TransportMock.mock.calls[0][1] as { fetch: typeof fetch };
+		const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse());
+		try {
+			await transportOptions.fetch('https://example.test/mcp');
+			const [, init] = fetchSpy.mock.calls[0] as unknown as [string, RequestInit];
+			expect(new Headers(init.headers).get('authorization')).toBe('Bearer secret-key');
+		} finally {
+			fetchSpy.mockRestore();
+		}
 		expect(mockClose).toHaveBeenCalledTimes(1);
 	});
 
@@ -327,7 +535,7 @@ describe('loadMcpToolOptions', () => {
 			.mockResolvedValueOnce({ tools: [{ name: 'page-1-tool' }], nextCursor: 'cursor-2' })
 			.mockResolvedValueOnce({ tools: [{ name: 'page-2-tool' }] });
 
-		const options = await loadMcpToolOptions(context, 'workspace-1', 'secret-key');
+		const options = await loadMcpToolOptions(context, 'workspace-1', { token: 'secret-key' });
 
 		expect(options.map((o) => o.name)).toEqual(['page-1-tool', 'page-2-tool']);
 		expect(mockListTools).toHaveBeenNthCalledWith(1, undefined, undefined);
@@ -337,42 +545,50 @@ describe('loadMcpToolOptions', () => {
 	it('still closes the client if listing tools fails, surfacing the original error message unwrapped', async () => {
 		mockListTools.mockRejectedValue(new Error('boom'));
 
-		await expect(loadMcpToolOptions(context, 'workspace-1', 'secret-key')).rejects.toThrow('boom');
+		await expect(
+			loadMcpToolOptions(context, 'workspace-1', { token: 'secret-key' }),
+		).rejects.toThrow('boom');
 		expect(mockClose).toHaveBeenCalledTimes(1);
 	});
 
 	it('surfaces an unclassified connection failure as-is, without a synthesized fallback message', async () => {
 		mockConnect.mockRejectedValue(new Error('connection refused'));
 
-		await expect(loadMcpToolOptions(context, 'workspace-1', 'secret-key')).rejects.toThrow('connection refused');
+		await expect(
+			loadMcpToolOptions(context, 'workspace-1', { token: 'secret-key' }),
+		).rejects.toThrow('connection refused');
 	});
 
 	it('surfaces a 404 as-is — only 401/403 get a synthesized hint', async () => {
 		mockConnect.mockRejectedValue(new StreamableHTTPError(404, 'Not Found'));
 
-		await expect(loadMcpToolOptions(context, 'workspace-1', 'secret-key')).rejects.toThrow(
-			'Streamable HTTP error: Not Found',
-		);
+		await expect(
+			loadMcpToolOptions(context, 'workspace-1', { token: 'secret-key' }),
+		).rejects.toThrow('Streamable HTTP error: Not Found');
 	});
 
 	it('adds a workspace-access hint when connecting fails with a 403', async () => {
 		mockConnect.mockRejectedValue(new StreamableHTTPError(403, 'Forbidden'));
 
-		await expect(loadMcpToolOptions(context, 'workspace-1', 'secret-key')).rejects.toThrow(
-			/doesn't have access to this workspace.*org-wide one/s,
-		);
+		await expect(
+			loadMcpToolOptions(context, 'workspace-1', { token: 'secret-key' }),
+		).rejects.toThrow(/doesn't have access to this workspace.*org-wide one/s);
 	});
 
 	it('adds a credential hint when connecting fails with a 401', async () => {
 		mockConnect.mockRejectedValue(new StreamableHTTPError(401, 'Unauthorized'));
 
-		await expect(loadMcpToolOptions(context, 'workspace-1', 'secret-key')).rejects.toThrow(/API key.*valid/);
+		await expect(
+			loadMcpToolOptions(context, 'workspace-1', { token: 'secret-key' }),
+		).rejects.toThrow(/API key.*valid/);
 	});
 });
 
 describe('listAllMcpTools', () => {
 	it('returns tools from a single page unchanged', async () => {
-		const client = { listTools: vi.fn().mockResolvedValue({ tools: [{ name: 'a' }, { name: 'b' }] }) };
+		const client = {
+			listTools: vi.fn().mockResolvedValue({ tools: [{ name: 'a' }, { name: 'b' }] }),
+		};
 
 		const tools = await listAllMcpTools(client as never);
 
@@ -409,7 +625,9 @@ describe('listAllMcpTools', () => {
 
 describe('describeTransportErrorHint', () => {
 	it('returns a credential hint for a 401 StreamableHTTPError', () => {
-		expect(describeTransportErrorHint(new StreamableHTTPError(401, 'Unauthorized'))).toMatch(/API key.*valid/);
+		expect(describeTransportErrorHint(new StreamableHTTPError(401, 'Unauthorized'))).toMatch(
+			/API key.*valid/,
+		);
 	});
 
 	it('returns a workspace-access hint for a 403 StreamableHTTPError', () => {
@@ -420,7 +638,9 @@ describe('describeTransportErrorHint', () => {
 
 	it('returns an empty string for a StreamableHTTPError with any other status', () => {
 		expect(describeTransportErrorHint(new StreamableHTTPError(404, 'Not Found'))).toBe('');
-		expect(describeTransportErrorHint(new StreamableHTTPError(500, 'Internal Server Error'))).toBe('');
+		expect(describeTransportErrorHint(new StreamableHTTPError(500, 'Internal Server Error'))).toBe(
+			'',
+		);
 	});
 
 	it('returns an empty string for a non-StreamableHTTPError, so callers surface it as-is', () => {
@@ -438,9 +658,9 @@ describe('describeToolCallErrorHint', () => {
 	});
 
 	it('explains a MethodNotFound McpError as the tool having disappeared', () => {
-		expect(describeToolCallErrorHint(new McpError(ErrorCode.MethodNotFound, 'no such tool'))).toMatch(
-			/no longer available on the MCP server/,
-		);
+		expect(
+			describeToolCallErrorHint(new McpError(ErrorCode.MethodNotFound, 'no such tool')),
+		).toMatch(/no longer available on the MCP server/);
 	});
 
 	it('explains an InternalError McpError as a pipeline failure', () => {
@@ -463,41 +683,54 @@ describe('getSelectedTools', () => {
 	const tools = [{ name: 'search' }, { name: 'chat' }, { name: 'index' }];
 
 	it('returns every tool when mode is "all", regardless of include/exclude lists', () => {
-		expect(getSelectedTools({ mode: 'all', includeTools: ['search'], excludeTools: ['chat'], tools })).toEqual(
-			tools,
-		);
+		expect(
+			getSelectedTools({ mode: 'all', includeTools: ['search'], excludeTools: ['chat'], tools }),
+		).toEqual(tools);
 	});
 
 	it('returns only the named tools when mode is "selected"', () => {
-		expect(getSelectedTools({ mode: 'selected', includeTools: ['chat'], excludeTools: [], tools })).toEqual([
-			{ name: 'chat' },
-		]);
+		expect(
+			getSelectedTools({ mode: 'selected', includeTools: ['chat'], excludeTools: [], tools }),
+		).toEqual([{ name: 'chat' }]);
 	});
 
 	it('falls back to every tool when mode is "selected" but no tools were chosen yet', () => {
-		expect(getSelectedTools({ mode: 'selected', includeTools: [], excludeTools: [], tools })).toEqual(tools);
+		expect(
+			getSelectedTools({ mode: 'selected', includeTools: [], excludeTools: [], tools }),
+		).toEqual(tools);
 	});
 
 	it('ignores selected names that no longer exist on the server', () => {
 		expect(
-			getSelectedTools({ mode: 'selected', includeTools: ['chat', 'removed-tool'], excludeTools: [], tools }),
+			getSelectedTools({
+				mode: 'selected',
+				includeTools: ['chat', 'removed-tool'],
+				excludeTools: [],
+				tools,
+			}),
 		).toEqual([{ name: 'chat' }]);
 	});
 
 	it('excludes the named tools when mode is "except"', () => {
-		expect(getSelectedTools({ mode: 'except', includeTools: [], excludeTools: ['chat'], tools })).toEqual([
-			{ name: 'search' },
-			{ name: 'index' },
-		]);
+		expect(
+			getSelectedTools({ mode: 'except', includeTools: [], excludeTools: ['chat'], tools }),
+		).toEqual([{ name: 'search' }, { name: 'index' }]);
 	});
 
 	it('returns every tool when mode is "except" but nothing is excluded', () => {
-		expect(getSelectedTools({ mode: 'except', includeTools: [], excludeTools: [], tools })).toEqual(tools);
+		expect(getSelectedTools({ mode: 'except', includeTools: [], excludeTools: [], tools })).toEqual(
+			tools,
+		);
 	});
 
 	it('can exclude every tool, returning an empty list', () => {
 		expect(
-			getSelectedTools({ mode: 'except', includeTools: [], excludeTools: ['search', 'chat', 'index'], tools }),
+			getSelectedTools({
+				mode: 'except',
+				includeTools: [],
+				excludeTools: ['search', 'chat', 'index'],
+				tools,
+			}),
 		).toEqual([]);
 	});
 });
