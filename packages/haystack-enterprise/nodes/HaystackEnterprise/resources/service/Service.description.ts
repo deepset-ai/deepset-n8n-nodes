@@ -67,7 +67,7 @@ const commonAdditionalFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'e.g. 3fa85f64-..., 3fa85f64-...',
-		description: 'Comma-separated list of file IDs to restrict the search to',
+		description: 'Comma-separated temporary file IDs to pass as pipeline input.',
 	},
 	{
 		displayName: 'Filters (JSON)',

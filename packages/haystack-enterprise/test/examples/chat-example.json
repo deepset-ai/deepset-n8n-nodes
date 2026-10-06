@@ -12,12 +12,6 @@
 							"fieldType": "textarea",
 							"requiredField": true,
 							"placeholder": "e.g. Summarize the key findings across last quarter's incident reports"
-						},
-						{
-							"fieldLabel": "Restrict to files (optional)",
-							"fieldType": "text",
-							"requiredField": false,
-							"placeholder": "e.g. 3fa85f64-..., 3fa85f64-..."
 						}
 					]
 				},
@@ -38,9 +32,7 @@
 				"deploymentId": "my-first-service",
 				"query": "={{ $json['What do you want to know?'] }}",
 				"searchSessionId": "",
-				"additionalFields": {
-					"files": "={{ $json['Restrict to files (optional)'] }}"
-				}
+				"additionalFields": {}
 			},
 			"id": "e5f6a7b8-0002-4c1c-9c1c-000000000002",
 			"name": "Haystack Enterprise AI",
@@ -68,8 +60,8 @@
 		},
 		{
 			"parameters": {
-				"content": "## Chat queries\n\nSends a single query to a deployed service via **Chat** (`/chat`).\n\n1. **Search session ID:** Leave this blank for a one-off question. The platform creates a session and returns its ID in `search_session_id`; this workflow does not reuse that session. To continue a conversation, reuse the search session ID. See `chat-with-auto-created-search-session-example.json`.\n2. **Complete response vs. streaming:** Chat returns the result as one complete JSON response. To stream the answer token by token into a chat UI, use **Chat (Streaming)** with a Chat Trigger configured for streaming responses.\n3. **Restrict retrieval to files:** The optional **Restrict to files** field maps to **Additional Fields → File Names or IDs**.",
-				"height": 460,
+				"content": "## Chat queries\n\nSends a single query to a deployed service via **Chat** (`/chat`).\n\n1. **Search session ID:** Leave this blank for a one-off question. The platform creates a session and returns its ID in `search_session_id`; this workflow does not reuse that session. To continue a conversation, reuse the search session ID. See `chat-with-auto-created-search-session-example.json`.\n2. **Complete response vs. streaming:** Chat returns the result as one complete JSON response. To stream the answer token by token into a chat UI, use **Chat (Streaming)** with a Chat Trigger configured for streaming responses.",
+				"height": 380,
 				"width": 460
 			},
 			"id": "e5f6a7b8-0004-4c1c-9c1c-000000000004",
