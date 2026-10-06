@@ -280,6 +280,32 @@ describe('executeService — chat', () => {
 		]);
 	});
 
+	it('sends chat_history_granularity when Chat History Granularity is set', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				workspaceName: 'ws',
+				deploymentId: 'dep-1',
+				query: 'hello',
+				searchSessionId: '',
+				additionalFields: { chatHistoryGranularity: 'query_answer' },
+				waitForActivation: false,
+				maxWaitMinutes: 5,
+			},
+			async () => ({
+				body: { results: [{ answers: [{ answer: 'Hi' }] }] },
+				headers: {},
+			}),
+		);
+
+		await executeService.call(context, 'chat', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
+			string,
+			{ body: Record<string, unknown> },
+		];
+		expect(options.body).toEqual({ queries: ['hello'], chat_history_granularity: 'query_answer' });
+	});
+
 	it('sends an existing search session ID and keeps it on the output', async () => {
 		const { context, httpRequestWithAuthentication } = createContext(
 			{
@@ -522,6 +548,33 @@ describe('executeService — streaming (chatStream)', () => {
 		expect(sendChunk).toHaveBeenCalledWith('error', 0, 'The stream returned an unknown error');
 	});
 
+	it('sends store_search_history on chatStream when Store Search History is set', async () => {
+		const { context, stream, httpRequestWithAuthentication } = createStreamContext({
+			params: {
+				workspaceName: 'ws',
+				deploymentId: 'dep-1',
+				query: 'hello',
+				simplify: true,
+				additionalFields: { storeSearchHistory: false },
+				searchSessionId: '',
+				waitForActivation: false,
+				maxWaitMinutes: 5,
+			},
+		});
+
+		const resultPromise = executeService.call(context, 'chatStream', 0);
+		await flushMicrotasks();
+		stream.emit('data', sseRecord({ type: 'delta', delta: { text: 'Hi' } }));
+		stream.emit('end');
+		await resultPromise;
+
+		const calls = httpRequestWithAuthentication.mock.calls as unknown as Array<
+			[string, { url: string; body: Record<string, unknown> }]
+		>;
+		const streamCall = calls.find(([, options]) => options.url.endsWith('/chat-stream'));
+		expect(streamCall?.[1].body).toEqual({ query: 'hello', store_search_history: false });
+	});
+
 	it('includes the search session ID for chatStream in the request body and the aggregated output', async () => {
 		const { context, stream, httpRequestWithAuthentication } = createStreamContext({
 			params: {
@@ -529,7 +582,7 @@ describe('executeService — streaming (chatStream)', () => {
 				deploymentId: 'dep-1',
 				query: 'hello',
 				simplify: true,
-				additionalFields: {},
+				additionalFields: { chatHistoryGranularity: 'all_messages' },
 				searchSessionId: 'existing-session',
 				waitForActivation: false,
 				maxWaitMinutes: 5,
@@ -551,7 +604,11 @@ describe('executeService — streaming (chatStream)', () => {
 
 		const streamCall = calls.find(([, options]) => options.url.endsWith('/chat-stream'));
 		expect(streamCall?.[1]).toMatchObject({
-			body: { query: 'hello', search_session_id: 'existing-session' },
+			body: {
+				query: 'hello',
+				search_session_id: 'existing-session',
+				chat_history_granularity: 'all_messages',
+			},
 		});
 		expect(result).toEqual([{ json: { content: 'Hi', search_session_id: 'existing-session' } }]);
 	});

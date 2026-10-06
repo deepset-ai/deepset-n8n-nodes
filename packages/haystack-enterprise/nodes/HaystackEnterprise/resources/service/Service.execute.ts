@@ -110,14 +110,13 @@ function readChatRequest(this: IExecuteFunctions, itemIndex: number): ChatReques
 	};
 }
 
-/** Filters, params, files, and view_prompts are shared by /chat and /chat-stream. */
+/** Filters, params, and files are shared by /chat and /chat-stream. */
 function applySharedQueryFields(
 	this: IExecuteFunctions,
 	itemIndex: number,
 	body: IDataObject,
 	additionalFields: IDataObject,
 ): void {
-	if (additionalFields.viewPrompts !== undefined) body.view_prompts = additionalFields.viewPrompts;
 	const filters = parseJsonField.call(this, itemIndex, 'Filters (JSON)', additionalFields.filters);
 	if (filters) body.filters = filters;
 	const params = parseJsonField.call(this, itemIndex, 'Params (JSON)', additionalFields.params);
@@ -138,6 +137,9 @@ function applyChatSessionFields(
 	if (searchSessionId) body.search_session_id = searchSessionId;
 	if (additionalFields.chatHistoryLimit !== undefined) {
 		body.chat_history_limit = additionalFields.chatHistoryLimit;
+	}
+	if (additionalFields.chatHistoryGranularity) {
+		body.chat_history_granularity = additionalFields.chatHistoryGranularity;
 	}
 }
 
@@ -196,6 +198,8 @@ async function runChatStream(this: IExecuteFunctions, itemIndex: number): Promis
 		body.include_tool_call_results = additionalFields.includeToolCallResults;
 	if (additionalFields.includeReasoning !== undefined)
 		body.include_reasoning = additionalFields.includeReasoning;
+	if (additionalFields.storeSearchHistory !== undefined)
+		body.store_search_history = additionalFields.storeSearchHistory;
 	applySharedQueryFields.call(this, itemIndex, body, additionalFields);
 	applyChatSessionFields(body, request.searchSessionId, additionalFields);
 

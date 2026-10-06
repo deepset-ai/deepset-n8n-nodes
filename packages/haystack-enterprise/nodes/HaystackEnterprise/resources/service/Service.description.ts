@@ -84,21 +84,8 @@ const commonAdditionalFields: INodeProperties[] = [
 		default: '',
 		description: 'Additional parameters passed to the underlying pipeline run',
 	},
-	{
-		displayName: 'View Prompts',
-		name: 'viewPrompts',
-		type: 'boolean',
-		default: false,
-		description:
-			'Whether to add the runtime prompts of all nodes to the response (runs the pipeline in debug mode)',
-	},
 ];
 
-/**
- * Extra flags only the *-stream endpoints understand: they control which
- * additional event types Haystack Enterprise streams back (tool calls, tool call
- * results, reasoning), on top of the answer-text deltas that always stream.
- */
 const chatHistoryLimitField: INodeProperties = {
 	displayName: 'Chat History Limit',
 	name: 'chatHistoryLimit',
@@ -109,6 +96,40 @@ const chatHistoryLimitField: INodeProperties = {
 		'The number of most recent chat history items (query and answer) to include in the chat',
 };
 
+const storeSearchHistoryField: INodeProperties = {
+	displayName: 'Store Search History',
+	name: 'storeSearchHistory',
+	type: 'boolean',
+	default: true,
+	description:
+		'Whether to persist the query and response in the chat history for this search session. Opting out is only supported by deployed services with a serverless execution mode.',
+};
+
+const chatHistoryGranularityField: INodeProperties = {
+	displayName: 'Chat History Granularity',
+	name: 'chatHistoryGranularity',
+	type: 'options',
+	default: 'query_answer',
+	description: 'Which messages from each previous turn to include in the chat history',
+	options: [
+		{
+			name: 'All Messages',
+			value: 'all_messages',
+			description: 'Replay every message from the chat history to the pipeline',
+		},
+		{
+			name: 'Query and Answer',
+			value: 'query_answer',
+			description: 'Include only the user query and the final answer from each turn',
+		},
+	],
+};
+
+/**
+ * Extra flags only the *-stream endpoints understand: they control which
+ * additional event types Haystack Enterprise streams back (tool calls, tool call
+ * results, reasoning), on top of the answer-text deltas that always stream.
+ */
 const streamingAdditionalFields: INodeProperties[] = [
 	{
 		displayName: 'Include Result',
@@ -353,7 +374,7 @@ export const serviceFields: INodeProperties[] = [
 				operation: ['chat'],
 			},
 		},
-		options: [...commonAdditionalFields, chatHistoryLimitField],
+		options: [...commonAdditionalFields, chatHistoryLimitField, chatHistoryGranularityField],
 	},
 	{
 		displayName: 'Simplify Output',
@@ -381,7 +402,13 @@ export const serviceFields: INodeProperties[] = [
 				operation: ['chatStream'],
 			},
 		},
-		options: [...commonAdditionalFields, chatHistoryLimitField, ...streamingAdditionalFields],
+		options: [
+			...commonAdditionalFields,
+			chatHistoryLimitField,
+			chatHistoryGranularityField,
+			storeSearchHistoryField,
+			...streamingAdditionalFields,
+		],
 	},
 	// Chat Completions
 	{
