@@ -1,8 +1,9 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-// TODO: unlike File/Index/SearchSession, none of this resource's operations
-// have an apiDocsNotice() (see resources/shared.ts) linking the Haystack
-// Enterprise API docs. Add these before release.
+import { createApiDocsNotice } from '../shared';
+
+const apiDocsNotice = createApiDocsNotice('service');
+
 export const serviceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -15,6 +16,13 @@ export const serviceOperations: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				name: 'Chat',
+				value: 'chat',
+				description:
+					'Run a chat query against a service and receive the full answer once generation finishes',
+				action: 'Chat with a service',
+			},
 			{
 				name: 'Chat (Streaming)',
 				value: 'chatStream',
@@ -48,13 +56,6 @@ export const serviceOperations: INodeProperties[] = [
 					'List workspace services as OpenAI-compatible models to use it with Chat Completions (`model` parameter)',
 				action: 'List models for chat completions',
 			},
-			{
-				name: 'Search (Streaming)',
-				value: 'searchStream',
-				description:
-					'Run a search query against a service and receive the answer incrementally, as it is generated',
-				action: 'Search a service streaming',
-			},
 		],
 		default: 'getAll',
 	},
@@ -62,12 +63,12 @@ export const serviceOperations: INodeProperties[] = [
 
 const commonAdditionalFields: INodeProperties[] = [
 	{
-		displayName: 'File Names or IDs',
+		displayName: 'Temporary File IDs',
 		name: 'files',
 		type: 'string',
 		default: '',
 		placeholder: 'e.g. 3fa85f64-..., 3fa85f64-...',
-		description: 'Comma-separated list of file IDs to restrict the search to',
+		description: 'Comma-separated temporary file IDs to pass as pipeline input',
 	},
 	{
 		displayName: 'Filters (JSON)',
@@ -84,15 +85,46 @@ const commonAdditionalFields: INodeProperties[] = [
 		default: '',
 		description: 'Additional parameters passed to the underlying pipeline run',
 	},
-	{
-		displayName: 'View Prompts',
-		name: 'viewPrompts',
-		type: 'boolean',
-		default: false,
-		description:
-			'Whether to add the runtime prompts of all nodes to the response (runs the pipeline in debug mode)',
-	},
 ];
+
+const chatHistoryLimitField: INodeProperties = {
+	displayName: 'Chat History Limit',
+	name: 'chatHistoryLimit',
+	type: 'number',
+	typeOptions: { minValue: 0 },
+	default: 3,
+	description:
+		'The number of most recent chat history items (query and answer) to include in the chat',
+};
+
+const storeSearchHistoryField: INodeProperties = {
+	displayName: 'Store Search History',
+	name: 'storeSearchHistory',
+	type: 'boolean',
+	default: true,
+	description:
+		'Whether to persist the query and response in the chat history for this search session. Opting out is only supported by deployed services with a serverless execution mode.',
+};
+
+const chatHistoryGranularityField: INodeProperties = {
+	displayName: 'Chat History Granularity',
+	name: 'chatHistoryGranularity',
+	type: 'options',
+	default: 'QUERY_ANSWER',
+	description: 'Which messages from each previous turn to include in the chat history',
+	options: [
+		{
+			name: 'All Messages',
+			value: 'ALL_MESSAGES',
+			description: 'Replay every message from the chat history to the pipeline',
+		},
+		{
+			name: 'Query and Answer',
+			value: 'QUERY_ANSWER',
+			description: 'Include only the user query and the final answer from each turn',
+		},
+	],
+};
 
 /**
  * Extra flags only the *-stream endpoints understand: they control which
@@ -133,7 +165,28 @@ const streamingAdditionalFields: INodeProperties[] = [
 ];
 
 export const serviceFields: INodeProperties[] = [
-	// Get / Search (Streaming) / Chat (Streaming) / Chat Completions
+	apiDocsNotice(
+		'chat',
+		'chat-api-v-1-workspaces-workspace-name-deployments-deployment-id-chat-post',
+	),
+	apiDocsNotice(
+		'chatStream',
+		'chat-stream-api-v-1-workspaces-workspace-name-deployments-deployment-id-chat-stream-post',
+	),
+	apiDocsNotice(
+		'chatCompletions',
+		'chat-completions-api-v-1-workspaces-workspace-name-deployments-v-1-chat-completions-post',
+	),
+	apiDocsNotice(
+		'get',
+		'get-deployment-api-v-1-workspaces-workspace-name-deployments-deployment-id-get',
+	),
+	apiDocsNotice('getAll', 'list-deployments-api-v-1-workspaces-workspace-name-deployments-get'),
+	apiDocsNotice(
+		'listModels',
+		'list-models-api-v-1-workspaces-workspace-name-deployments-v-1-models-get',
+	),
+	// Get / Chat / Chat (Streaming) / Chat Completions
 	{
 		displayName: 'Service Name or ID',
 		name: 'deploymentId',
@@ -149,7 +202,7 @@ export const serviceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['service'],
-				operation: ['get', 'searchStream', 'chatStream', 'chatCompletions'],
+				operation: ['get', 'chat', 'chatStream', 'chatCompletions'],
 			},
 		},
 	},
@@ -163,7 +216,7 @@ export const serviceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['service'],
-				operation: ['searchStream', 'chatStream', 'chatCompletions'],
+				operation: ['chat', 'chatStream', 'chatCompletions'],
 			},
 		},
 	},
@@ -178,7 +231,7 @@ export const serviceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['service'],
-				operation: ['searchStream', 'chatStream', 'chatCompletions'],
+				operation: ['chat', 'chatStream', 'chatCompletions'],
 				waitForActivation: [true],
 			},
 		},
@@ -300,52 +353,7 @@ export const serviceFields: INodeProperties[] = [
 			},
 		],
 	},
-	// Search (Streaming)
-	{
-		displayName: 'Search',
-		name: 'query',
-		type: 'string',
-		required: true,
-		default: '',
-		typeOptions: { rows: 3 },
-		placeholder: 'e.g. {{ $json.Subject }}',
-		description: 'The search query to send to the service. Supports expressions.',
-		displayOptions: {
-			show: {
-				resource: ['service'],
-				operation: ['searchStream'],
-			},
-		},
-	},
-	{
-		displayName: 'Simplify Output',
-		name: 'simplify',
-		type: 'boolean',
-		default: true,
-		description:
-			'Whether to return one aggregated item with the concatenated answer text and final result, instead of one item per streamed event (deltas, tool calls, reasoning, the final result)',
-		displayOptions: {
-			show: {
-				resource: ['service'],
-				operation: ['searchStream'],
-			},
-		},
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['service'],
-				operation: ['searchStream'],
-			},
-		},
-		options: [...commonAdditionalFields, ...streamingAdditionalFields],
-	},
-	// Chat (Streaming)
+	// Chat / Chat (Streaming)
 	{
 		displayName: 'Query',
 		name: 'query',
@@ -358,7 +366,7 @@ export const serviceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['service'],
-				operation: ['chatStream'],
+				operation: ['chat', 'chatStream'],
 			},
 		},
 	},
@@ -372,9 +380,23 @@ export const serviceFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['service'],
-				operation: ['chatStream'],
+				operation: ['chat', 'chatStream'],
 			},
 		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['service'],
+				operation: ['chat'],
+			},
+		},
+		options: [...commonAdditionalFields, chatHistoryLimitField, chatHistoryGranularityField],
 	},
 	{
 		displayName: 'Simplify Output',
@@ -404,15 +426,9 @@ export const serviceFields: INodeProperties[] = [
 		},
 		options: [
 			...commonAdditionalFields,
-			{
-				displayName: 'Chat History Limit',
-				name: 'chatHistoryLimit',
-				type: 'number',
-				typeOptions: { minValue: 0 },
-				default: 3,
-				description:
-					'The number of most recent chat history items (query and answer) to include in the chat',
-			},
+			chatHistoryLimitField,
+			chatHistoryGranularityField,
+			storeSearchHistoryField,
 			...streamingAdditionalFields,
 		],
 	},
