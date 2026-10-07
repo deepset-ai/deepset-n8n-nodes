@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { createApiDocsNotice } from '../shared';
+import { createApiDocsNotice, extraParametersField } from '../shared';
 
 const apiDocsNotice = createApiDocsNotice('searchSession');
 
@@ -64,6 +64,7 @@ export const searchSessionFields: INodeProperties[] = [
 			},
 		},
 	},
+	extraParametersField('searchSession', 'create', 'body'),
 	// Delete
 	apiDocsNotice(
 		'delete',

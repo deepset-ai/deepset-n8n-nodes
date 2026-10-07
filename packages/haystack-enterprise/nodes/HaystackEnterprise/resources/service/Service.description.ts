@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { createApiDocsNotice } from '../shared';
+import { createApiDocsNotice, extraParametersOption } from '../shared';
 
 const apiDocsNotice = createApiDocsNotice('service');
 
@@ -131,6 +131,12 @@ const chatHistoryGranularityField: INodeProperties = {
  * additional event types Haystack Enterprise streams back (tool calls, tool call
  * results, reasoning), on top of the answer-text deltas that always stream.
  */
+const extraBodyParameters: INodeProperties = {
+	...extraParametersOption('body'),
+	description:
+		'Other API fields forwarded as-is on the request body. Merged over the fields above. Cannot replace the query.',
+};
+
 const streamingAdditionalFields: INodeProperties[] = [
 	{
 		displayName: 'Include Result',
@@ -396,7 +402,12 @@ export const serviceFields: INodeProperties[] = [
 				operation: ['chat'],
 			},
 		},
-		options: [...commonAdditionalFields, chatHistoryLimitField, chatHistoryGranularityField],
+		options: [
+			...commonAdditionalFields,
+			chatHistoryLimitField,
+			chatHistoryGranularityField,
+			extraBodyParameters,
+		],
 	},
 	{
 		displayName: 'Simplify Output',
@@ -430,6 +441,7 @@ export const serviceFields: INodeProperties[] = [
 			chatHistoryGranularityField,
 			storeSearchHistoryField,
 			...streamingAdditionalFields,
+			extraBodyParameters,
 		],
 	},
 	// Chat Completions

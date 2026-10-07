@@ -20,6 +20,7 @@ import {
 	loadWorkspaceOptions,
 	normalizeApiOrigin,
 	parseJsonField,
+	readAdditionalParameters,
 	withServiceActivationRetry,
 } from '../../nodes/HaystackEnterprise/utils';
 import { FakeStream } from './testHelpers';
@@ -991,6 +992,36 @@ describe('parseJsonField', () => {
 		);
 		expect(() => parseJsonField.call(context, 0, 'Filters (JSON)', '{not valid')).toThrow(
 			/"Filters \(JSON\)" is not valid JSON/,
+		);
+	});
+});
+
+describe('readAdditionalParameters', () => {
+	const context = {
+		getNode: () => ({ name: 'Haystack Enterprise AI' }),
+	} as unknown as IExecuteFunctions;
+
+	it('returns an empty object when the field is omitted or empty', () => {
+		expect(readAdditionalParameters.call(context, 0, undefined)).toEqual({});
+		expect(readAdditionalParameters.call(context, 0, '')).toEqual({});
+		expect(readAdditionalParameters.call(context, 0, '{}')).toEqual({});
+	});
+
+	it('parses a JSON string or an already-parsed object and drops reserved keys', () => {
+		expect(
+			readAdditionalParameters.call(context, 0, '{"new_field":1,"queries":["nope"]}', ['queries']),
+		).toEqual({ new_field: 1 });
+		expect(readAdditionalParameters.call(context, 0, { temperature: 0.2 })).toEqual({
+			temperature: 0.2,
+		});
+	});
+
+	it('rejects invalid JSON and non-objects', () => {
+		expect(() => readAdditionalParameters.call(context, 0, '{not valid')).toThrow(
+			/"Extra Parameters \(JSON\)" is not valid JSON/,
+		);
+		expect(() => readAdditionalParameters.call(context, 0, '[]')).toThrow(
+			/"Extra Parameters \(JSON\)" must be a JSON object/,
 		);
 	});
 });

@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { createApiDocsNotice } from '../shared';
+import { createApiDocsNotice, extraParametersField } from '../shared';
 
 const apiDocsNotice = createApiDocsNotice('file');
 
@@ -198,6 +198,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 	},
+	extraParametersField('file', 'upload', 'query'),
 	// Get Many
 	apiDocsNotice('getAll', 'list-files-api-v-1-workspaces-workspace-name-files-get'),
 	{
@@ -428,6 +429,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		],
 	},
+	extraParametersField('file', 'updateMetaBulk', 'body'),
 	// Delete
 	apiDocsNotice('delete', 'delete-file-api-v-1-workspaces-workspace-name-files-file-id-delete'),
 	fileIdField('delete'),

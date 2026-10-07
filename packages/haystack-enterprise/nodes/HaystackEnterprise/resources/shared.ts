@@ -8,6 +8,40 @@ export const DOCS_BASE_URL = 'https://docs.cloud.deepset.ai/docs/api/main';
  * only when that resource+operation combination is selected. Shared by the
  * File/Index/Search Session resources' description files.
  */
+/**
+ * JSON object merged onto a request so users can send API fields this node
+ * does not list yet. `sentAs` only changes the hint — callers decide whether
+ * the object lands on the body or the query string.
+ */
+export function extraParametersOption(sentAs: 'body' | 'query'): INodeProperties {
+	return {
+		displayName: 'Extra Parameters (JSON)',
+		name: 'extraParameters',
+		type: 'json',
+		default: '{}',
+		description:
+			sentAs === 'query'
+				? 'Other API fields forwarded as-is as query parameters. Merged over the query fields above, so you can send parameters this node does not list yet.'
+				: 'Other API fields forwarded as-is on the request body. Merged over the fields above, so you can send parameters this node does not list yet.',
+	};
+}
+
+export function extraParametersField(
+	resource: string,
+	operation: string,
+	sentAs: 'body' | 'query',
+): INodeProperties {
+	return {
+		...extraParametersOption(sentAs),
+		displayOptions: {
+			show: {
+				resource: [resource],
+				operation: [operation],
+			},
+		},
+	};
+}
+
 export function createApiDocsNotice(resource: string) {
 	return (operation: string, urlSlug: string): INodeProperties => ({
 		displayName: `See the <a href="${DOCS_BASE_URL}/${urlSlug}" target="_blank" rel="noopener noreferrer">Haystack Enterprise API docs</a> for this endpoint`,
