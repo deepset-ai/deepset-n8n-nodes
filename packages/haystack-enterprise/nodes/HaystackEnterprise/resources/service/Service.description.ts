@@ -131,11 +131,7 @@ const chatHistoryGranularityField: INodeProperties = {
  * additional event types Haystack Enterprise streams back (tool calls, tool call
  * results, reasoning), on top of the answer-text deltas that always stream.
  */
-const extraBodyParameters: INodeProperties = {
-	...extraParametersOption('body'),
-	description:
-		'Other API fields forwarded as-is on the request body. Merged over the fields above. Cannot replace the query.',
-};
+const extraBodyParameters = extraParametersOption('body');
 
 const streamingAdditionalFields: INodeProperties[] = [
 	{

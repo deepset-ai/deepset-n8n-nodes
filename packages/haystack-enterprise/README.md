@@ -170,10 +170,8 @@ Session** resource's **Create** operation and pass its ID in from the start.
 whose `content` is the concatenated answer.
 
 **Extra Parameters (JSON)** on Chat, Chat (Streaming), Search Session Create, File Upload, and
-Update Meta Bulk forwards API fields this node does not list yet, merged over the fields it already
-sends. File Upload puts them on the query string; the others put them on the JSON body. The chat
-query itself stays the Query field. Chat Completions and the Chat Model already accept the same
-field.
+Update Meta Bulk sends additional API fields. File Upload sends them as query parameters; the others
+send them on the request body. Chat Completions and the Chat Model have the same field.
 
 **Chat Completions** is the OpenAI-compatible alternative: you send the full conversation as
 `messages` (the client owns history — there is no search session) and get a `chat.completion` back.

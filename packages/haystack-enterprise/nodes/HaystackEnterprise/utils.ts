@@ -679,12 +679,7 @@ export function parseCommaSeparatedList(value: unknown): string[] {
 		.filter((item) => item.length > 0);
 }
 
-/**
- * Reads Extra Parameters (JSON): an object of API fields this node does not
- * list. Empty values yield {}. Invalid JSON and non-objects throw.
- * `reservedKeys` are dropped so the node keeps fields that define the request
- * (the chat query, chat-completions model/messages/stream).
- */
+/** Parses Extra Parameters (JSON). Empty values yield {}. Drops `reservedKeys`. */
 export function readAdditionalParameters(
 	this: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
