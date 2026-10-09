@@ -44,6 +44,40 @@ describe('executeSearchSession — create', () => {
 		);
 		expect(result).toEqual([{ json: { search_session_id: 'created-session' } }]);
 	});
+
+	it('sends extra parameters on the create body and omits an empty body', async () => {
+		const { context, httpRequestWithAuthentication } = createContext({
+			params: {
+				workspaceName: 'ws',
+				deploymentId: 'dep-1',
+				extraParameters: '{"title": "Support"}',
+			},
+		});
+
+		await executeSearchSession.call(context, 'create', 0);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseApi',
+			expect.objectContaining({
+				method: 'POST',
+				body: { title: 'Support' },
+			}),
+		);
+	});
+
+	it('does not send a body when extra parameters are empty', async () => {
+		const { context, httpRequestWithAuthentication } = createContext({
+			params: { workspaceName: 'ws', deploymentId: 'dep-1', extraParameters: '{}' },
+		});
+
+		await executeSearchSession.call(context, 'create', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
+			string,
+			{ body?: unknown },
+		];
+		expect(options.body).toBeUndefined();
+	});
 });
 
 describe('executeSearchSession — get many', () => {

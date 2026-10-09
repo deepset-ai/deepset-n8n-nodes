@@ -11,6 +11,7 @@ import {
 	getResponseHeader,
 	parseCommaSeparatedList,
 	parseJsonField,
+	readAdditionalParameters,
 	withServiceActivationRetry,
 } from '../../utils';
 
@@ -152,6 +153,12 @@ async function runChat(this: IExecuteFunctions, itemIndex: number): Promise<IDat
 	const body: IDataObject = { queries: [request.query] };
 	applySharedQueryFields.call(this, itemIndex, body, request.additionalFields);
 	applyChatSessionFields(body, request.searchSessionId, request.additionalFields);
+	Object.assign(
+		body,
+		readAdditionalParameters.call(this, itemIndex, request.additionalFields.extraParameters, [
+			'queries',
+		]),
+	);
 
 	const response = (await withServiceActivationRetry.call(
 		this,
@@ -202,6 +209,10 @@ async function runChatStream(this: IExecuteFunctions, itemIndex: number): Promis
 		body.store_search_history = additionalFields.storeSearchHistory;
 	applySharedQueryFields.call(this, itemIndex, body, additionalFields);
 	applyChatSessionFields(body, request.searchSessionId, additionalFields);
+	Object.assign(
+		body,
+		readAdditionalParameters.call(this, itemIndex, additionalFields.extraParameters, ['query']),
+	);
 
 	let searchSessionId: string | undefined = request.searchSessionId || undefined;
 
@@ -387,28 +398,14 @@ function applyChatCompletionExtras(
 	}
 	if (additionalFields.topP !== undefined) body.top_p = additionalFields.topP;
 
-	const extra = parseJsonValue.call(
-		this,
-		itemIndex,
-		'Extra Parameters (JSON)',
-		additionalFields.extraParameters,
+	Object.assign(
+		body,
+		readAdditionalParameters.call(this, itemIndex, additionalFields.extraParameters, [
+			'messages',
+			'model',
+			'stream',
+		]),
 	);
-	if (extra !== undefined) {
-		if (!extra || typeof extra !== 'object' || Array.isArray(extra)) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'"Extra Parameters (JSON)" must be a JSON object',
-				{
-					itemIndex,
-				},
-			);
-		}
-		const extras = { ...(extra as IDataObject) };
-		delete extras.messages;
-		delete extras.model;
-		delete extras.stream;
-		Object.assign(body, extras);
-	}
 }
 
 function assertSingleChoiceWhenSimplifying(
