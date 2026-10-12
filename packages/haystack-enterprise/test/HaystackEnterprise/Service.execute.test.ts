@@ -245,6 +245,39 @@ describe('executeService — stream request error handling', () => {
 });
 
 describe('executeService — chat', () => {
+	it('merges extra parameters onto the chat body without replacing queries', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				workspaceName: 'ws',
+				deploymentId: 'dep-1',
+				query: 'hello',
+				searchSessionId: '',
+				additionalFields: {
+					chatHistoryLimit: 3,
+					extraParameters: '{"chat_history_limit": 9, "new_field": true, "queries": ["nope"]}',
+				},
+				waitForActivation: false,
+				maxWaitMinutes: 5,
+			},
+			async () => ({
+				body: { results: [{ answers: [{ answer: 'Hi' }] }] },
+				headers: {},
+			}),
+		);
+
+		await executeService.call(context, 'chat', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as unknown as [
+			string,
+			{ body: Record<string, unknown> },
+		];
+		expect(options.body).toEqual({
+			queries: ['hello'],
+			chat_history_limit: 9,
+			new_field: true,
+		});
+	});
+
 	it('posts queries and stamps the auto-created search session ID from the response header', async () => {
 		const { context, httpRequestWithAuthentication } = createContext(
 			{
@@ -546,6 +579,35 @@ describe('executeService — streaming (chatStream)', () => {
 
 		await expect(resultPromise).rejects.toThrow(/The stream returned an unknown error/);
 		expect(sendChunk).toHaveBeenCalledWith('error', 0, 'The stream returned an unknown error');
+	});
+
+	it('merges extra parameters onto the chat-stream body without replacing query', async () => {
+		const { context, stream, httpRequestWithAuthentication } = createStreamContext({
+			params: {
+				workspaceName: 'ws',
+				deploymentId: 'dep-1',
+				query: 'hello',
+				simplify: true,
+				additionalFields: {
+					extraParameters: '{"query": "nope", "include_result": false, "new_field": 1}',
+				},
+				searchSessionId: '',
+				waitForActivation: false,
+				maxWaitMinutes: 5,
+			},
+		});
+
+		const resultPromise = executeService.call(context, 'chatStream', 0);
+		await flushMicrotasks();
+		stream.emit('data', sseRecord({ type: 'delta', delta: { text: 'Hi' } }));
+		stream.emit('end');
+		await resultPromise;
+
+		const calls = httpRequestWithAuthentication.mock.calls as unknown as Array<
+			[string, { url: string; body: Record<string, unknown> }]
+		>;
+		const streamCall = calls.find(([, options]) => options.url.endsWith('/chat-stream'));
+		expect(streamCall?.[1].body).toEqual({ query: 'hello', include_result: false, new_field: 1 });
 	});
 
 	it('sends store_search_history on chatStream when Store Search History is set', async () => {

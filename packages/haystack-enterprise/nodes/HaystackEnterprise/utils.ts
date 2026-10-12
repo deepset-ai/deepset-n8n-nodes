@@ -713,11 +713,13 @@ export async function createSearchSession(
 	this: IExecuteFunctions,
 	workspaceName: string,
 	deploymentId: string,
+	body: IDataObject = {},
 ): Promise<string> {
 	const response = (await apiRequest.call(
 		this,
 		'POST',
 		`/workspaces/${workspaceName}/deployments/${deploymentId}/search_sessions`,
+		Object.keys(body).length > 0 ? { body } : {},
 	)) as IDataObject;
 	return response.search_session_id as string;
 }
@@ -754,6 +756,43 @@ export function parseCommaSeparatedList(value: unknown): string[] {
 		.split(',')
 		.map((item) => item.trim())
 		.filter((item) => item.length > 0);
+}
+
+/** Parses Extra Parameters (JSON). Empty values yield {}. Drops `reservedKeys`. */
+export function readAdditionalParameters(
+	this: IExecuteFunctions | ISupplyDataFunctions,
+	itemIndex: number,
+	value: unknown,
+	reservedKeys: readonly string[] = [],
+): IDataObject {
+	if (value === undefined || value === null || value === '') {
+		return {};
+	}
+	let parsed: unknown = value;
+	if (typeof value === 'string') {
+		if (value.trim() === '') return {};
+		try {
+			parsed = JSON.parse(value);
+		} catch {
+			throw new NodeOperationError(this.getNode(), '"Extra Parameters (JSON)" is not valid JSON', {
+				itemIndex,
+			});
+		}
+	}
+	if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'"Extra Parameters (JSON)" must be a JSON object',
+			{
+				itemIndex,
+			},
+		);
+	}
+	const extras = { ...(parsed as IDataObject) };
+	for (const key of reservedKeys) {
+		delete extras[key];
+	}
+	return extras;
 }
 
 /**
