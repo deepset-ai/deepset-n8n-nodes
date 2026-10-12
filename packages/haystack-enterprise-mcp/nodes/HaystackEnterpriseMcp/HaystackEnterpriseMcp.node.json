@@ -2,10 +2,7 @@
 	"node": "n8n-nodes-haystack-enterprise-mcp",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["AI"],
-	"subcategories": {
-		"AI": ["Tools"]
-	},
+	"categories": ["Development"],
 	"resources": {
 		"credentialDocumentation": [
 			{
