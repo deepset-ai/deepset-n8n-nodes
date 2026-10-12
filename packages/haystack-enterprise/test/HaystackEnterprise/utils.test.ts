@@ -247,7 +247,7 @@ describe('apiRequest', () => {
 		expect(getCredentials).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
 	});
 
-	it("derives the API base URL from the OAuth2 credential's Server URL (n8n's DCR field, which includes /api/v1)", async () => {
+	it('accepts a versioned OAuth2 Server URL without duplicating /api/v1', async () => {
 		const httpRequestWithAuthentication = vi.fn(async () => ({}));
 		const context = {
 			helpers: { httpRequestWithAuthentication },

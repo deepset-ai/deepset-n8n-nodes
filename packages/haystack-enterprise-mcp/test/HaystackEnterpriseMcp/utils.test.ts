@@ -589,7 +589,7 @@ describe('loadMcpToolOptions', () => {
 		);
 	});
 
-	it("derives the MCP endpoint from the OAuth2 credential's Server URL, which includes /api/v1", async () => {
+	it('accepts a versioned OAuth2 Server URL when deriving the MCP endpoint', async () => {
 		mockListTools.mockResolvedValue({ tools: [{ name: 'search' }] });
 		const customContext = {
 			getNode: () => ({ name: 'Haystack Enterprise MCP' }),

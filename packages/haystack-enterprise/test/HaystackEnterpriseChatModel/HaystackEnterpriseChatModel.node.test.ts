@@ -182,7 +182,7 @@ describe('HaystackEnterpriseChatModel', () => {
 			);
 		});
 
-		it("derives the chat completions base URL from the OAuth2 credential's Server URL (which includes /api/v1)", async () => {
+		it('accepts a versioned OAuth2 Server URL without duplicating /api/v1', async () => {
 			const context = createSupplyDataContext(OAUTH2_PARAMS, {
 				serverUrl: 'https://self-hosted.example.com/api/v1',
 				oauthTokenData: { access_token: 'oauth-token' },

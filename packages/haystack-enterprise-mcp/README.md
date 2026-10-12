@@ -95,9 +95,9 @@ Haystack Enterprise, which only accepts `https://` callbacks — except on `loca
 `http://localhost:5678` n8n works as-is. If your n8n runs elsewhere (e.g. in Docker on another host
 name), make sure the **OAuth Redirect URL** shown on the credential is either `localhost` or HTTPS
 (n8n derives it from `N8N_EDITOR_BASE_URL`/`WEBHOOK_URL`). To test against a non-production Haystack
-Enterprise API, change the credential's **Server URL** to that API's `/api/v1` base URL — discovery
-and registration follow from it automatically. Always include the `/api/v1` path. The production
-Server URL is `https://api.cloud.deepset.ai/api/v1`.
+Enterprise API, change the credential's **Server URL** to that API's origin without an API version
+path — discovery and registration follow from it automatically. The production Server URL is
+`https://api.cloud.deepset.ai`.
 
 ### Example workflows
 
@@ -138,9 +138,9 @@ The node's **Authentication** dropdown offers two ways to authenticate.
 Choose **OAuth2** on the node and create a "Haystack Enterprise OAuth2 API" credential. With the
 default settings there is nothing to copy or paste:
 
-1. Leave **Server URL** at `https://api.cloud.deepset.ai/api/v1`. The Server URL is where the nodes
-   send their requests and where n8n looks up the authorization server; change it only for a
-   self-hosted or non-production Haystack Enterprise API, and always include its `/api/v1` path.
+1. Leave **Server URL** at `https://api.cloud.deepset.ai`. The Server URL is the API origin the
+   nodes use for requests and OAuth2 discovery; change it only for a self-hosted or non-production
+   Haystack Enterprise API, and do not include an API version path.
 2. Click **Connect** and sign in with your Haystack Enterprise account.
 
 Behind the scenes n8n discovers Haystack Enterprise's authorization server from the Server URL

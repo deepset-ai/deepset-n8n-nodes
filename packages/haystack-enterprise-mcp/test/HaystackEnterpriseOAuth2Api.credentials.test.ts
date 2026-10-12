@@ -13,6 +13,10 @@ describe('HaystackEnterpriseOAuth2Api', () => {
 			type: 'boolean',
 			default: true,
 		});
+		expect(properties.get('serverUrl')).toMatchObject({
+			type: 'string',
+			default: 'https://api.cloud.deepset.ai',
+		});
 		expect(properties.get('clientSecret')).toMatchObject({
 			type: 'string',
 			default: '',
