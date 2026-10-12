@@ -72,6 +72,15 @@ describe('getApiBaseUrlFromCredentials', () => {
 			'https://dev.internal/api/v1',
 		);
 	});
+
+	it('does not duplicate a version path supplied in the Server URL', () => {
+		expect(
+			getApiBaseUrlFromCredentials({
+				apiKey: 'k',
+				serverUrl: 'https://dev.internal/api/v1',
+			}),
+		).toBe('https://dev.internal/api/v1');
+	});
 });
 
 describe('extractWorkspaceList', () => {

@@ -54,7 +54,7 @@ export class HaystackEnterpriseApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL:
-				'={{ ((($credentials.serverUrl || "https://api.cloud.deepset.ai").trim().replace(/\\/+$/,"")) || "https://api.cloud.deepset.ai") }}/api/v1',
+				'={{ ((($credentials.serverUrl || "https://api.cloud.deepset.ai").trim().replace(/\\/+$/,"").replace(/\\/api\\/v[12]$/i,"")) || "https://api.cloud.deepset.ai") }}/api/v1',
 			url: '/workspaces',
 			method: 'GET',
 		},

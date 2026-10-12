@@ -265,6 +265,12 @@ describe('getApiBaseUrlV2FromOrigin', () => {
 			'https://host.example.com/api/v2',
 		);
 	});
+
+	it('replaces a supplied API version path instead of appending another one', () => {
+		expect(getApiBaseUrlV2FromOrigin('https://host.example.com/api/v1')).toBe(
+			'https://host.example.com/api/v2',
+		);
+	});
 });
 
 describe('normalizeMcpInputSchema', () => {

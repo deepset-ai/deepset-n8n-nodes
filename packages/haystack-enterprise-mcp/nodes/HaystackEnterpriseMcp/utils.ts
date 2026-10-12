@@ -39,12 +39,16 @@ export function getApiOriginFromCredentials(credentials: IDataObject): string {
 	return DEFAULT_API_ORIGIN;
 }
 
+function apiOriginWithoutVersionPath(origin: string): string {
+	return normalizeApiOrigin(origin).replace(/\/api\/v[12]$/i, '');
+}
+
 export function getApiBaseUrlV1FromOrigin(origin: string): string {
-	return `${normalizeApiOrigin(origin)}/api/v1`;
+	return `${apiOriginWithoutVersionPath(origin)}/api/v1`;
 }
 
 export function getApiBaseUrlV2FromOrigin(origin: string): string {
-	return `${normalizeApiOrigin(origin)}/api/v2`;
+	return `${apiOriginWithoutVersionPath(origin)}/api/v2`;
 }
 
 export async function getApiOriginForContext(context: McpContext, itemIndex = 0): Promise<string> {
