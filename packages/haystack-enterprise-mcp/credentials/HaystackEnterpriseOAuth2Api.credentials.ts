@@ -64,7 +64,7 @@ export class HaystackEnterpriseOAuth2Api implements ICredentialType {
 			default: 'https://api.cloud.deepset.ai/api/v1',
 			required: true,
 			description:
-				'The Haystack Enterprise API base URL. The nodes send their requests here, and with Dynamic Client Registration on, n8n also discovers the authorization server from it (via /.well-known/oauth-protected-resource) and registers itself there. Change this only for a self-hosted or non-production Haystack Enterprise API.',
+				'The Haystack Enterprise API base URL, including /api/v1 (for example, https://api.cloud.deepset.ai/api/v1), used for API requests and OAuth2 authorization-server discovery and registration.',
 		},
 		{
 			// Same field as oAuth2Api's (shown only when DCR is off), re-declared to default to the
