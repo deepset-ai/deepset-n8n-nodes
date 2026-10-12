@@ -1,16 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { vi } from 'vitest';
 
-/**
- * Minimal fake IExecuteFunctions context shared by the resource execute()
- * test suites: `getNodeParameter` reads from `params`, falling back to the
- * caller's own default; `httpRequestWithAuthentication` is any mock
- * implementation, so callers can express a static response, a dynamic
- * per-call responder (e.g. pagination), or one that throws. `extraHelpers`
- * merges onto `context.helpers` (e.g. `assertBinaryData`/`prepareBinaryData`);
- * `extraContext` merges onto the context itself (e.g. `isStreaming`/
- * `sendChunk`).
- */
+/** Minimal fake IExecuteFunctions: `getNodeParameter` reads `params`; `extraHelpers`/`extraContext` merge onto helpers/context. */
 export function createExecuteContext(
 	params: Record<string, unknown>,
 	httpRequestWithAuthentication: (...args: unknown[]) => unknown,
@@ -32,10 +23,7 @@ export function createExecuteContext(
 	return { context, httpRequestWithAuthentication: httpRequestMock };
 }
 
-/**
- * Minimal stand-in for a Node.js Readable in 'data'/'end'/'error' mode — all
- * consumeSseStream()/apiRequestStream() actually rely on.
- */
+/** Minimal Readable stand-in for 'data'/'end'/'error' consumption. */
 export class FakeStream {
 	private listeners: Record<string, Array<(...args: unknown[]) => void>> = {};
 

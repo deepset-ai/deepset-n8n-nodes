@@ -126,11 +126,7 @@ const chatHistoryGranularityField: INodeProperties = {
 	],
 };
 
-/**
- * Extra flags only the *-stream endpoints understand: they control which
- * additional event types Haystack Enterprise streams back (tool calls, tool call
- * results, reasoning), on top of the answer-text deltas that always stream.
- */
+/** Flags for the *-stream endpoints that enable extra event types (tool calls, tool call results, reasoning). */
 const extraBodyParameters = extraParametersOption('body');
 
 const streamingAdditionalFields: INodeProperties[] = [

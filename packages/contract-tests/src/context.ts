@@ -2,7 +2,7 @@ import type { IExecuteFunctions, IHttpRequestOptions } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 
 export interface ContractTestContextOptions {
-	/** Flat parameter map — `getNodeParameter(name, _itemIndex, fallback)` reads from this, falling back like real n8n does when the parameter is absent. */
+	/** Flat parameter map read by `getNodeParameter`; absent names return the fallback. */
 	params: Record<string, unknown>;
 }
 
@@ -13,18 +13,9 @@ function toErrorLike(status: number, data: unknown): Error {
 }
 
 /**
- * Real (non-mocked) `httpRequestWithAuthentication` — sends an actual HTTP
- * request instead of the `vi.fn()` stub the repo's unit tests use, since
- * contract tests need the node's real request to actually reach Prism (or an
- * ephemeral environment) for validation. Handles only what
- * `haystack-enterprise/nodes/HaystackEnterprise/utils.ts`'s `apiRequest`/
- * `apiRequestStream` actually send: JSON method/url/qs/body, `FormData` bodies
- * (File's `upload`), the `encoding: 'stream'` case for the *-stream
- * endpoints, and `returnFullResponse` for both streamed and JSON responses
- * (`apiRequestStream()` and Service's `chat` read the search session ID off
- * the response headers). Does NOT handle `encoding: 'arraybuffer'` (File's
- * `get`) — see the comment on that case in `src/registry/file.ts` for why
- * that's not just a missing feature here.
+ * Real `httpRequestWithAuthentication` that sends an actual HTTP request.
+ * Supports JSON bodies, `FormData`, `encoding: 'stream'` and `returnFullResponse`;
+ * not `encoding: 'arraybuffer'` (see `src/registry/file.ts`).
  */
 async function realHttpRequestWithAuthentication(
 	requestOptions: IHttpRequestOptions,
@@ -36,16 +27,11 @@ async function realHttpRequestWithAuthentication(
 		}
 	}
 
-	// A FormData body (File's `upload`) must be passed to fetch as-is — fetch
-	// sets its own `multipart/form-data; boundary=...` header for it, which
-	// JSON.stringify-ing the body and forcing `content-type: application/json`
-	// (the JSON-body case below) would silently replace with an empty `{}`.
+	// Pass FormData to fetch as-is so it sets its own multipart boundary header.
 	const isFormData = requestOptions.body instanceof FormData;
 	const hasBody = requestOptions.body !== undefined;
 
-	// The real credential injects a bearer token here; Prism doesn't check the
-	// token's value, only that the request satisfies the spec's declared
-	// `HTTPBearer` security scheme at all (it 401s an entirely bare request).
+	// Prism only requires that a bearer token is present, not its value.
 	const response = await fetch(url, {
 		method: requestOptions.method,
 		headers: {
@@ -93,19 +79,11 @@ async function realHttpRequestWithAuthentication(
 	return body;
 }
 
-/**
- * Builds an `IExecuteFunctions`-like context for contract tests — same
- * `getNodeParameter` convention as the repo's existing unit tests (e.g.
- * `test/HaystackEnterprise/Service.execute.test.ts`), but with a real HTTP
- * layer instead of a mocked one.
- */
+/** Builds an `IExecuteFunctions`-like context backed by a real HTTP layer. */
 export function buildContractTestContext({
 	params,
 }: ContractTestContextOptions): IExecuteFunctions {
-	// `utils.ts` calls this as `this.helpers.httpRequestWithAuthentication.call(this, credentialName, requestOptions)`
-	// — i.e. `Function.prototype.call` on the function itself, so this must be
-	// a plain function (matching the real n8n helper's shape and the repo's
-	// existing unit-test stubs), not an object with its own `.call` method.
+	// Must be a plain function: callers invoke it via `Function.prototype.call`.
 	const httpRequestWithAuthentication = (
 		_credentialName: string,
 		requestOptions: IHttpRequestOptions,

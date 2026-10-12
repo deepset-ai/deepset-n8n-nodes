@@ -1,102 +1,30 @@
-# n8n community node
+# deepset-n8n-nodes
 
-## Overview
+npm workspaces monorepo of n8n community node packages for Haystack Enterprise. The root
+`package.json` is private; each publishable package lives under `packages/` with its own
+`package.json`, `nodes/`, `credentials/`, `test/` and `eslint.config.mjs`.
 
-This is a project containing code for an n8n community node. n8n is a workflow automation platform
-where users build workflows with nodes, which are the building block of a workflow. Nodes can
-perform a range of actions, such as starting a workflow (called a "trigger node"), fetching and
-sending data, or processing and manipulating it. Besides that there are credentials - entities that
-store sensitive information on how to connect to external services and APIs. A node can require some
-credentials to be used. Community nodes are a way for anyone to create such nodes and add them to be
-used in n8n. All community nodes are named in a format: `n8n-nodes-<n>` or `@org/n8n-nodes-<n>`.
-Community nodes can also be submitted for approval to be used on n8n Cloud version. In that case
-there are rules that the node needs to follow in order to be approved
+- `packages/haystack-enterprise`: main package (Haystack Enterprise node and chat model node).
+- `packages/haystack-enterprise-mcp`: MCP client node, kept in its own package because it is
+  self-hosted only. n8n cloud eligibility (`n8n.strict` and the eslint cloud config) applies to a
+  whole package.
+- `packages/contract-tests`: tests against a live Haystack Enterprise workspace
+  (`npm run test:contract`).
 
-## Important notes
+## Conventions
 
-- Follow the **rules and guidelines in this document and the linked docs below** over any code
-  examples.
-- All code blocks in these docs are **illustrative and incomplete**. They **MUST NOT** be copied
-  verbatim or assumed to be the final desired code.
-- Replace example names like `Example`, `Wordpress`, `wordpressApi`, etc. with names that match the
-  **actual service / node** you are building.
-- When in doubt, **generalize from the patterns**, don't replicate the exact structure, fields, or
-  values from the examples.
-- Produce the **full implementation** needed for the current project (nodes, credentials, tests,
-  etc.), not just fragments similar to examples.
-- If an example omits parts (e.g. types, operations, properties), **infer and implement the missing
-  parts** based on the real requirements / API docs.
-- Never output `Wordpress`-specific code unless the project is actually about WordPress.
+- Nodes and credentials are registered in each package's `package.json` under `n8n.nodes` and
+  `n8n.credentials` (paths to compiled files in `dist/`). Update them when adding, removing or
+  renaming either.
+- Run `npm run build`, `npm run lint`, `npm test` and `npm run format:check` before pushing. Fix
+  lint and type errors rather than disabling them.
+- Mark sensitive credential fields as `password`; never log secrets.
+- Update the package's `CHANGELOG.md` when bumping its version.
+- Packages are released independently by pushing a package-specific tag (see
+  `.github/workflows/publish.yml`).
 
-## Project structure
+## n8n docs
 
-This repo is an **npm workspaces monorepo**: the root `package.json` is private and only declares
-the `packages/*` workspace; every publishable n8n community node package lives in its own directory
-under `packages/`, each with its own `package.json`, `nodes/`, `credentials/`, `test/`,
-`tsconfig.json`, and `eslint.config.mjs`. This split exists because n8n's cloud eligibility
-(`n8n.strict` + the eslint cloud config) is a whole-package setting — there's no per-node toggle —
-so a node that must stay self-hosted-only lives in its own cloud-ineligible package rather than in a
-package that also ships cloud-eligible nodes.
-
-Within each package, there are two main folders:
-
-- `nodes` contains all of the nodes in that package (there can be more than 1). The code for each
-  node usually lives in its own folder
-- `credentials` contains all of the credentials in that package. Usually it's just a single file for
-  every credential So it looks something like this: . ├── packages/ │ └── example-package/ │ ├──
-  nodes/ │ │ └── Example/ │ │ ├── Example.node.ts │ │ └── ... │ ├── credentials/ │ │ └──
-  Example.credentials.ts │ ├── package.json │ └── ... ├── package.json # root: private, workspaces:
-  ["packages/*"] └── ... It's important to note that each package's own `package.json` has a special
-  field `n8n` that have information about nodes and credentials in that package:
-
-```json
-{
-	"name": "n8n-nodes-example",
-	"version": "1.0.0",
-	"n8n": {
-		"n8nNodesApiVersion": 1,
-		"strict": true,
-		"credentials": ["dist/credentials/Example.credentials.js"],
-		"nodes": ["dist/nodes/Example/Example.node.js"]
-	}
-}
-```
-
-`nodes` and `credentials` keys contain paths to transpiled JS files in a `dist` folder for the nodes
-and credentials respectively. If you add/remove/rename nodes and/or credentials, you need to make
-sure to update `n8n.nodes` and `n8n.credentials` keys in `package.json` accordingly. Initial files
-in the project _may_ contain example nodes and/or credentials that need to be **removed or renamed**
-once you start making an actual node.
-
-## Key guidelines
-
-- Use the `n8n-node` CLI tool **whenever possible** for building, dev mode, linting, etc.
-- **Always** address any lint/typecheck errors/warnings, unless there is a **very specific reason**
-  to ignore/disable it
-- Make sure to use **proper types whenever possible**
-- If you are updating a package's version, make sure to **update its own `CHANGELOG.md`** (inside
-  that package's directory under `packages/`)
-- Read `.agents/workflow.md` for more info
-
-## Context-specific docs
-
-Load these before working on the relevant area:
-
-| Working on...                   | Read first                                     |
-| ------------------------------- | ---------------------------------------------- |
-| Any node file in `nodes/`       | `.agents/nodes.md` and `.agents/properties.md` |
-| A declarative-style node        | above + `.agents/nodes-declarative.md`         |
-| A programmatic-style node       | above + `.agents/nodes-programmatic.md`        |
-| Files in `credentials/`         | `.agents/credentials.md`                       |
-| Adding a new version to a node  | `.agents/versioning.md`                        |
-| Starting a new task or planning | `.agents/workflow.md`                          |
-
-## Additional resources
-
-If you need any extra information, here are links to n8n's official docs regarding building
-community nodes:
-
-- https://docs.n8n.io/integrations/community-nodes/build-community-nodes/
 - https://docs.n8n.io/integrations/creating-nodes/overview/
 - https://docs.n8n.io/integrations/creating-nodes/build/reference/
 - https://docs.n8n.io/integrations/creating-nodes/build/reference/ux-guidelines/

@@ -56,8 +56,7 @@ options:
   docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n
   ```
   Note that pointing a Dockerized n8n at this repo's build output needs extra
-  volume-mounting/`docker cp` steps beyond the `--external-n8n` workaround below — see
-  `.agents/workflow.md` for a worked example.
+  volume-mounting/`docker cp` steps beyond the `--external-n8n` workaround below.
 
 Either way, n8n is served at [http://localhost:5678](http://localhost:5678).
 
@@ -77,9 +76,9 @@ Open [http://localhost:5678](http://localhost:5678) and the node should be avail
 panel. `npm run dev` watches for changes and hot-reloads the node.
 
 **Known issue:** bare `npm run dev` can fail with `Error: Command "start" not found`. This is caused
-by an upstream dependency conflict in n8n's bundled AI/langchain nodes, not by this package (see
-`.agents/workflow.md` for the full root cause). If you hit it, run in external mode instead and
-point your own n8n instance (the global/npx install from above) at the same custom nodes folder:
+by an upstream dependency conflict in n8n's bundled AI/langchain nodes, not by this package. If you
+hit it, run in external mode instead and point your own n8n instance (the global/npx install from
+above) at the same custom nodes folder:
 
 ```bash
 npm run dev -- --external-n8n
@@ -102,8 +101,7 @@ select the JSON file. You'll still need to fill in your own credentials (includi
 Model node's) and select your own workspace on the Haystack Enterprise MCP node.
 
 This was exported from a local dev setup where the node is loaded via n8n's `CUSTOM` custom-nodes
-folder (see `.agents/workflow.md`), so its Haystack Enterprise MCP node `type` field uses the
-`CUSTOM.` prefix.
+folder, so its Haystack Enterprise MCP node `type` field uses the `CUSTOM.` prefix.
 
 ## Operations
 

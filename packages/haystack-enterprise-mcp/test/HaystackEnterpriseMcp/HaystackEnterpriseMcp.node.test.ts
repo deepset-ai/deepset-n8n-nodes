@@ -31,9 +31,7 @@ vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', async (importOrigi
 		await importOriginal<typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js')>();
 	return { ...actual, StreamableHTTPClientTransport: TransportMock };
 });
-// n8n-core is a peer dependency resolved against n8n's own install at runtime
-// (see HaystackEnterpriseMcp.node.ts) and isn't installed locally, so it's
-// mocked here with the same trivial wrapper the real StructuredToolkit is.
+// n8n-core is a peer dependency not installed locally; mock a minimal StructuredToolkit.
 vi.mock('n8n-core', () => ({
 	StructuredToolkit: class {
 		tools: unknown[];
@@ -169,11 +167,7 @@ describe('HaystackEnterpriseMcp', () => {
 		});
 
 		it('wraps a connection failure with the MCP URL', async () => {
-			// A plain "connection refused" message matches one of n8n's built-in
-			// COMMON_ERRORS patterns, so NodeOperationError replaces `.message` with
-			// its own friendlier text and moves our detailed message into `.messages`
-			// instead (see n8n-workflow's NodeError.setDescriptiveErrorMessage) — so
-			// assert against `.messages`, not `.message`.
+			// n8n replaces `.message` for common errors like ECONNREFUSED and keeps ours in `.messages`.
 			mockConnect.mockRejectedValue(new Error('ECONNREFUSED'));
 			const context = createSupplyDataContext({ workspaceId: 'ws-1' });
 

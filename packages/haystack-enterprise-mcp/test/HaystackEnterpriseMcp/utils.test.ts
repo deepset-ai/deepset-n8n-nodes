@@ -215,22 +215,13 @@ describe('loadWorkspaceOptions', () => {
 		await expect(loadWorkspaceOptions(context)).rejects.toThrow();
 	});
 
-	// httpRequestWithAuthentication() already wraps HTTP failures in its own
-	// NodeApiError before loadWorkspaceOptions ever sees them (see the
-	// docstring in utils.ts), so tests reproduce that shape directly rather
-	// than throwing a plain Error.
+	// httpRequestWithAuthentication() wraps HTTP failures in a NodeApiError; reproduce that shape.
 	function throwPreWrapped(node: { name: string }, rawError: Error) {
 		throw new NodeApiError(node, rawError as unknown as Record<string, unknown>);
 	}
 
-	// n8n's own REST client special-cases any error whose serialized `.name`
-	// is exactly "NodeApiError": instead of reconstructing a proper `Error`
-	// instance client-side (like it does for every other error shape), it
-	// re-throws the raw parsed JSON body as-is. The "problem loading the
-	// parameter options" popover only knows how to read `.message` off a
-	// real `instanceof Error`, so a NodeApiError here renders as the
-	// literal, useless text "[object Object]" no matter how good `.message`
-	// is — so loadWorkspaceOptions must throw a NodeOperationError instead.
+	// A thrown NodeApiError renders as "[object Object]" in n8n's options popover,
+	// so loadWorkspaceOptions must throw a NodeOperationError instead.
 	it('throws a NodeOperationError (not a NodeApiError) with a "list workspaces" permission hint on a 403', async () => {
 		const node = { name: 'Haystack Enterprise MCP' };
 		const context = {
@@ -279,13 +270,7 @@ describe('loadWorkspaceOptions', () => {
 		});
 	});
 
-	// Regression test for the reported bug: hitting a 403 while listing
-	// workspaces showed the literal text `[object Object]` in n8n's "problem
-	// loading the parameter options" popover. That popover renders `.message`
-	// directly, and when NodeApiError can't determine an HTTP status code at
-	// all, an earlier internal assignment (`this.message = errorResponse.message`)
-	// can leave `.message` as a raw, non-string object instead of coercing it
-	// to a string.
+	// Regression: without a determinable status code, NodeApiError can leave `.message` as a non-string object.
 	it("never leaves .message as a non-string object when the HTTP status code can't be determined", async () => {
 		const node = { name: 'Haystack Enterprise MCP' };
 		const context = {

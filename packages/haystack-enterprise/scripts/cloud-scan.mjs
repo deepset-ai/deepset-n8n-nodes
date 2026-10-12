@@ -1,8 +1,6 @@
 #!/usr/bin/env node
-// Runs the actual n8n Cloud community-node scanner (@n8n/scan-community-package)
-// against a local build, without needing to publish to npm first. `n8n-node lint`
-// checks a broader/stricter rule set than what's actually verified for n8n Cloud,
-// so this is the more reliable pre-release gate.
+// Runs the n8n Cloud community-node scanner (@n8n/scan-community-package) against a local build.
+// `n8n-node lint` is broader/stricter than what Cloud verifies, so this is the more reliable pre-release gate.
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';

@@ -41,11 +41,7 @@ export function getApiBaseUrlFromCredentials(credentials: IDataObject): string {
 	return getApiBaseUrlV1FromOrigin(getApiOriginFromCredentials(credentials));
 }
 
-/**
- * Test-only escape hatch for targeting local Prism mocks or ephemeral environments.
- * Deliberately avoids `process.env` so host environment variables cannot affect
- * requests from this cloud-eligible package (`@n8n/community-nodes/no-restricted-globals`).
- */
+/** Test-only base URL override (e.g. local mocks); avoids `process.env` to satisfy the cloud-eligibility lint rule. */
 export function setApiBaseUrlOverrideForTests(url: string | undefined): void {
 	apiBaseUrlOverride = url;
 }
@@ -60,10 +56,7 @@ export async function getApiBaseUrlForContext(
 	return getApiBaseUrlFromCredentials(credentials);
 }
 
-/**
- * n8n and this package load different copies of n8n-workflow, so instanceof
- * misses the NodeApiError that httpRequestWithAuthentication throws.
- */
+/** instanceof fails because n8n and this package load different n8n-workflow copies. */
 export function isNodeApiError(error: unknown): error is NodeApiError {
 	return error instanceof NodeApiError || (error instanceof Error && error.name === 'NodeApiError');
 }
@@ -85,10 +78,8 @@ function joinErrorItems(items: unknown[], firstOnly: boolean): string | undefine
 }
 
 /**
- * Message from a hub API error body. application_utils.py returns one of:
- * - `{ errors: [string | { message }] }` for a normal HTTPException
- * - `{ details: [{ message }] }` for HTTPValidationException, or FastAPI's `{ detail: [{ msg }] }`
- * - `{ error: { message, type, param, code } }` on OpenAI-compatible chat completions
+ * Message from an API error body. Handles `{ errors }`, `{ details }`, FastAPI's `{ detail }`,
+ * and the OpenAI-style `{ error: { message } }` shape.
  */
 function messageFromApiBody(data: unknown, firstOnly = false): string | undefined {
 	if (!data || typeof data !== 'object' || Array.isArray(data)) return undefined;
@@ -127,12 +118,7 @@ function apiErrorBody(error: unknown): unknown {
 	return undefined;
 }
 
-/**
- * Resources Haystack Enterprise gates independently of workspace access — hitting these
- * endpoints with a workspace-scoped key can 403 even though that same key
- * sees the workspace itself just fine, because the key also needs its own
- * permission on the specific service, index, file, or search session.
- */
+/** Resources that need their own key permission, so a 403 can occur even when the workspace is accessible. */
 const RESOURCE_PERMISSION_ENDPOINTS: ReadonlyArray<{ pattern: RegExp; resource: string }> = [
 	{ pattern: /\/deployments(\/|$)/, resource: 'service' },
 	{ pattern: /\/indexes(\/|$)/, resource: 'index' },
@@ -140,11 +126,7 @@ const RESOURCE_PERMISSION_ENDPOINTS: ReadonlyArray<{ pattern: RegExp; resource: 
 	{ pattern: /\/search_sessions(\/|$)/, resource: 'search session' },
 ];
 
-/**
- * Hint for 401/403. The workspace picker lists every workspace, so these are
- * usually a bad API key or a key without access to this workspace or resource.
- * The status code is sometimes missing, so the body text is a fallback.
- */
+/** Hint for 401/403; falls back to body text when the status code is missing. */
 function describeApiAuthErrorHint(
 	httpCode: string | null,
 	endpoint: string,
@@ -169,10 +151,7 @@ function describeApiAuthErrorHint(
 	return '';
 }
 
-/**
- * "Full message" in the node error view is `error.messages`, not `.message`.
- * Replace that list so it shows the API text instead of "Request failed with status code …".
- */
+/** The node error view's "Full message" reads `error.messages`; replace it so the API text shows instead of the generic status text. */
 function showErrorText(error: NodeApiError, text: string): void {
 	error.message = text;
 	error.description = text;
@@ -212,10 +191,7 @@ async function withApiErrorWrapping<T>(
 	}
 }
 
-/**
- * Thin wrapper around httpRequestWithAuthentication so every resource calls the
- * Haystack Enterprise API the same way (base URL, credential, error wrapping).
- */
+/** Wraps httpRequestWithAuthentication with the base URL, credential, and error wrapping. */
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
@@ -236,18 +212,8 @@ export async function apiRequest(
 }
 
 /**
- * Like apiRequest(), but for use from a `loadOptions` method specifically.
- *
- * n8n's own REST client special-cases any error whose serialized `.name` is
- * `"NodeApiError"` (apiRequest()'s failure mode): instead of wrapping it in
- * a proper `Error` instance like it does for every other error shape, it
- * re-throws the raw parsed JSON body as-is. The "problem loading the
- * parameter options" popover only knows how to read `.message` off a real
- * `instanceof Error`, so it falls through to string-coercing that raw
- * object — producing the literal, useless text "[object Object]" — no
- * matter how good `.message` actually is. `NodeOperationError` doesn't hit
- * that special case, so re-throwing as one here (reusing the same message
- * apiRequest() already computed) is what actually gets it displayed.
+ * Like apiRequest(), for `loadOptions`: rethrows as NodeOperationError because n8n's UI shows
+ * "[object Object]" for a rethrown NodeApiError.
  */
 async function loadOptionsApiRequest(
 	context: ILoadOptionsFunctions,
@@ -263,14 +229,8 @@ async function loadOptionsApiRequest(
 }
 
 /**
- * Like apiRequest(), but for the *-stream endpoints: requests the response as
- * a raw Node.js stream instead of buffering and JSON-parsing the body, so the
- * caller can read Server-Sent Events off it as they arrive. Also returns the
- * response headers (`returnFullResponse: true`) — chat-stream reports the
- * search session ID via an `X-Search-Session-Id` header when one wasn't
- * passed in the request, since it's created automatically in that case.
- *
- * A failed stream request shows the first API error; the full body stays in Error data.
+ * Like apiRequest(), but returns a raw stream plus response headers (for X-Search-Session-Id).
+ * A failed request shows the first API error; the full body stays in Error data.
  */
 export async function apiRequestStream(
 	this: IExecuteFunctions,
@@ -301,13 +261,7 @@ export async function apiRequestStream(
 	);
 }
 
-/**
- * Response headers come back with whatever casing the HTTP client normalized
- * them to, so look up `name` case-insensitively rather than assuming
- * lowercase. A repeated header (e.g. Node's `IncomingHttpHeaders`) can arrive
- * as a `string[]` instead of a `string` — take the first value in that case
- * rather than dropping it.
- */
+/** Case-insensitive header lookup; takes the first value of a repeated header. */
 export function getResponseHeader(headers: IDataObject, name: string): string | undefined {
 	const key = Object.keys(headers).find((k) => k.toLowerCase() === name.toLowerCase());
 	const value = key ? headers[key] : undefined;
@@ -317,17 +271,10 @@ export function getResponseHeader(headers: IDataObject, name: string): string | 
 }
 
 /**
- * Haystack Enterprise's *-stream endpoints respond with Server-Sent Events: `data: {...}`
- * lines, one JSON event per record, records separated by a blank line. Reads
- * the stream to completion, calling `onEvent` with each event's parsed JSON
- * payload in arrival order. Records without a `data:` line (e.g. SSE
- * keep-alive comments) or with unparseable JSON are silently skipped.
- *
- * Consumes via `data`/`end`/`error` events rather than `for await...of` —
- * `NodeJS.ReadableStream` (the ambient @types/node interface, used here to
- * avoid an `import ... from 'node:stream'`, which n8n's cloud-compatibility
- * lint rule rejects) isn't typed as async-iterable, even though the real
- * stream instance is at runtime.
+ * Reads a Server-Sent Events stream (`data: {...}` records), calling `onEvent` with each parsed
+ * payload. Records without a `data:` line or with invalid JSON are skipped.
+ * Uses data/end/error events: the ambient ReadableStream type isn't async-iterable and
+ * `node:stream` is rejected by the cloud lint rule.
  */
 export async function consumeSseStream(
 	stream: NodeJS.ReadableStream,
@@ -383,11 +330,7 @@ export function extractStreamErrorDetail(error: IDataObject[string]): {
 
 const SERVICE_ACTIVATING_HTTP_CODE = '591';
 
-/**
- * GET /api/v1/workspaces responds with a bare array of workspace objects
- * (each with a `name`, `workspace_id`, `languages`, etc.) — not wrapped in
- * an envelope object.
- */
+/** GET /api/v1/workspaces responds with a bare array (no envelope). */
 export function extractWorkspaceList(response: unknown): IDataObject[] {
 	return Array.isArray(response) ? (response as IDataObject[]) : [];
 }
@@ -405,10 +348,7 @@ export async function loadWorkspaceOptions(
 		});
 }
 
-/**
- * List/paginated endpoints (deployments, files, ...) respond with
- * `{ data: [...], has_more: boolean, total: number }`.
- */
+/** Paginated list endpoints respond with `{ data, has_more, total }`. */
 export function extractPaginatedList(response: unknown): IDataObject[] {
 	if (response && typeof response === 'object' && Array.isArray((response as IDataObject).data)) {
 		return (response as IDataObject).data as IDataObject[];
@@ -417,17 +357,9 @@ export function extractPaginatedList(response: unknown): IDataObject[] {
 }
 
 /**
- * Runs the "Get Many" pattern shared identically by the Service, Index, and
- * Search Session resources: a `page_number`/`has_more` paginated GET endpoint
- * that either returns a single page (Return All off, using the user's chosen
- * `limit`) or walks every page (Return All on, 100 per page) and flattens the
- * results. `extractList` reads the response's list field, which differs per
- * endpoint (`data` vs `search_sessions`).
- *
- * Takes `context` as a plain parameter rather than a `this` parameter — same
- * rationale as withApiErrorWrapping() above: calling a generic function via
- * `.call()` erases its type parameter to `unknown`, so `extractList`'s own
- * element type wouldn't survive into the returned array.
+ * Shared "Get Many": a single page (Return All off, using `limit`) or every page (100 per page).
+ * `extractList` reads the endpoint's list field. Takes `context` as a parameter, not `this`,
+ * so the generic type survives (see withApiErrorWrapping()).
  */
 export async function fetchPaginatedResults<T>(
 	context: IExecuteFunctions,
@@ -459,13 +391,8 @@ export async function fetchPaginatedResults<T>(
 }
 
 /**
- * Wraps fetchPaginatedResults() with the before/after cursor bypass shared
- * identically by the Index, Service, and Search Session resources'
- * `getAll()`: `before`/`after` are mutually exclusive with `page_number` per
- * the API ("To use this option, clear the page_number parameter first"), so
- * a single direct GET is used instead of the page_number-based pagination
- * loop whenever either is set. Only applies when Return All is off — Return
- * All always manages its own page_number cursor internally.
+ * Wraps fetchPaginatedResults(): when `before`/`after` is set (and Return All is off), uses one
+ * direct GET since they cannot be combined with `page_number`.
  */
 export async function fetchListWithCursorOrPaging<T>(
 	context: IExecuteFunctions,
@@ -478,8 +405,7 @@ export async function fetchListWithCursorOrPaging<T>(
 ): Promise<T[]> {
 	if (!returnAll && (filters.before || filters.after)) {
 		const cursorQs: IDataObject = { ...qs, limit };
-		// before/after and page_number are mutually exclusive per the API — strip
-		// page_number defensively in case a future caller's `qs` already has one.
+		// `page_number` cannot be combined with before/after; strip it defensively.
 		delete cursorQs.page_number;
 		if (filters.before) cursorQs.before = filters.before;
 		if (filters.after) cursorQs.after = filters.after;
@@ -490,13 +416,7 @@ export async function fetchListWithCursorOrPaging<T>(
 	return fetchPaginatedResults(context, endpoint, qs, returnAll, limit, extractList);
 }
 
-/**
- * Runs the "populate a workspace-scoped dropdown" pattern shared identically
- * by the Deployment/File/Index/Search Session loadOptions methods: resolve
- * the selected workspace (returning no options if none is selected yet), GET
- * a listing endpoint under it, then map each list entry to a dropdown option
- * — `toOption` returns `undefined` to skip entries missing their ID field.
- */
+/** Shared loadOptions helper: lists a workspace-scoped endpoint; `toOption` returns undefined to skip entries. */
 async function loadResourceOptions(
 	context: ILoadOptionsFunctions,
 	resourcePath: string,
@@ -534,10 +454,7 @@ export async function loadDeploymentOptions(
 	});
 }
 
-/**
- * Same as loadDeploymentOptions(), but with a leading pseudo-option (empty value) for
- * clearing the field back to "no service selected" to show values for all services
- */
+/** Like loadDeploymentOptions(), with a leading empty option to clear the selection (all services). */
 export async function loadDeploymentOptionsWithAllOption(
 	context: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
@@ -575,11 +492,8 @@ const MAX_RETRY_DELAY_MS = 30000;
 const RETRY_BACKOFF_FACTOR = 1.5;
 
 /**
- * Retries `fn` with growing backoff while it fails with HTTP 591 (the service
- * is inactive and is being activated), for up to `maxWaitMs` in total, then
- * rethrows that failure unchanged when it is already a NodeApiError, so its
- * message is not replaced by the generic status text. Runs `fn` exactly
- * once when `enabled` is false.
+ * Retries `fn` with growing backoff on HTTP 591 (service being activated) for up to `maxWaitMs`,
+ * then rethrows the original NodeApiError. Runs `fn` once when `enabled` is false.
  */
 export async function withServiceActivationRetry<T>(
 	this: IExecuteFunctions,
@@ -615,10 +529,7 @@ export async function withServiceActivationRetry<T>(
 	}
 }
 
-/**
- * List/paginated endpoints keyed by a name other than `data` (search sessions
- * respond with `{ search_sessions: [...], has_more, total }`).
- */
+/** List endpoints keyed by `search_sessions` instead of `data`. */
 export function extractSearchSessionList(response: unknown): IDataObject[] {
 	if (
 		response &&
@@ -659,16 +570,12 @@ export async function loadSearchSessionOptions(
 				typeof session.title === 'string' && session.title.trim() !== '' ? session.title : id;
 			return { name: title, value: id };
 		},
-		// Same deployment-only scoping as SearchSession's getAll() — see the comment there.
+		// Only deployment-owned sessions, as in SearchSession's getAll().
 		{ limit: 100, page_number: 1, filter: 'deployment_id ne null' },
 	);
 }
 
-/**
- * Splits a user-supplied comma-separated string parameter (e.g. "File Names")
- * into trimmed, non-empty items. Shared by File's `deleteMany` and Service's
- * stream operations' `files` field.
- */
+/** Splits a comma-separated parameter into trimmed, non-empty items. */
 export function parseCommaSeparatedList(value: unknown): string[] {
 	if (typeof value !== 'string' || value.trim() === '') {
 		return [];
@@ -716,10 +623,7 @@ export function readAdditionalParameters(
 	return extras;
 }
 
-/**
- * Parses a user-supplied JSON string parameter (e.g. a `type: 'json'` field),
- * throwing a NodeOperationError that points at the offending field if invalid.
- */
+/** Parses a JSON string parameter, throwing a NodeOperationError naming the field if invalid. */
 export function parseJsonField(
 	this: IExecuteFunctions,
 	itemIndex: number,

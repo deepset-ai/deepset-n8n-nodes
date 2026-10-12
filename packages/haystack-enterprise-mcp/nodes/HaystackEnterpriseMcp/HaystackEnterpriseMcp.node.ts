@@ -42,13 +42,7 @@ function assertSelfHosted(node: INode): void {
 	}
 }
 
-/**
- * Connects to the workspace's MCP server, lists its tools (following
- * pagination), and applies the "Tools to Include"/"Tools to Exclude"
- * filter — shared between supplyData (tools for an AI Agent) and execute
- * (calling one tool directly as a regular workflow step) so both paths
- * connect, list, filter, and fail the same way.
- */
+/** Connects, lists tools and applies the include/exclude filter; shared by supplyData and execute. */
 async function connectAndListFilteredTools(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
 	itemIndex: number,
@@ -83,9 +77,7 @@ async function connectAndListFilteredTools(
 	try {
 		await client.connect(transport);
 	} catch (error) {
-		// Prefer the short, classified hint on its own — this error also shows
-		// up as-is in n8n's "problem loading the parameter options" popover,
-		// which doesn't wrap or grow to fit the full raw SDK message.
+		// Prefer the short hint on its own.
 		throw new NodeOperationError(
 			ctx.getNode(),
 			describeTransportErrorHint(error) ||
@@ -201,11 +193,8 @@ export class HaystackEnterpriseMcp implements INodeType {
 				default: '',
 			},
 			{
-				// n8n's loadOptionsDependsOn doesn't reliably re-trigger a
-				// dependent dropdown ("Tools to Include"/"Tools to Exclude" below)
-				// when the field it depends on is a resourceLocator (a known n8n
-				// limitation) — so this stays a plain `options` field instead,
-				// which keeps that live refresh working correctly.
+				// Plain `options` (not resourceLocator): loadOptionsDependsOn doesn't reliably
+				// refresh the dependent tool dropdowns otherwise.
 				displayName: 'Workspace Name or ID',
 				name: 'workspaceId',
 				type: 'options',
@@ -325,30 +314,15 @@ export class HaystackEnterpriseMcp implements INodeType {
 		}
 
 		const tools = filteredTools.map((mcpTool) => {
-			// Create the tool with a placeholder Zod schema, then immediately replace
-			// tool.schema with the raw JSON Schema object. N8n's normalizeToolSchema
-			// checks `tool.schema instanceof N8nZod.ZodType` — because we bundle a
-			// different Zod version, our Zod objects fail that check and normalizeToolSchema
-			// calls convertJsonSchemaToZod() thinking the schema is already JSON Schema.
-			// By storing the raw JSON Schema here, normalizeToolSchema converts it
-			// correctly with N8n's own Zod, and OpenAI receives a valid function schema.
+			// The schema is replaced below with raw JSON Schema so n8n converts it with its own
+			// Zod (our bundled Zod version would fail n8n's instanceof check).
 			const tool = new DynamicStructuredTool({
-				// LangChain-facing name only — sanitized and namespaced by node name so
-				// free-text pipeline names stay valid for LLM providers and don't collide
-				// across multiple Haystack Enterprise MCP nodes on the same canvas. The
-				// actual MCP tool call below always uses the real mcpTool.name.
+				// Sanitized, node-namespaced name for the LLM; the MCP call uses mcpTool.name.
 				name: buildMcpToolName(this.getNode().name, mcpTool.name),
 				description: mcpTool.description ?? mcpTool.name,
 				schema: z.object({}), // placeholder — replaced below
 				func: async (input: Record<string, unknown>) => {
-					// addInputData/addOutputData attach this call to the node's own
-					// execution trace so each invocation is individually inspectable in
-					// the n8n UI, rather than disappearing into the agent's internal
-					// LangChain run. This node exposes many differently-named pipeline
-					// tools from a single canvas node, so the tool name is included
-					// in the traced data itself — otherwise every call in the panel
-					// looks identical and you can't tell which pipeline actually ran.
-					// logAiEvent feeds n8n's AI-specific run log with the same name.
+					// Trace each call on this node, including the tool name so calls are distinguishable.
 					const { index: runIndex } = this.addInputData(NodeConnectionTypes.AiTool, [
 						[{ json: { tool: mcpTool.name, input: input as IDataObject } }],
 					]);
@@ -363,11 +337,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 							undefined,
 							{ timeout, signal },
 						);
-						// MCP tool calls can report a pipeline-level failure via isError on
-						// an otherwise valid response, instead of throwing — without this
-						// check that failure would reach the agent as if it had succeeded.
-						// Thrown here (rather than handled inline) so it flows through the
-						// same wrapping/tracing/hint logic as a thrown callTool error below.
+						// isError can come on a normal response; throw so it is handled like a callTool error.
 						if (result.isError) {
 							throw new NodeOperationError(
 								this.getNode(),
@@ -376,9 +346,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 								{ itemIndex },
 							);
 						}
-						// Pipelines that declare an MCP output schema return their typed
-						// result via structuredContent alongside (or instead of) content —
-						// append it so structured output isn't silently dropped.
+						// Append structuredContent so typed output isn't dropped.
 						output = [
 							contentToString(result.content),
 							isStructuredContent(result.structuredContent)
@@ -409,7 +377,6 @@ export class HaystackEnterpriseMcp implements INodeType {
 				},
 			});
 
-			// Override with the sanitized raw JSON Schema so N8n can convert it
 			(tool as unknown as { schema: unknown }).schema = normalizeMcpInputSchema(
 				mcpTool.inputSchema,
 			);
@@ -418,17 +385,9 @@ export class HaystackEnterpriseMcp implements INodeType {
 		});
 
 		return {
-			// n8n's own code (getConnectedTools, ToolExecutor, extendResponseMetadata)
-			// only recognizes a single LangChain Tool or an n8n-core StructuredToolkit
-			// as a supplyData response — a bare array of tools isn't a documented
-			// shape. It happens to work for a live Agent run (an incidental flatMap
-			// side effect elsewhere), but breaks n8n's "Execute step" tool-testing
-			// path, which expects a real StructuredToolkit with a getTools() method.
+			// n8n expects a StructuredToolkit here; a bare array breaks "Execute step".
 			response: new StructuredToolkit(tools),
-			// The client/transport stay open for the lifetime of the agent's tool
-			// calls, so close them only once n8n tears down this sub-node's scope
-			// (e.g. when the workflow execution finishes), instead of leaking an
-			// open MCP connection per run.
+			// Keep the connection open for the agent's tool calls; close on teardown.
 			closeFunction: async () => {
 				await client.close();
 			},
@@ -436,14 +395,8 @@ export class HaystackEnterpriseMcp implements INodeType {
 	}
 
 	/**
-	 * Lets this node be run as a regular workflow step (rather than only as
-	 * an AI Agent's tool sub-node) to call one Haystack Enterprise Platform pipeline
-	 * directly — e.g. to smoke-test the MCP connection, or to call a pipeline
-	 * from a plain workflow without going through an agent. Each input item's
-	 * "tool" field selects the pipeline; every other field becomes its
-	 * arguments. Respects the same "Tools to Include"/"Tools to Exclude"
-	 * filter as supplyData, so execute() can't reach tools the agent
-	 * wouldn't see either.
+	 * Runs as a regular workflow step: each item's "tool" field selects the pipeline and
+	 * the other fields are its arguments. Honors the same include/exclude filter as supplyData.
 	 */
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		assertSelfHosted(this.getNode());

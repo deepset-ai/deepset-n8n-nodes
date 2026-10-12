@@ -5,12 +5,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-// Kept in sync by hand with packages/haystack-enterprise/credentials/HaystackEnterpriseApi.credentials.ts.
-// Both packages intentionally register a credential type with the same `name` so a user who
-// installs both only has to configure one "Haystack Enterprise API" credential. They can't share
-// this file via a real npm dependency without losing haystack-enterprise's n8n Cloud eligibility
-// (cloud-eligible packages may not declare runtime dependencies). Unify into one shared package
-// once haystack-enterprise-mcp is also cloud-eligible.
+// Kept in sync by hand with packages/haystack-enterprise; both register the same credential
+// `name` so users configure it once.
 export class HaystackEnterpriseApi implements ICredentialType {
 	name = 'haystackEnterpriseApi';
 

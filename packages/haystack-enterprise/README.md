@@ -57,8 +57,7 @@ options:
   docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n
   ```
   Note that pointing a Dockerized n8n at this repo's build output needs extra
-  volume-mounting/`docker cp` steps beyond the `--external-n8n` workaround below — see
-  `.agents/workflow.md` for a worked example.
+  volume-mounting/`docker cp` steps beyond the `--external-n8n` workaround below.
 
 Either way, n8n is served at [http://localhost:5678](http://localhost:5678).
 
@@ -78,9 +77,9 @@ Open [http://localhost:5678](http://localhost:5678) and the node should be avail
 panel. `npm run dev` watches for changes and hot-reloads the node.
 
 **Known issue:** bare `npm run dev` can fail with `Error: Command "start" not found`. This is caused
-by an upstream dependency conflict in n8n's bundled AI/langchain nodes, not by this package (see
-`.agents/workflow.md` for the full root cause). If you hit it, run in external mode instead and
-point your own n8n instance (the global/npx install from above) at the same custom nodes folder:
+by an upstream dependency conflict in n8n's bundled AI/langchain nodes, not by this package. If you
+hit it, run in external mode instead and point your own n8n instance (the global/npx install from
+above) at the same custom nodes folder:
 
 ```bash
 npm run dev -- --external-n8n
@@ -122,8 +121,7 @@ select the JSON file. You'll still need to fill in your own credentials, and any
 nodes (e.g. Google Drive) with your own credentials/settings.
 
 These were exported from a local dev setup where the node is loaded via n8n's `CUSTOM` custom-nodes
-folder (see `.agents/workflow.md`), so their Haystack Enterprise node `type` fields use the
-`CUSTOM.` prefix.
+folder, so their Haystack Enterprise node `type` fields use the `CUSTOM.` prefix.
 
 ## Operations
 
@@ -198,9 +196,8 @@ npm run lint:fix
 This package is n8n-Cloud-eligible, so `lint`/`lint:fix` run in two passes: n8n's cloud-eligible
 ruleset over `nodes credentials package.json` (the code that actually ships), then the non-cloud
 ruleset (`eslint.test.config.mjs`) over `test/`, since that ruleset would otherwise flag `test/`'s
-`vitest` import as a cloud violation — see the "Known issues" section in `.agents/workflow.md` for
-why. Run from the repo root instead to lint every package in the workspace: `npm run lint` /
-`npm run lint:fix`.
+`vitest` import as a cloud violation. Run from the repo root instead to lint every package in the
+workspace: `npm run lint` / `npm run lint:fix`.
 
 ## Testing
 

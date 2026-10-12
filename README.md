@@ -37,9 +37,7 @@ npm run format:check # CI: verify formatting
 npm run test       # run every package's test suite
 ```
 
-See each package's README for package-specific details, and
-[`.agents/workflow.md`](./.agents/workflow.md) for the fuller development workflow (including known
-issues and local Docker-based testing notes).
+See each package's README for package-specific details.
 
 ### Contract tests
 

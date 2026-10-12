@@ -16,8 +16,7 @@ import {
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-// Kept in sync by hand with packages/haystack-enterprise/nodes/HaystackEnterprise/utils.ts
-// (DEFAULT_API_ORIGIN / normalizeApiOrigin / getApiOriginFromCredentials / getApiBaseUrlV1FromOrigin).
+// Kept in sync by hand with packages/haystack-enterprise/nodes/HaystackEnterprise/utils.ts.
 export const DEFAULT_API_ORIGIN = 'https://api.cloud.deepset.ai';
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
 const MCP_CLIENT_NAME = 'n8n-nodes-haystack-enterprise-mcp';
@@ -56,13 +55,7 @@ export async function getApiOriginForContext(
 	return getApiOriginFromCredentials(credentials);
 }
 
-/**
- * Builds the MCP client + transport pointed at a workspace's MCP server —
- * shared by loadMcpToolOptions() below and HaystackEnterpriseMcp.node.ts's
- * connectAndListFilteredTools(). Doesn't call `client.connect()` itself since
- * the two callers wrap that call in slightly different error handling
- * (one has an itemIndex to attach, the other doesn't).
- */
+/** Builds the MCP client and transport for a workspace; callers run `client.connect()` themselves. */
 export function createMcpTransport(
 	workspaceId: string,
 	apiKey: string,
@@ -77,12 +70,7 @@ export function createMcpTransport(
 	return { client, transport, mcpUrl };
 }
 
-/**
- * Normalises a raw MCP inputSchema to always be a valid JSON Schema object.
- * Haystack Enterprise Platform (and some other Python MCP servers) serialise Python's
- * None as the string "None", which OpenAI rejects. We force type: "object"
- * and default properties to {} so downstream conversion is always safe.
- */
+/** Normalises a raw MCP inputSchema to a valid JSON Schema object (`type: "object"`, default `properties`). */
 export function normalizeMcpInputSchema(raw: unknown): Record<string, unknown> {
 	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
 		return { type: 'object', properties: {} };
@@ -97,20 +85,8 @@ export function normalizeMcpInputSchema(raw: unknown): Record<string, unknown> {
 }
 
 /**
- * Turns a connect()/listTools() auth failure into a short, standalone hint.
- * StreamableHTTPError carries the HTTP status code for transport-level
- * failures, so an invalid API key (401) reads differently from a valid key
- * that just doesn't have access to this workspace (403) — the workspace
- * picker lists every workspace in the organization regardless of what the
- * configured API key can actually reach, so a 403 here almost always means
- * a workspace-scoped key was used with the wrong workspace. Kept short
- * (rather than appended to the raw SDK error) because it's also shown as-is
- * in the small "problem loading the parameter options" popover, which
- * doesn't wrap or grow to fit long text. Deliberately scoped to 401/403 —
- * every other failure (404, 5xx, a plain network error like ECONNREFUSED)
- * already comes with a short, self-explanatory message from the SDK/server,
- * so callers just surface that error's own message instead of synthesizing
- * another one for it.
+ * Short hint for a 401/403 from connect()/listTools(). Kept short because n8n shows it
+ * in a small popover; other failures already have self-explanatory messages.
  */
 export function describeTransportErrorHint(error: unknown): string {
 	if (error instanceof StreamableHTTPError) {
@@ -124,13 +100,7 @@ export function describeTransportErrorHint(error: unknown): string {
 	return '';
 }
 
-/**
- * Turns a callTool() failure into an actionable hint using the MCP JSON-RPC
- * error code, so a schema mismatch (the agent's fault, usually self-corrected
- * by a retry) reads differently from a pipeline crash (Haystack Enterprise Platform's
- * fault) or a tool that disappeared mid-session (ours to refresh). Returns ''
- * when the error isn't an McpError we can classify.
- */
+/** Maps a callTool() MCP error code to an actionable hint; '' if the error isn't classifiable. */
 export function describeToolCallErrorHint(error: unknown): string {
 	if (error instanceof McpError) {
 		if (error.code === ErrorCode.InvalidParams) {
@@ -148,12 +118,7 @@ export function describeToolCallErrorHint(error: unknown): string {
 
 export type ToolFilterMode = 'all' | 'selected' | 'except';
 
-/**
- * Applies the "Tools to Include" mode to the tools returned by the MCP
- * server, mirroring n8n's own MCP Client Tool node so this node's filtering
- * behaves the same way users already expect from other MCP nodes (e.g.
- * Linear MCP, GitLab MCP).
- */
+/** Applies the "Tools to Include" mode, matching n8n's MCP Client Tool node. */
 export function getSelectedTools<T extends { name: string }>({
 	mode,
 	includeTools,
@@ -184,14 +149,8 @@ export function getSelectedTools<T extends { name: string }>({
 const MAX_MCP_TOOL_NAME_LENGTH = 64;
 
 /**
- * Haystack Enterprise Platform pipeline names are free text chosen by the user (spaces,
- * punctuation, unicode, ...), but LLM providers require tool/function names to
- * match /^[a-zA-Z0-9_-]+$/ and be at most 64 characters — a pipeline named
- * e.g. "Customer Support Bot" would otherwise break tool-calling with an error
- * that has nothing to do with Haystack Enterprise Platform. Prefixing with the node's
- * own (canvas-unique) name also stops two Haystack Enterprise MCP nodes with
- * same-named pipelines (e.g. two workspaces) from colliding when n8n's AI
- * Agent enforces unique tool names across all connected tool nodes.
+ * Builds an LLM-safe tool name (/^[a-zA-Z0-9_-]+$/, max 64 chars), prefixed with the
+ * node name so same-named tools on different nodes don't collide.
  */
 export function buildMcpToolName(nodeName: string, toolName: string): string {
 	const sanitize = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -212,12 +171,7 @@ export function buildMcpToolName(nodeName: string, toolName: string): string {
 
 type McpContent = { type: string; text?: string; [key: string]: unknown };
 
-/**
- * Non-text content blocks (image, audio, resource, resource_link, ...) can't
- * be flattened to plain text, but dropping them means the agent silently
- * never sees that Haystack Enterprise Platform returned them at all — so they're
- * serialized as JSON instead of being filtered out.
- */
+/** Flattens MCP content to text; non-text blocks are serialized as JSON rather than dropped. */
 export function contentToString(content: unknown): string {
 	if (content === undefined || content === null) return '';
 	if (typeof content === 'string') return content;
@@ -229,24 +183,14 @@ export function contentToString(content: unknown): string {
 	return JSON.stringify(content);
 }
 
-/**
- * Pipelines that declare an MCP output schema return their typed result via
- * structuredContent (a plain object) alongside or instead of content. Mirrors
- * n8n's own MCP Client Tool node's isStructuredContent check.
- */
+/** True if `value` is a plain object usable as MCP `structuredContent`. */
 export function isStructuredContent(value: unknown): value is Record<string, unknown> {
 	return (
 		value !== undefined && value !== null && typeof value === 'object' && !Array.isArray(value)
 	);
 }
 
-/**
- * MCP servers may paginate tools/list via cursor/nextCursor; a single
- * client.listTools() call only returns the first page, silently hiding the
- * rest once a workspace exposes more tools than fit on one page. Follows
- * nextCursor until the server stops returning one, mirroring n8n's own MCP
- * Client Tool node (getAllTools).
- */
+/** Lists all tools, following `nextCursor` pagination. */
 export async function listAllMcpTools(client: Client, options?: RequestOptions): Promise<Tool[]> {
 	const tools: Tool[] = [];
 	let cursor: string | undefined;
@@ -261,15 +205,7 @@ export async function listAllMcpTools(client: Client, options?: RequestOptions):
 	return tools;
 }
 
-/**
- * Turns a workspace-listing auth failure into a short, standalone hint —
- * same rationale as describeTransportErrorHint above: n8n's "problem
- * loading the parameter options" popover renders `.message` directly, with
- * no wrapping or growing to fit long text. A 403 here specifically means
- * the API key itself lacks the "list workspaces" permission — distinct from
- * a 403 once a workspace is already selected (that means the key can't
- * reach *that* workspace, handled by describeTransportErrorHint instead).
- */
+/** Short hint for a 401/403 when listing workspaces (403 here means the key can't list workspaces). */
 function describeWorkspaceListErrorHint(httpCode: string | null): string {
 	if (httpCode === '401') {
 		return 'Check that the API key in this credential is valid.';
@@ -281,18 +217,8 @@ function describeWorkspaceListErrorHint(httpCode: string | null): string {
 }
 
 /**
- * GET /api/v1/workspaces responds with a bare array of workspace objects
- * (each with a `name`, `workspace_id`, `languages`, etc.) — not wrapped in
- * an envelope object. The MCP endpoint (v2 API) is keyed by workspace_id
- * (a UUID), not the name/slug the v1 API otherwise uses, so this returns
- * the ID as the option value.
- *
- * workspaceId stays a plain `options` field (not `resourceLocator`) even
- * though that means showing a raw ID rather than a cached name in some
- * places — n8n's loadOptionsDependsOn doesn't reliably re-trigger a
- * dependent dropdown (here, "Tools to Include"/"Tools to Exclude") when the
- * field it depends on is a resourceLocator, a known n8n limitation, not
- * something fixable in this node's code.
+ * Lists workspaces from GET /api/v1/workspaces (a bare array). The MCP endpoint is keyed
+ * by `workspace_id`, so that is used as the option value.
  */
 export async function loadWorkspaceOptions(
 	context: ILoadOptionsFunctions,
@@ -306,19 +232,8 @@ export async function loadWorkspaceOptions(
 			json: true,
 		});
 	} catch (caught) {
-		// httpRequestWithAuthentication() already wraps the failure in its own
-		// NodeApiError — read the httpCode off that shape (reusing the instance
-		// rather than constructing a new one: NodeApiError's constructor returns
-		// an already-wrapped NodeApiError verbatim, silently ignoring any
-		// options passed in), but throw a NodeOperationError instead of it.
-		// n8n's own REST client special-cases any error whose serialized
-		// `.name` is exactly "NodeApiError": rather than reconstructing a
-		// proper `Error` instance client-side like it does for every other
-		// error shape, it re-throws the raw parsed JSON body as-is. The
-		// "problem loading the parameter options" popover only knows how to
-		// read `.message` off a real `instanceof Error`, so it falls back to
-		// string-coercing that raw object — producing the literal, useless
-		// text "[object Object]" no matter how good `.message` actually is.
+		// Read httpCode off the NodeApiError but throw a NodeOperationError: n8n's UI
+		// shows "[object Object]" for a thrown NodeApiError in the options popover.
 		const error =
 			caught instanceof NodeApiError
 				? caught
@@ -358,10 +273,7 @@ export async function loadMcpToolOptions(
 	try {
 		await client.connect(transport);
 	} catch (error) {
-		// Prefer the short, classified hint for auth errors; otherwise surface
-		// the error's own message as-is rather than wrapping it in a synthesized
-		// one — this also shows up verbatim in n8n's "problem loading the
-		// parameter options" popover, which doesn't wrap or grow to fit long text.
+		// Prefer the short auth hint; otherwise surface the error's own message.
 		throw new NodeOperationError(
 			context.getNode(),
 			describeTransportErrorHint(error) || (error as Error).message,
