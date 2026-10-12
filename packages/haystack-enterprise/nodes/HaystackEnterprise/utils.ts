@@ -15,10 +15,8 @@ const OAUTH2_CREDENTIAL_NAME = 'haystackEnterpriseOAuth2Api';
 export const DEFAULT_API_ORIGIN = 'https://api.cloud.deepset.ai';
 
 /**
- * ILoadOptionsFunctions.getNodeParameter() takes (name, fallback) — there's only ever one "item"
- * in a loadOptions call — while IExecuteFunctions' takes (name, itemIndex, fallback). Calling the
- * former with the latter's argument order would silently pass the item index as the fallback.
- * getCurrentNodeParameter() only exists on the load-options context, so it's the discriminator.
+ * Load-options contexts use `getNodeParameter(name, fallback)` while execution contexts include
+ * an item index. Calling the former with three arguments silently changes its fallback value.
  */
 type NodeContext = IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions;
 
@@ -26,13 +24,7 @@ function isLoadOptionsContext(context: NodeContext): context is ILoadOptionsFunc
 	return typeof (context as Partial<ILoadOptionsFunctions>).getCurrentNodeParameter === 'function';
 }
 
-/**
- * The nodes offer API Key and OAuth2 as alternate credential types, picked via the
- * "Authentication" node parameter — this resolves that choice to the credential type name
- * httpRequestWithAuthentication() / getCredentials() should use. Read at item index 0:
- * "Authentication" is a static top-level dropdown, not a per-item expression. Falls back to API
- * Key for workflows saved before the parameter existed.
- */
+/** Resolves the selected authentication mode, defaulting old workflows to API key credentials. */
 export function getCredentialType(context: NodeContext): string {
 	const authentication = isLoadOptionsContext(context)
 		? context.getNodeParameter('authentication', 'apiKey')
@@ -69,19 +61,13 @@ export function getApiBaseUrlFromCredentials(credentials: IDataObject): string {
 }
 
 /**
- * Test-only escape hatch for targeting local Prism mocks or ephemeral environments.
- * Deliberately avoids `process.env` so host environment variables cannot affect
- * requests from this cloud-eligible package (`@n8n/community-nodes/no-restricted-globals`).
+ * Overrides the API base URL in tests without introducing environment-dependent behavior.
  */
 export function setApiBaseUrlOverrideForTests(url: string | undefined): void {
 	apiBaseUrlOverride = url;
 }
 
-/**
- * Both credential types carry a `serverUrl`: the API key credential's is the API origin; the
- * OAuth2 credential's is n8n's DCR "Server URL" (the protected resource, i.e. `<origin>/api/v1`).
- * getApiBaseUrlFromCredentials() strips a trailing `/api/v1` so either form yields the same base.
- */
+/** Accepts either an API origin or a versioned API base URL. */
 export async function getApiBaseUrlForContext(context: NodeContext): Promise<string> {
 	if (apiBaseUrlOverride) {
 		return apiBaseUrlOverride;
@@ -91,8 +77,7 @@ export async function getApiBaseUrlForContext(context: NodeContext): Promise<str
 }
 
 /**
- * n8n and this package load different copies of n8n-workflow, so instanceof
- * misses the NodeApiError that httpRequestWithAuthentication throws.
+ * Recognizes NodeApiError instances created by a different n8n-workflow module copy.
  */
 export function isNodeApiError(error: unknown): error is NodeApiError {
 	return error instanceof NodeApiError || (error instanceof Error && error.name === 'NodeApiError');
@@ -114,12 +99,7 @@ function joinErrorItems(items: unknown[], firstOnly: boolean): string | undefine
 	return firstOnly ? messages[0] : messages.join('; ');
 }
 
-/**
- * Message from a hub API error body. application_utils.py returns one of:
- * - `{ errors: [string | { message }] }` for a normal HTTPException
- * - `{ details: [{ message }] }` for HTTPValidationException, or FastAPI's `{ detail: [{ msg }] }`
- * - `{ error: { message, type, param, code } }` on OpenAI-compatible chat completions
- */
+/** Extracts messages from the API's standard, validation, and OpenAI-compatible error shapes. */
 function messageFromApiBody(data: unknown, firstOnly = false): string | undefined {
 	if (!data || typeof data !== 'object' || Array.isArray(data)) return undefined;
 	const body = data as IDataObject;
@@ -157,12 +137,7 @@ function apiErrorBody(error: unknown): unknown {
 	return undefined;
 }
 
-/**
- * Resources Haystack Enterprise gates independently of workspace access — hitting these
- * endpoints with a workspace-scoped key can 403 even though that same key
- * sees the workspace itself just fine, because the key also needs its own
- * permission on the specific service, index, file, or search session.
- */
+/** Resources that can be denied independently of workspace access. */
 const RESOURCE_PERMISSION_ENDPOINTS: ReadonlyArray<{ pattern: RegExp; resource: string }> = [
 	{ pattern: /\/deployments(\/|$)/, resource: 'service' },
 	{ pattern: /\/indexes(\/|$)/, resource: 'index' },
@@ -170,11 +145,7 @@ const RESOURCE_PERMISSION_ENDPOINTS: ReadonlyArray<{ pattern: RegExp; resource: 
 	{ pattern: /\/search_sessions(\/|$)/, resource: 'search session' },
 ];
 
-/**
- * Hint for 401/403. The workspace picker lists every workspace, so these are
- * usually a bad API key or a key without access to this workspace or resource.
- * The status code is sometimes missing, so the body text is a fallback.
- */
+/** Returns actionable guidance for API authentication and authorization failures. */
 function describeApiAuthErrorHint(
 	httpCode: string | null,
 	endpoint: string,
@@ -199,10 +170,7 @@ function describeApiAuthErrorHint(
 	return '';
 }
 
-/**
- * "Full message" in the node error view is `error.messages`, not `.message`.
- * Replace that list so it shows the API text instead of "Request failed with status code …".
- */
+/** Updates every error field rendered by n8n. */
 function showErrorText(error: NodeApiError, text: string): void {
 	error.message = text;
 	error.description = text;
@@ -242,10 +210,7 @@ async function withApiErrorWrapping<T>(
 	}
 }
 
-/**
- * Thin wrapper around httpRequestWithAuthentication so every resource calls the
- * Haystack Enterprise API the same way (base URL, credential, error wrapping).
- */
+/** Sends an authenticated API request with shared URL and error handling. */
 export async function apiRequest(
 	this: NodeContext,
 	method: IHttpRequestMethods,
@@ -266,14 +231,8 @@ export async function apiRequest(
 }
 
 /**
- * The raw bearer token for code paths that can't go through httpRequestWithAuthentication() — the
- * Chat Model sub-node hands a static key to @n8n/ai-node-sdk, which has no auth hook of its own.
- *
- * For OAuth2 the stored access token may have expired and nothing downstream can refresh it, so
- * one cheap authenticated request is made first: on a 401 n8n refreshes the token and persists it
- * (see n8n-core's requestOAuth2()), and getCredentials() then returns the fresh one. Deliberately
- * not an unconditional refreshOAuth2Token(): refresh tokens rotate, so refreshing on every run
- * would race between concurrent executions sharing the credential.
+ * Returns a token for clients without n8n authentication hooks. OAuth2 tokens are validated through
+ * an authenticated request first; unconditional refresh could race when refresh tokens rotate.
  */
 export async function resolveBearerToken(context: ISupplyDataFunctions): Promise<string> {
 	if (getCredentialType(context) === CREDENTIAL_NAME) {
@@ -314,20 +273,7 @@ function readAccessToken(credentials: IDataObject): string | undefined {
 	return typeof accessToken === 'string' && accessToken !== '' ? accessToken : undefined;
 }
 
-/**
- * Like apiRequest(), but for use from a `loadOptions` method specifically.
- *
- * n8n's own REST client special-cases any error whose serialized `.name` is
- * `"NodeApiError"` (apiRequest()'s failure mode): instead of wrapping it in
- * a proper `Error` instance like it does for every other error shape, it
- * re-throws the raw parsed JSON body as-is. The "problem loading the
- * parameter options" popover only knows how to read `.message` off a real
- * `instanceof Error`, so it falls through to string-coercing that raw
- * object — producing the literal, useless text "[object Object]" — no
- * matter how good `.message` actually is. `NodeOperationError` doesn't hit
- * that special case, so re-throwing as one here (reusing the same message
- * apiRequest() already computed) is what actually gets it displayed.
- */
+/** Uses NodeOperationError so load-options failures remain readable across n8n's REST boundary. */
 async function loadOptionsApiRequest(
 	context: ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
@@ -342,14 +288,8 @@ async function loadOptionsApiRequest(
 }
 
 /**
- * Like apiRequest(), but for the *-stream endpoints: requests the response as
- * a raw Node.js stream instead of buffering and JSON-parsing the body, so the
- * caller can read Server-Sent Events off it as they arrive. Also returns the
- * response headers (`returnFullResponse: true`) — chat-stream reports the
- * search session ID via an `X-Search-Session-Id` header when one wasn't
- * passed in the request, since it's created automatically in that case.
- *
- * A failed stream request shows the first API error; the full body stays in Error data.
+ * Requests a raw SSE stream and response headers. Failed requests show the first API error while
+ * retaining the full response in Error data.
  */
 export async function apiRequestStream(
 	this: IExecuteFunctions,
@@ -380,13 +320,7 @@ export async function apiRequestStream(
 	);
 }
 
-/**
- * Response headers come back with whatever casing the HTTP client normalized
- * them to, so look up `name` case-insensitively rather than assuming
- * lowercase. A repeated header (e.g. Node's `IncomingHttpHeaders`) can arrive
- * as a `string[]` instead of a `string` — take the first value in that case
- * rather than dropping it.
- */
+/** Reads a response header case-insensitively and returns its first value. */
 export function getResponseHeader(headers: IDataObject, name: string): string | undefined {
 	const key = Object.keys(headers).find((k) => k.toLowerCase() === name.toLowerCase());
 	const value = key ? headers[key] : undefined;
@@ -395,19 +329,7 @@ export function getResponseHeader(headers: IDataObject, name: string): string | 
 	return undefined;
 }
 
-/**
- * Haystack Enterprise's *-stream endpoints respond with Server-Sent Events: `data: {...}`
- * lines, one JSON event per record, records separated by a blank line. Reads
- * the stream to completion, calling `onEvent` with each event's parsed JSON
- * payload in arrival order. Records without a `data:` line (e.g. SSE
- * keep-alive comments) or with unparseable JSON are silently skipped.
- *
- * Consumes via `data`/`end`/`error` events rather than `for await...of` —
- * `NodeJS.ReadableStream` (the ambient @types/node interface, used here to
- * avoid an `import ... from 'node:stream'`, which n8n's cloud-compatibility
- * lint rule rejects) isn't typed as async-iterable, even though the real
- * stream instance is at runtime.
- */
+/** Parses JSON data records from an SSE stream and ignores keep-alives or malformed records. */
 export async function consumeSseStream(
 	stream: NodeJS.ReadableStream,
 	onEvent: (event: IDataObject) => void,
@@ -462,11 +384,7 @@ export function extractStreamErrorDetail(error: IDataObject[string]): {
 
 const SERVICE_ACTIVATING_HTTP_CODE = '591';
 
-/**
- * GET /api/v1/workspaces responds with a bare array of workspace objects
- * (each with a `name`, `workspace_id`, `languages`, etc.) — not wrapped in
- * an envelope object.
- */
+/** Extracts the API's unwrapped workspace array. */
 export function extractWorkspaceList(response: unknown): IDataObject[] {
 	return Array.isArray(response) ? (response as IDataObject[]) : [];
 }
@@ -484,10 +402,7 @@ export async function loadWorkspaceOptions(
 		});
 }
 
-/**
- * List/paginated endpoints (deployments, files, ...) respond with
- * `{ data: [...], has_more: boolean, total: number }`.
- */
+/** Extracts items from the standard paginated response. */
 export function extractPaginatedList(response: unknown): IDataObject[] {
 	if (response && typeof response === 'object' && Array.isArray((response as IDataObject).data)) {
 		return (response as IDataObject).data as IDataObject[];
@@ -495,19 +410,7 @@ export function extractPaginatedList(response: unknown): IDataObject[] {
 	return [];
 }
 
-/**
- * Runs the "Get Many" pattern shared identically by the Service, Index, and
- * Search Session resources: a `page_number`/`has_more` paginated GET endpoint
- * that either returns a single page (Return All off, using the user's chosen
- * `limit`) or walks every page (Return All on, 100 per page) and flattens the
- * results. `extractList` reads the response's list field, which differs per
- * endpoint (`data` vs `search_sessions`).
- *
- * Takes `context` as a plain parameter rather than a `this` parameter — same
- * rationale as withApiErrorWrapping() above: calling a generic function via
- * `.call()` erases its type parameter to `unknown`, so `extractList`'s own
- * element type wouldn't survive into the returned array.
- */
+/** Fetches one page or all pages from a numbered pagination endpoint. */
 export async function fetchPaginatedResults<T>(
 	context: IExecuteFunctions,
 	endpoint: string,
@@ -537,15 +440,7 @@ export async function fetchPaginatedResults<T>(
 	return items;
 }
 
-/**
- * Wraps fetchPaginatedResults() with the before/after cursor bypass shared
- * identically by the Index, Service, and Search Session resources'
- * `getAll()`: `before`/`after` are mutually exclusive with `page_number` per
- * the API ("To use this option, clear the page_number parameter first"), so
- * a single direct GET is used instead of the page_number-based pagination
- * loop whenever either is set. Only applies when Return All is off — Return
- * All always manages its own page_number cursor internally.
- */
+/** Uses cursor filters for one-page requests and numbered pagination otherwise. */
 export async function fetchListWithCursorOrPaging<T>(
 	context: IExecuteFunctions,
 	endpoint: string,
@@ -557,8 +452,7 @@ export async function fetchListWithCursorOrPaging<T>(
 ): Promise<T[]> {
 	if (!returnAll && (filters.before || filters.after)) {
 		const cursorQs: IDataObject = { ...qs, limit };
-		// before/after and page_number are mutually exclusive per the API — strip
-		// page_number defensively in case a future caller's `qs` already has one.
+		// Cursor and page-number parameters are mutually exclusive.
 		delete cursorQs.page_number;
 		if (filters.before) cursorQs.before = filters.before;
 		if (filters.after) cursorQs.after = filters.after;
@@ -569,13 +463,7 @@ export async function fetchListWithCursorOrPaging<T>(
 	return fetchPaginatedResults(context, endpoint, qs, returnAll, limit, extractList);
 }
 
-/**
- * Runs the "populate a workspace-scoped dropdown" pattern shared identically
- * by the Deployment/File/Index/Search Session loadOptions methods: resolve
- * the selected workspace (returning no options if none is selected yet), GET
- * a listing endpoint under it, then map each list entry to a dropdown option
- * — `toOption` returns `undefined` to skip entries missing their ID field.
- */
+/** Loads and maps options for a workspace-scoped resource. */
 async function loadResourceOptions(
 	context: ILoadOptionsFunctions,
 	resourcePath: string,
@@ -613,10 +501,7 @@ export async function loadDeploymentOptions(
 	});
 }
 
-/**
- * Same as loadDeploymentOptions(), but with a leading pseudo-option (empty value) for
- * clearing the field back to "no service selected" to show values for all services
- */
+/** Adds an empty option for showing values from all services. */
 export async function loadDeploymentOptionsWithAllOption(
 	context: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {

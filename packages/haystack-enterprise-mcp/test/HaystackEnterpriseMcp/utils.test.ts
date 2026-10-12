@@ -41,13 +41,7 @@ vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', async (importOrigi
 	return { ...actual, StreamableHTTPClientTransport: TransportMock };
 });
 
-/**
- * Fake ILoadOptionsFunctions. Only 'authentication' (read by getAuthenticationMode()) is ever
- * looked up on it — unset, it falls back to the default 'apiKey', same as real n8n does for an
- * unset parameter. Mirrors the real load-options context's shape: `getNodeParameter(name,
- * fallback)` (no itemIndex) and a `getCurrentNodeParameter`, which is how utils.ts tells it apart
- * from an execute context.
- */
+// Load-options contexts use getNodeParameter(name, fallback) without an item index.
 function createLoadOptionsContext(
 	httpRequestWithAuthentication: (...args: unknown[]) => unknown,
 	params: Record<string, unknown> = {},
@@ -442,22 +436,12 @@ describe('loadWorkspaceOptions', () => {
 		await expect(loadWorkspaceOptions(context)).rejects.toThrow();
 	});
 
-	// httpRequestWithAuthentication() already wraps HTTP failures in its own
-	// NodeApiError before loadWorkspaceOptions ever sees them (see the
-	// docstring in utils.ts), so tests reproduce that shape directly rather
-	// than throwing a plain Error.
+	// Authenticated requests wrap HTTP failures before callers receive them.
 	function throwPreWrapped(node: { name: string }, rawError: Error) {
 		throw new NodeApiError(node, rawError as unknown as Record<string, unknown>);
 	}
 
-	// n8n's own REST client special-cases any error whose serialized `.name`
-	// is exactly "NodeApiError": instead of reconstructing a proper `Error`
-	// instance client-side (like it does for every other error shape), it
-	// re-throws the raw parsed JSON body as-is. The "problem loading the
-	// parameter options" popover only knows how to read `.message` off a
-	// real `instanceof Error`, so a NodeApiError here renders as the
-	// literal, useless text "[object Object]" no matter how good `.message`
-	// is — so loadWorkspaceOptions must throw a NodeOperationError instead.
+	// Load-options errors must remain readable after crossing n8n's REST boundary.
 	it('throws a NodeOperationError (not a NodeApiError) with a "list workspaces" permission hint on a 403', async () => {
 		const node = { name: 'Haystack Enterprise MCP' };
 		const context = {
@@ -510,13 +494,6 @@ describe('loadWorkspaceOptions', () => {
 		});
 	});
 
-	// Regression test for the reported bug: hitting a 403 while listing
-	// workspaces showed the literal text `[object Object]` in n8n's "problem
-	// loading the parameter options" popover. That popover renders `.message`
-	// directly, and when NodeApiError can't determine an HTTP status code at
-	// all, an earlier internal assignment (`this.message = errorResponse.message`)
-	// can leave `.message` as a raw, non-string object instead of coercing it
-	// to a string.
 	it("never leaves .message as a non-string object when the HTTP status code can't be determined", async () => {
 		const node = { name: 'Haystack Enterprise MCP' };
 		const context = {
@@ -573,8 +550,7 @@ describe('loadMcpToolOptions', () => {
 			{ name: 'search', value: 'search', description: 'Search the knowledge base' },
 			{ name: 'no-description', value: 'no-description', description: '' },
 		]);
-		// The bearer token travels via the transport's `fetch` option (so it can change after an
-		// OAuth2 refresh), not a static `requestInit` header — exercise that fetch to check it.
+		// The fetch wrapper reads the current token after OAuth2 refreshes.
 		expect(TransportMock).toHaveBeenCalledWith(
 			new URL(`${getApiBaseUrlV2FromOrigin(DEFAULT_API_ORIGIN)}/workspaces/workspace-1/mcp`),
 			expect.objectContaining({ fetch: expect.any(Function) }),

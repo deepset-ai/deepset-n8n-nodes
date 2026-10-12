@@ -31,9 +31,7 @@ vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', async (importOrigi
 		await importOriginal<typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js')>();
 	return { ...actual, StreamableHTTPClientTransport: TransportMock };
 });
-// n8n-core is a peer dependency resolved against n8n's own install at runtime
-// (see HaystackEnterpriseMcp.node.ts) and isn't installed locally, so it's
-// mocked here with the same trivial wrapper the real StructuredToolkit is.
+// n8n-core is a runtime peer dependency, so tests provide the required wrapper.
 vi.mock('n8n-core', () => ({
 	StructuredToolkit: class {
 		tools: unknown[];
@@ -46,11 +44,6 @@ vi.mock('n8n-core', () => ({
 	},
 }));
 
-/**
- * Credentials keyed by credential type name, the way the real `getCredentials(type)` resolves
- * them — the node asks for `haystackEnterpriseApi` or `haystackEnterpriseOAuth2Api` depending on
- * its "Authentication" parameter.
- */
 const API_KEY_CREDENTIALS = { haystackEnterpriseApi: { apiKey: 'secret-key' } };
 const OAUTH2_CREDENTIALS = {
 	haystackEnterpriseOAuth2Api: { oauthTokenData: { access_token: 'oauth-token' } },
@@ -64,11 +57,7 @@ function createGetCredentials(credentials: Record<string, Record<string, unknown
 	});
 }
 
-/**
- * Reads the Authorization header the node's transport would actually send, by invoking the
- * `fetch` wrapper it handed to the (mocked) StreamableHTTPClientTransport against a stubbed
- * global fetch. `responses` are what that stubbed fetch answers with, in order.
- */
+/** Returns headers sent by the transport's fetch wrapper. */
 async function sentAuthorizationHeaders(responses: Response[]): Promise<Array<string | null>> {
 	const transportOptions = TransportMock.mock.calls.at(-1)?.[1] as { fetch: typeof fetch };
 	const fetchSpy = vi.spyOn(globalThis, 'fetch');
@@ -125,9 +114,7 @@ function createExecuteContext(
 	} as unknown as IExecuteFunctions;
 }
 
-// Mirrors the real load-options context's shape: `getNodeParameter(name, fallback)` (no
-// itemIndex) plus a `getCurrentNodeParameter`, which is how utils.ts tells it apart from an
-// execute context.
+// Load-options contexts use getNodeParameter(name, fallback) without an item index.
 function createLoadOptionsContext(
 	params: Record<string, unknown>,
 	credentials: Record<string, Record<string, unknown>> = API_KEY_CREDENTIALS,
@@ -281,11 +268,7 @@ describe('HaystackEnterpriseMcp', () => {
 		});
 
 		it('wraps a connection failure with the MCP URL', async () => {
-			// A plain "connection refused" message matches one of n8n's built-in
-			// COMMON_ERRORS patterns, so NodeOperationError replaces `.message` with
-			// its own friendlier text and moves our detailed message into `.messages`
-			// instead (see n8n-workflow's NodeError.setDescriptiveErrorMessage) — so
-			// assert against `.messages`, not `.message`.
+			// n8n moves recognized connection errors from `.message` to `.messages`.
 			mockConnect.mockRejectedValue(new Error('ECONNREFUSED'));
 			const context = createSupplyDataContext({ workspaceId: 'ws-1' });
 

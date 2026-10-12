@@ -166,7 +166,6 @@ describe('HaystackEnterpriseChatModel', () => {
 		it('supplies the refreshed access token when the validation request triggered a refresh', async () => {
 			let tokenData = { access_token: 'stale-token' };
 			const httpRequestWithAuthentication = vi.fn(async () => {
-				// n8n refreshed on 401 and persisted the new token data on the credential.
 				tokenData = { access_token: 'fresh-token' };
 				return [];
 			});
@@ -220,7 +219,6 @@ describe('HaystackEnterpriseChatModel', () => {
 				httpRequestWithAuthentication,
 			);
 
-			// Goes through the shared API error wrapping, so the user gets the 401 hint.
 			await expect(node.supplyData.call(context, 0)).rejects.toThrow(
 				/reconnect the OAuth2 credential/,
 			);

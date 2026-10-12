@@ -188,8 +188,7 @@ export class HaystackEnterpriseChatModel implements INodeType {
 			);
 		}
 
-		// API key, or (for OAuth2) an access token freshly validated against the API — see
-		// resolveBearerToken(). The SDK's OpenAI client takes a static key; it can't refresh on 401.
+		// The SDK accepts a static token, so OAuth2 credentials are validated before use.
 		const apiKey = await resolveBearerToken(this);
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {

@@ -199,9 +199,7 @@ export class HaystackEnterpriseAi implements INodeType {
 				if (caught instanceof NodeOperationError) {
 					throw new NodeOperationError(this.getNode(), caught.message, { itemIndex: i });
 				}
-				// Don't construct a new NodeApiError here. Its constructor replaces
-				// .message with the generic status text, and instanceof misses the
-				// NodeApiError n8n threw from its own copy of n8n-workflow.
+				// Preserve errors created by n8n's separate n8n-workflow module copy.
 				if (isNodeApiError(caught)) {
 					if (caught.context) caught.context.itemIndex = i;
 					// eslint-disable-next-line @n8n/community-nodes/require-node-api-error -- already a NodeApiError; constructing a new one replaces .message with the generic status text

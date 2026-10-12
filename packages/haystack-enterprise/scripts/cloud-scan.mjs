@@ -1,8 +1,5 @@
 #!/usr/bin/env node
-// Runs the actual n8n Cloud community-node scanner (@n8n/scan-community-package)
-// against a local build, without needing to publish to npm first. `n8n-node lint`
-// checks a broader/stricter rule set than what's actually verified for n8n Cloud,
-// so this is the more reliable pre-release gate.
+// Runs the n8n Cloud scanner against a locally packed build.
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -25,8 +22,7 @@ try {
 	const packageDir = join(tmpDir, 'package');
 
 	console.log('Scanning...');
-	// Match the scanner's own published-package leg: generated declaration files are covered by
-	// source linting and false-positive on rules whose filename checks require a `.ts` source file.
+	// Match the scanner's published-package checks; source linting covers generated declarations.
 	const result = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
 
 	if (result.passed) {

@@ -33,9 +33,6 @@ function createContext<T = ILoadOptionsFunctions>(
 	return {
 		helpers: { httpRequestWithAuthentication },
 		getNode: () => ({ name: 'Haystack Enterprise AI' }),
-		// Only 'authentication' (read by getCredentialType()) is ever looked up on this
-		// fake — always falls back to the default 'apiKey', same as real n8n does for an unset
-		// parameter.
 		getNodeParameter: (_name: string, _itemIndex: number, fallback?: unknown) => fallback,
 		getCredentials: async () => credentials,
 	} as unknown as T;
@@ -218,8 +215,6 @@ describe('getCredentialType', () => {
 	});
 
 	it('picks the OAuth2 credential on a load-options context, using its (name, fallback) signature', () => {
-		// The real ILoadOptionsFunctions.getNodeParameter() has no itemIndex parameter; passing one
-		// would silently become the fallback value. getCurrentNodeParameter() marks this context type.
 		const getNodeParameter = vi.fn(() => 'oAuth2');
 		const context = {
 			getNodeParameter,
@@ -249,7 +244,6 @@ describe('apiRequest', () => {
 			'haystackEnterpriseOAuth2Api',
 			expect.objectContaining({ method: 'GET', url: expect.stringContaining('/workspaces') }),
 		);
-		// The base URL must come from the credential that's actually attached (the OAuth2 one).
 		expect(getCredentials).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
 	});
 
