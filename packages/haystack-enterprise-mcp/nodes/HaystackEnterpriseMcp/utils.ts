@@ -165,6 +165,7 @@ export async function resolveMcpAuth(context: McpContext, itemIndex: number): Pr
  */
 export function createBearerFetch(auth: McpAuth, baseFetch?: FetchLike): FetchLike {
 	let token = auth.token;
+	let refreshInFlight: Promise<string | undefined> | undefined;
 
 	const send = async (url: string | URL, init: RequestInit | undefined, bearer: string) => {
 		const headers = new Headers(init?.headers);
@@ -173,12 +174,20 @@ export function createBearerFetch(auth: McpAuth, baseFetch?: FetchLike): FetchLi
 	};
 
 	return async (url, init) => {
-		const response = await send(url, init, token);
+		const attemptedToken = token;
+		const response = await send(url, init, attemptedToken);
 		if (response.status !== 401 || !auth.refresh) {
 			return response;
 		}
 
-		const refreshedToken = await auth.refresh();
+		if (token !== attemptedToken) {
+			return send(url, init, token);
+		}
+
+		refreshInFlight ??= auth.refresh().finally(() => {
+			refreshInFlight = undefined;
+		});
+		const refreshedToken = await refreshInFlight;
 		if (!refreshedToken) {
 			return response;
 		}
