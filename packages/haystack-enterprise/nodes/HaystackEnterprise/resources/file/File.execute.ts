@@ -6,6 +6,7 @@ import {
 	extractPaginatedList,
 	parseCommaSeparatedList,
 	parseJsonField,
+	readAdditionalParameters,
 } from '../../utils';
 
 async function upload(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
@@ -40,6 +41,15 @@ async function upload(this: IExecuteFunctions, itemIndex: number): Promise<IData
 			binaryData.fileName || 'file',
 		);
 	}
+
+	Object.assign(
+		qs,
+		readAdditionalParameters.call(
+			this,
+			itemIndex,
+			this.getNodeParameter('extraParameters', itemIndex, '{}'),
+		),
+	);
 
 	return (await apiRequest.call(this, 'POST', `/workspaces/${workspaceName}/files`, {
 		body: formData,
@@ -176,6 +186,15 @@ async function updateMetaBulk(this: IExecuteFunctions, itemIndex: number): Promi
 		if (!entry.fileId) continue;
 		body[entry.fileId] = parseJsonField.call(this, itemIndex, 'Metadata', entry.metadata) ?? {};
 	}
+
+	Object.assign(
+		body,
+		readAdditionalParameters.call(
+			this,
+			itemIndex,
+			this.getNodeParameter('extraParameters', itemIndex, '{}'),
+		),
+	);
 
 	return (await apiRequest.call(this, 'POST', `/workspaces/${workspaceName}/files/update-meta`, {
 		body,

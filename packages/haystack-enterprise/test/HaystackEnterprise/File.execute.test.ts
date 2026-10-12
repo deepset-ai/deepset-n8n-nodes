@@ -34,6 +34,33 @@ describe('executeFile — upload', () => {
 		expect(result).toEqual([{ json: { file_id: 'f1' } }]);
 	});
 
+	it('merges extra parameters onto the upload query string', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				workspaceName: 'ws',
+				uploadFrom: 'textContent',
+				writeMode: 'KEEP',
+				metadata: '{}',
+				text: 'hello',
+				fileName: 'note.txt',
+				extraParameters: '{"custom_flag": "yes", "write_mode": "FAIL"}',
+			},
+			async () => ({ file_id: 'f1' }),
+		);
+
+		await executeFile.call(context, 'upload', 0);
+
+		const [, options] = httpRequestWithAuthentication.mock.calls[0] as [
+			string,
+			{ qs: Record<string, unknown> },
+		];
+		expect(options.qs).toEqual({
+			write_mode: 'FAIL',
+			file_name: 'note.txt',
+			custom_flag: 'yes',
+		});
+	});
+
 	it('defaults metadata to {} when left empty', async () => {
 		const { context, httpRequestWithAuthentication } = createContext(
 			{
@@ -385,6 +412,26 @@ describe('executeFile — update meta bulk', () => {
 			}),
 		);
 		expect(result).toEqual([{ json: { updated: 2 } }]);
+	});
+
+	it('merges extra parameters onto the bulk metadata body', async () => {
+		const { context, httpRequestWithAuthentication } = createContext(
+			{
+				workspaceName: 'ws',
+				'filesMetadata.file': [{ fileId: 'f1', metadata: '{"a":1}' }],
+				extraParameters: '{"dry_run": true}',
+			},
+			async () => ({ updated: 1 }),
+		);
+
+		await executeFile.call(context, 'updateMetaBulk', 0);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseApi',
+			expect.objectContaining({
+				body: { f1: { a: 1 }, dry_run: true },
+			}),
+		);
 	});
 
 	it('defaults to an empty list when no entries are provided', async () => {

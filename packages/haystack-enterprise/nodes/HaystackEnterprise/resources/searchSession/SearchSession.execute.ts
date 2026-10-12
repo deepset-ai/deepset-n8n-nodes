@@ -6,13 +6,19 @@ import {
 	createSearchSession,
 	extractSearchSessionList,
 	fetchListWithCursorOrPaging,
+	readAdditionalParameters,
 } from '../../utils';
 
 async function create(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
 	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
 	const deploymentId = this.getNodeParameter('deploymentId', itemIndex) as string;
+	const body = readAdditionalParameters.call(
+		this,
+		itemIndex,
+		this.getNodeParameter('extraParameters', itemIndex, '{}'),
+	);
 
-	const searchSessionId = await createSearchSession.call(this, workspaceName, deploymentId);
+	const searchSessionId = await createSearchSession.call(this, workspaceName, deploymentId, body);
 	return { search_session_id: searchSessionId };
 }
 
