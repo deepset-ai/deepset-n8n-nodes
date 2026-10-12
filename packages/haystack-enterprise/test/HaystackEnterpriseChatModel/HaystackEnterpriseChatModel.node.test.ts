@@ -20,7 +20,11 @@ function createSupplyDataContext(
 		getNode: () => ({ name: 'Haystack Enterprise Chat Model' }),
 		getCredentials: vi.fn(async () => credentials),
 		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
+			Object.prototype.hasOwnProperty.call(params, name)
+				? params[name]
+				: name === 'authentication'
+					? 'apiKey'
+					: fallback,
 		helpers: { httpRequestWithAuthentication },
 	} as unknown as ISupplyDataFunctions;
 }
@@ -182,9 +186,9 @@ describe('HaystackEnterpriseChatModel', () => {
 			);
 		});
 
-		it('accepts a versioned OAuth2 Server URL without duplicating /api/v1', async () => {
+		it('derives the chat completions URL from the OAuth2 Server URL', async () => {
 			const context = createSupplyDataContext(OAUTH2_PARAMS, {
-				serverUrl: 'https://self-hosted.example.com/api/v1',
+				serverUrl: 'https://self-hosted.example.com',
 				oauthTokenData: { access_token: 'oauth-token' },
 			});
 

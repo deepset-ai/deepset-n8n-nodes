@@ -18,8 +18,7 @@ export class HaystackEnterpriseOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName:
-				'Click <b>Connect</b> below and sign in with your Haystack Enterprise account. n8n registers itself with Haystack Enterprise automatically — no client ID or secret to copy.',
+			displayName: 'Click <b>Connect</b> below and sign in with your Haystack Enterprise account.',
 			name: 'dynamicClientRegistrationNotice',
 			type: 'notice',
 			default: '',

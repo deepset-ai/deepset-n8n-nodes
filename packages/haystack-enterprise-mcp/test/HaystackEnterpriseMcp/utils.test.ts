@@ -51,7 +51,11 @@ function createLoadOptionsContext(
 		helpers: { httpRequestWithAuthentication },
 		getNode: () => ({ name: 'Haystack Enterprise MCP' }),
 		getNodeParameter: (name: string, fallback?: unknown) =>
-			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
+			Object.prototype.hasOwnProperty.call(params, name)
+				? params[name]
+				: name === 'authentication'
+					? 'apiKey'
+					: fallback,
 		getCurrentNodeParameter: () => undefined,
 		getCredentials: async () => credentials,
 	} as unknown as ILoadOptionsFunctions;
@@ -70,7 +74,7 @@ describe('resolveMcpAuth', () => {
 		const getCredentials = vi.fn(async () => ({ apiKey: 'secret-key' }));
 		const context = {
 			getNode: () => ({ name: 'Haystack Enterprise MCP' }),
-			getNodeParameter: (_name: string, fallback?: unknown) => fallback,
+			getNodeParameter: (name: string) => (name === 'authentication' ? 'apiKey' : undefined),
 			getCurrentNodeParameter: () => undefined,
 			getCredentials,
 		} as unknown as IExecuteFunctions;
@@ -81,7 +85,7 @@ describe('resolveMcpAuth', () => {
 		expect(getCredentials).toHaveBeenCalledWith('haystackEnterpriseApi');
 	});
 
-	it("reads the stored OAuth2 access token when Authentication is OAuth2, using the load-options context's (name, fallback) signature", async () => {
+	it('reads the stored OAuth2 access token when Authentication is OAuth2', async () => {
 		const getCredentials = vi.fn(async () => ({ oauthTokenData: { access_token: 'oauth-token' } }));
 		const context = createLoadOptionsContext(vi.fn(), { authentication: 'oAuth2' });
 		Object.assign(context, { getCredentials });
@@ -256,8 +260,8 @@ describe('getApiBaseUrlV2FromOrigin', () => {
 		);
 	});
 
-	it('strips /api/v1 before appending /api/v2', () => {
-		expect(getApiBaseUrlV2FromOrigin('https://host.example.com/api/v1/')).toBe(
+	it('removes trailing slashes before appending /api/v2', () => {
+		expect(getApiBaseUrlV2FromOrigin('https://host.example.com/')).toBe(
 			'https://host.example.com/api/v2',
 		);
 	});
@@ -456,7 +460,7 @@ describe('loadWorkspaceOptions', () => {
 				},
 			},
 			getNode: () => node,
-			getNodeParameter: (_name: string, fallback?: unknown) => fallback,
+			getNodeParameter: (name: string) => (name === 'authentication' ? 'apiKey' : undefined),
 			getCurrentNodeParameter: () => undefined,
 			getCredentials: async () => ({ apiKey: 'secret-key' }),
 		} as unknown as ILoadOptionsFunctions;
@@ -484,7 +488,7 @@ describe('loadWorkspaceOptions', () => {
 				},
 			},
 			getNode: () => node,
-			getNodeParameter: (_name: string, fallback?: unknown) => fallback,
+			getNodeParameter: (name: string) => (name === 'authentication' ? 'apiKey' : undefined),
 			getCurrentNodeParameter: () => undefined,
 			getCredentials: async () => ({ apiKey: 'secret-key' }),
 		} as unknown as ILoadOptionsFunctions;
@@ -508,7 +512,7 @@ describe('loadWorkspaceOptions', () => {
 				},
 			},
 			getNode: () => node,
-			getNodeParameter: (_name: string, fallback?: unknown) => fallback,
+			getNodeParameter: (name: string) => (name === 'authentication' ? 'apiKey' : undefined),
 			getCurrentNodeParameter: () => undefined,
 			getCredentials: async () => ({ apiKey: 'secret-key' }),
 		} as unknown as ILoadOptionsFunctions;
@@ -571,7 +575,7 @@ describe('loadMcpToolOptions', () => {
 		mockListTools.mockResolvedValue({ tools: [{ name: 'search' }] });
 		const customContext = {
 			getNode: () => ({ name: 'Haystack Enterprise MCP' }),
-			getNodeParameter: (_name: string, fallback?: unknown) => fallback,
+			getNodeParameter: (name: string) => (name === 'authentication' ? 'apiKey' : undefined),
 			getCurrentNodeParameter: () => undefined,
 			getCredentials: async () => ({
 				apiKey: 'secret-key',
@@ -589,7 +593,7 @@ describe('loadMcpToolOptions', () => {
 		);
 	});
 
-	it('accepts a versioned OAuth2 Server URL when deriving the MCP endpoint', async () => {
+	it('derives the MCP endpoint from the OAuth2 Server URL', async () => {
 		mockListTools.mockResolvedValue({ tools: [{ name: 'search' }] });
 		const customContext = {
 			getNode: () => ({ name: 'Haystack Enterprise MCP' }),
@@ -597,7 +601,7 @@ describe('loadMcpToolOptions', () => {
 				name === 'authentication' ? 'oAuth2' : fallback,
 			getCurrentNodeParameter: () => undefined,
 			getCredentials: async () => ({
-				serverUrl: 'https://self-hosted.example.com/api/v1',
+				serverUrl: 'https://self-hosted.example.com',
 				oauthTokenData: { access_token: 'oauth-token' },
 			}),
 		} as unknown as ILoadOptionsFunctions;

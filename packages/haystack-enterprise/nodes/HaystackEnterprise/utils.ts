@@ -24,12 +24,13 @@ function isLoadOptionsContext(context: NodeContext): context is ILoadOptionsFunc
 	return typeof (context as Partial<ILoadOptionsFunctions>).getCurrentNodeParameter === 'function';
 }
 
-/** Resolves the selected authentication mode, defaulting old workflows to API key credentials. */
 export function getCredentialType(context: NodeContext): string {
 	const authentication = isLoadOptionsContext(context)
-		? context.getNodeParameter('authentication', 'apiKey')
-		: context.getNodeParameter('authentication', 0, 'apiKey');
-	return authentication === 'oAuth2' ? OAUTH2_CREDENTIAL_NAME : CREDENTIAL_NAME;
+		? context.getNodeParameter('authentication')
+		: context.getNodeParameter('authentication', 0);
+	if (authentication === 'apiKey') return CREDENTIAL_NAME;
+	if (authentication === 'oAuth2') return OAUTH2_CREDENTIAL_NAME;
+	throw new NodeOperationError(context.getNode(), 'Select an authentication method.');
 }
 
 let apiBaseUrlOverride: string | undefined;
@@ -46,14 +47,8 @@ export function getApiOriginFromCredentials(credentials: IDataObject): string {
 	return DEFAULT_API_ORIGIN;
 }
 
-/** Strips a trailing `/api/v1` or `/api/v2` so versioned base URLs are not doubled. */
-function apiOriginWithoutVersionPath(origin: string): string {
-	const withoutVersion = normalizeApiOrigin(origin).replace(/\/api\/v[12]$/i, '');
-	return withoutVersion === '' ? DEFAULT_API_ORIGIN : withoutVersion;
-}
-
 export function getApiBaseUrlV1FromOrigin(origin: string): string {
-	return `${apiOriginWithoutVersionPath(origin)}/api/v1`;
+	return `${normalizeApiOrigin(origin)}/api/v1`;
 }
 
 export function getApiBaseUrlFromCredentials(credentials: IDataObject): string {
@@ -67,7 +62,6 @@ export function setApiBaseUrlOverrideForTests(url: string | undefined): void {
 	apiBaseUrlOverride = url;
 }
 
-/** Accepts either an API origin or a versioned API base URL. */
 export async function getApiBaseUrlForContext(context: NodeContext): Promise<string> {
 	if (apiBaseUrlOverride) {
 		return apiBaseUrlOverride;

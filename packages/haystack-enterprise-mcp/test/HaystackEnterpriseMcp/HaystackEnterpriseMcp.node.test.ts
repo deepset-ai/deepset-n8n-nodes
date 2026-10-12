@@ -82,7 +82,11 @@ function createSupplyDataContext(
 		getNode: () => ({ name: NODE_NAME }),
 		getCredentials: createGetCredentials(credentials),
 		getNodeParameter: vi.fn((name: string, _itemIndex: number, fallback?: unknown) =>
-			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
+			Object.prototype.hasOwnProperty.call(params, name)
+				? params[name]
+				: name === 'authentication'
+					? 'apiKey'
+					: fallback,
 		),
 		getExecutionCancelSignal: () => signal,
 		addInputData: vi.fn().mockReturnValue({ index: 0 }),
@@ -107,7 +111,11 @@ function createExecuteContext(
 		getNode: () => ({ name: NODE_NAME }),
 		getCredentials: createGetCredentials(credentials),
 		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
+			Object.prototype.hasOwnProperty.call(params, name)
+				? params[name]
+				: name === 'authentication'
+					? 'apiKey'
+					: fallback,
 		getExecutionCancelSignal: () => signal,
 		getInputData: () => items.map((json) => ({ json })),
 		continueOnFail: () => continueOnFail,
@@ -124,7 +132,11 @@ function createLoadOptionsContext(
 		getNode: () => ({ name: NODE_NAME }),
 		getCredentials: createGetCredentials(credentials),
 		getNodeParameter: vi.fn((name: string, fallback?: unknown) =>
-			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
+			Object.prototype.hasOwnProperty.call(params, name)
+				? params[name]
+				: name === 'authentication'
+					? 'apiKey'
+					: fallback,
 		),
 		getCurrentNodeParameter: () => undefined,
 		helpers: { httpRequestWithAuthentication },

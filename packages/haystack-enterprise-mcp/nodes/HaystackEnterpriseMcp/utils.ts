@@ -39,21 +39,14 @@ export function getApiOriginFromCredentials(credentials: IDataObject): string {
 	return DEFAULT_API_ORIGIN;
 }
 
-/** Strips a trailing `/api/v1` or `/api/v2` so versioned base URLs are not doubled. */
-function apiOriginWithoutVersionPath(origin: string): string {
-	const withoutVersion = normalizeApiOrigin(origin).replace(/\/api\/v[12]$/i, '');
-	return withoutVersion === '' ? DEFAULT_API_ORIGIN : withoutVersion;
-}
-
 export function getApiBaseUrlV1FromOrigin(origin: string): string {
-	return `${apiOriginWithoutVersionPath(origin)}/api/v1`;
+	return `${normalizeApiOrigin(origin)}/api/v1`;
 }
 
 export function getApiBaseUrlV2FromOrigin(origin: string): string {
-	return `${apiOriginWithoutVersionPath(origin)}/api/v2`;
+	return `${normalizeApiOrigin(origin)}/api/v2`;
 }
 
-/** Accepts either an API origin or a versioned API base URL. */
 export async function getApiOriginForContext(context: McpContext, itemIndex = 0): Promise<string> {
 	const credentialType =
 		getAuthenticationMode(context, itemIndex) === 'oAuth2'
@@ -71,12 +64,14 @@ function isLoadOptionsContext(context: McpContext): context is ILoadOptionsFunct
 	return typeof (context as Partial<ILoadOptionsFunctions>).getCurrentNodeParameter === 'function';
 }
 
-/** Falls back to API key authentication for workflows created before OAuth2 support. */
 function getAuthenticationMode(context: McpContext, itemIndex: number): 'apiKey' | 'oAuth2' {
 	const authentication = isLoadOptionsContext(context)
-		? context.getNodeParameter('authentication', 'apiKey')
-		: context.getNodeParameter('authentication', itemIndex, 'apiKey');
-	return authentication === 'oAuth2' ? 'oAuth2' : 'apiKey';
+		? context.getNodeParameter('authentication')
+		: context.getNodeParameter('authentication', itemIndex);
+	if (authentication !== 'apiKey' && authentication !== 'oAuth2') {
+		throw new NodeOperationError(context.getNode(), 'Select an authentication method.');
+	}
+	return authentication;
 }
 
 /** Authentication state for an MCP transport, which bypasses n8n's authenticated HTTP helper. */
