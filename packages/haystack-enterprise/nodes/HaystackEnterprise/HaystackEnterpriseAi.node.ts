@@ -102,7 +102,10 @@ export class HaystackEnterpriseAi implements INodeType {
 				displayName: 'Workspace Name or ID',
 				name: 'workspaceName',
 				type: 'options',
-				typeOptions: { loadOptionsMethod: 'getWorkspaces' },
+				typeOptions: {
+					loadOptionsMethod: 'getWorkspaces',
+					loadOptionsDependsOn: ['authentication'],
+				},
 				default: '',
 				required: true,
 				description:

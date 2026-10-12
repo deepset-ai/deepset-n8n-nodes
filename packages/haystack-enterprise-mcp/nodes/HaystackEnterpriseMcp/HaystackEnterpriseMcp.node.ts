@@ -231,7 +231,10 @@ export class HaystackEnterpriseMcp implements INodeType {
 				displayName: 'Workspace Name or ID',
 				name: 'workspaceId',
 				type: 'options',
-				typeOptions: { loadOptionsMethod: 'getWorkspaces' },
+				typeOptions: {
+					loadOptionsMethod: 'getWorkspaces',
+					loadOptionsDependsOn: ['authentication'],
+				},
 				default: '',
 				required: true,
 				description:
@@ -268,7 +271,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getAvailableMcpTools',
-					loadOptionsDependsOn: ['workspaceId'],
+					loadOptionsDependsOn: ['authentication', 'workspaceId'],
 				},
 				default: [],
 				description:
@@ -281,7 +284,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getAvailableMcpTools',
-					loadOptionsDependsOn: ['workspaceId'],
+					loadOptionsDependsOn: ['authentication', 'workspaceId'],
 				},
 				default: [],
 				description:

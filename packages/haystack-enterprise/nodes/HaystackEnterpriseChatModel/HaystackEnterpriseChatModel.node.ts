@@ -100,7 +100,10 @@ export class HaystackEnterpriseChatModel implements INodeType {
 				displayName: 'Workspace Name or ID',
 				name: 'workspaceName',
 				type: 'options',
-				typeOptions: { loadOptionsMethod: 'getWorkspaces' },
+				typeOptions: {
+					loadOptionsMethod: 'getWorkspaces',
+					loadOptionsDependsOn: ['authentication'],
+				},
 				default: '',
 				required: true,
 				description:
@@ -112,7 +115,7 @@ export class HaystackEnterpriseChatModel implements INodeType {
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getDeployments',
-					loadOptionsDependsOn: ['workspaceName'],
+					loadOptionsDependsOn: ['authentication', 'workspaceName'],
 				},
 				default: '',
 				required: true,

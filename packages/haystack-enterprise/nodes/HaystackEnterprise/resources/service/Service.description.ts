@@ -195,7 +195,7 @@ export const serviceFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDeployments',
-			loadOptionsDependsOn: ['workspaceName'],
+			loadOptionsDependsOn: ['authentication', 'workspaceName'],
 		},
 		default: '',
 		required: true,

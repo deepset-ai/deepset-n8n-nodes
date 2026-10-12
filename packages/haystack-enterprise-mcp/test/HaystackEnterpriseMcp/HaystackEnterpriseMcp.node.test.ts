@@ -165,6 +165,17 @@ describe('HaystackEnterpriseMcp', () => {
 		}
 	});
 
+	it('reloads every API-backed option when authentication changes', () => {
+		const loadOptionsProperties = node.description.properties.filter(
+			(property) => property.typeOptions?.loadOptionsMethod,
+		);
+
+		expect(loadOptionsProperties.length).toBeGreaterThan(0);
+		for (const property of loadOptionsProperties) {
+			expect(property.typeOptions?.loadOptionsDependsOn).toContain('authentication');
+		}
+	});
+
 	describe('supplyData', () => {
 		it('refuses to run on n8n Cloud', async () => {
 			process.env.N8N_DEPLOYMENT_TYPE = 'cloud';
