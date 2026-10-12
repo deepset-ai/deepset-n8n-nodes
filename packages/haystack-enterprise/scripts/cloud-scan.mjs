@@ -25,7 +25,9 @@ try {
 	const packageDir = join(tmpDir, 'package');
 
 	console.log('Scanning...');
-	const result = await analyzePackage(packageDir);
+	// Match the scanner's own published-package leg: generated declaration files are covered by
+	// source linting and false-positive on rules whose filename checks require a `.ts` source file.
+	const result = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
 
 	if (result.passed) {
 		console.log('✅ Package passed all n8n Cloud community-node checks');
