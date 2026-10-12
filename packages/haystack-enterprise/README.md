@@ -152,10 +152,10 @@ package, so if you have both installed you only need to set each one up once.
 The nodes run as the signed-in user, with that user's workspace access and permissions, and n8n
 refreshes the token automatically.
 
-> **Using a private Haystack Enterprise deployment?** Change **Server URL** to your API origin
-> without an API version path. To configure or reuse an existing OAuth2 client, turn **Use Dynamic
-> Client Registration** off and provide its OAuth2 settings. Add the callback URL shown on the
-> credential as a redirect URI on that client. Public PKCE clients do not require a client secret.
+> **Using a private Haystack Enterprise deployment?** Change **Server URL** to your API origin. To
+> configure or reuse an existing OAuth2 client, turn **Use Dynamic Client Registration** off and
+> provide its OAuth2 settings. Add the callback URL shown on the credential as a redirect URI on
+> that client. Public PKCE clients do not require a client secret.
 
 ### API Key
 

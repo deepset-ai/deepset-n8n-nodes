@@ -28,7 +28,7 @@ export class HaystackEnterpriseApi implements ICredentialType {
 			default: 'https://api.cloud.deepset.ai',
 			placeholder: 'https://api.cloud.deepset.ai',
 			description:
-				'The Haystack Enterprise API origin (scheme and host only). Use the default for the hosted Haystack Enterprise Platform; for self-hosted or dev environments, enter your instance API URL (for example <code>https://haystack.example.com</code>).',
+				'The Haystack Enterprise API origin. Use the default for the hosted Haystack Enterprise Platform; for self-hosted or dev environments, enter your instance API origin (for example <code>https://haystack.example.com</code>).',
 		},
 		{
 			displayName: 'API Key',

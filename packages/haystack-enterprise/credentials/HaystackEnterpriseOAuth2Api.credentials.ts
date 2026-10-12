@@ -42,7 +42,7 @@ export class HaystackEnterpriseOAuth2Api implements ICredentialType {
 			default: 'https://api.cloud.deepset.ai',
 			required: true,
 			description:
-				'The Haystack Enterprise API origin without an API version path (for example, https://api.cloud.deepset.ai), used for API requests and OAuth2 authorization-server discovery and registration.',
+				'The Haystack Enterprise API origin (for example, https://api.cloud.deepset.ai).',
 		},
 		{
 			displayName: 'Client Secret',
