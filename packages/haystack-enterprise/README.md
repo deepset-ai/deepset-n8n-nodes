@@ -149,13 +149,13 @@ package, so if you have both installed you only need to set each one up once.
 2. Leave the default settings as they are.
 3. Click **Connect** and sign in with your Haystack Enterprise account.
 
-The nodes run as the signed-in user, with that user's workspace access and permissions,
-and n8n refreshes the token automatically.
+The nodes run as the signed-in user, with that user's workspace access and permissions, and n8n
+refreshes the token automatically.
 
 > **Using a private Haystack Enterprise deployment?** Change **Server URL** to your own API address.
-> If your deployment doesn't support dynamic client registration, turn **Use Dynamic Client Registration**
-> off and fill in the OAuth2 client details from your identity provider.
-> Add the callback URL shown on the credential as a redirect URI on that client.
+> To configure or reuse an existing OAuth2 client, turn **Use Dynamic Client Registration** off and
+> provide its OAuth2 settings. Add the callback URL shown on the credential as a redirect URI on
+> that client. Public PKCE clients do not require a client secret.
 
 ### API Key
 
@@ -165,9 +165,9 @@ and n8n refreshes the token automatically.
 
 Make sure the key has permission for the workspaces and resources your workflow uses.
 
- **Using a private Haystack Enterprise deployment?** Change **Server URL** to your API address,
-> for example `https://api.your-company.com`.
+**Using a private Haystack Enterprise deployment?** Change **Server URL** to your API address,
 
+> for example `https://api.your-company.com`.
 
 ## Usage
 

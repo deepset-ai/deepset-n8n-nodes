@@ -138,10 +138,9 @@ The node's **Authentication** dropdown offers two ways to authenticate.
 Choose **OAuth2** on the node and create a "Haystack Enterprise OAuth2 API" credential. With the
 default settings there is nothing to copy or paste:
 
-1. Leave **Use Dynamic Client Registration** on and **Server URL** at
-   `https://api.cloud.deepset.ai/api/v1`. The Server URL is where the nodes send their requests and
-   where n8n looks up the authorization server; change it only for a self-hosted or non-production
-   Haystack Enterprise API, and always include its `/api/v1` path.
+1. Leave **Server URL** at `https://api.cloud.deepset.ai/api/v1`. The Server URL is where the nodes
+   send their requests and where n8n looks up the authorization server; change it only for a
+   self-hosted or non-production Haystack Enterprise API, and always include its `/api/v1` path.
 2. Click **Connect** and sign in with your Haystack Enterprise account.
 
 Behind the scenes n8n discovers Haystack Enterprise's authorization server from the Server URL
@@ -154,14 +153,11 @@ The MCP connection then runs as the signed-in user, with that user's workspace a
 permissions. When the access token expires, the node refreshes it and retries the MCP request
 automatically.
 
-**Manual OAuth2 client (fallback).** If your Haystack Enterprise deployment does not offer dynamic
-client registration, turn **Use Dynamic Client Registration** off. Keep **Server URL** pointed at
-your Haystack Enterprise API; the standard OAuth2 fields appear so you can paste in a client created
-by hand in your identity provider (for self-hosted Haystack Enterprise, that's its Authentik
-instance — Authentik 2026.8 or later for the dynamic flow above): the authorization and token URLs,
-client ID/secret, and the scopes (defaults to `openid profile email offline_access`, which is what
-Haystack Enterprise needs). Register this n8n instance's callback URL shown on the credential as a
-redirect URI on that client.
+**Manual OAuth2 configuration.** Turn **Use Dynamic Client Registration** off to configure or reuse
+an existing OAuth2 client, including clients for private Haystack Enterprise deployments. Keep
+**Server URL** pointed at the Haystack Enterprise API, fill in the OAuth2 settings, and register the
+callback URL shown on the credential as a redirect URI on the client. Leave **Client Secret** empty
+for a public PKCE client; confidential clients still require their secret.
 
 ### API Key
 
@@ -193,7 +189,7 @@ tool, under Settings → Workspace → MCP.
 Requires a self-hosted n8n instance. Not compatible with n8n Cloud.
 
 OAuth2 with dynamic client registration relies on n8n's own OAuth2 credential support for it, which
-shipped in n8n 1.119 (October 2025); on older n8n versions, use an API key or a manually created
+shipped in n8n 1.119 (October 2025); on older n8n versions, use an API key or a manually configured
 OAuth2 client.
 
 ## Usage

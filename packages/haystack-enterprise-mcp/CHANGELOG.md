@@ -12,5 +12,6 @@ Initial release.
 - **Authentication**: choose API Key or OAuth2 on the node. The OAuth2 credential registers your n8n
   instance with Haystack Enterprise automatically via Dynamic Client Registration (RFC 7591) — just
   click Connect and sign in, no client ID/secret to copy. Expired access tokens are refreshed and
-  the MCP request retried transparently. A manually created OAuth2 client is still supported as a
-  fallback (DCR requires n8n ≥ 1.119; for self-hosted Haystack Enterprise, Authentik 2026.8+).
+  the MCP request retried transparently. Manual OAuth2 configuration remains available for existing
+  clients and private deployments (DCR requires n8n ≥ 1.119; for self-hosted Haystack Enterprise,
+  Authentik 2026.8+).
