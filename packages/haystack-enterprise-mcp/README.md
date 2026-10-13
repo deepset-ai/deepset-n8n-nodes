@@ -7,9 +7,8 @@ This is an n8n community node. It lets you use pipelines you've enabled as MCP t
 workflow automation platform.
 
 [Installation](#installation) [Local testing (pre-release)](#local-testing-pre-release)
-[Operations](#operations) [Credentials](#credentials) [Compatibility](#compatibility)
-[Usage](#usage) [Linting](#linting) [Testing](#testing) [Resources](#resources)
-[Version history](#version-history)
+[Operations](#operations) [Credentials](#credentials) [Usage](#usage) [Linting](#linting)
+[Testing](#testing) [Resources](#resources) [Version history](#version-history)
 
 ## Installation
 

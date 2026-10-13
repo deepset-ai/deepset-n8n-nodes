@@ -14,16 +14,29 @@ function collectLoadOptionsProperties(value: unknown): Array<Record<string, unkn
 }
 
 describe('authentication-dependent options', () => {
-	it.each([
+	const nodes = [
 		['Haystack Enterprise AI', new HaystackEnterpriseAi()],
 		['Haystack Enterprise Chat Model', new HaystackEnterpriseChatModel()],
-	])('reloads every API-backed option when authentication changes on %s', (_name, node) => {
-		const loadOptionsProperties = collectLoadOptionsProperties(node.description.properties);
+	] as const;
 
-		expect(loadOptionsProperties.length).toBeGreaterThan(0);
-		for (const property of loadOptionsProperties) {
-			const typeOptions = property.typeOptions as { loadOptionsDependsOn?: string[] };
-			expect(typeOptions.loadOptionsDependsOn).toContain('authentication');
-		}
+	it.each(nodes)('keeps authentication node-wide on %s', (_name, node) => {
+		const authentication = node.description.properties.find(
+			(property) => property.name === 'authentication',
+		);
+
+		expect(authentication?.noDataExpression).toBe(true);
 	});
+
+	it.each(nodes)(
+		'reloads every API-backed option when authentication changes on %s',
+		(_name, node) => {
+			const loadOptionsProperties = collectLoadOptionsProperties(node.description.properties);
+
+			expect(loadOptionsProperties.length).toBeGreaterThan(0);
+			for (const property of loadOptionsProperties) {
+				const typeOptions = property.typeOptions as { loadOptionsDependsOn?: string[] };
+				expect(typeOptions.loadOptionsDependsOn).toContain('authentication');
+			}
+		},
+	);
 });

@@ -195,6 +195,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'API Key',

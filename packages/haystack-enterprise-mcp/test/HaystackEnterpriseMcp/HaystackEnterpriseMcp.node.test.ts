@@ -161,6 +161,14 @@ describe('HaystackEnterpriseMcp', () => {
 		}
 	});
 
+	it('keeps authentication node-wide', () => {
+		const authentication = node.description.properties.find(
+			(property) => property.name === 'authentication',
+		);
+
+		expect(authentication?.noDataExpression).toBe(true);
+	});
+
 	it('reloads every API-backed option when authentication changes', () => {
 		const loadOptionsProperties = node.description.properties.filter(
 			(property) => property.typeOptions?.loadOptionsMethod,

@@ -12,9 +12,8 @@ with users, and run and monitor your apps in production.
 workflow automation platform.
 
 [Installation](#installation) [Local testing (pre-release)](#local-testing-pre-release)
-[Operations](#operations) [Credentials](#credentials) [Compatibility](#compatibility)
-[Usage](#usage) [Linting](#linting) [Testing](#testing) [Resources](#resources)
-[Version history](#version-history)
+[Operations](#operations) [Credentials](#credentials) [Usage](#usage) [Linting](#linting)
+[Testing](#testing) [Resources](#resources) [Version history](#version-history)
 
 ## Installation
 
