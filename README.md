@@ -44,15 +44,11 @@ npm run test:contract   # from the repo root, or inside packages/contract-tests
 
 By default this starts a local [Prism](https://github.com/stoplightio/prism) mock server from the
 publicly published spec (`https://docs.cloud.deepset.ai/openapi.yaml`) and runs the nodes' real
-request-building code against it, catching drift between the nodes and the real API contract. Two
-environment variables let you point it elsewhere instead:
+request-building code against it, catching drift between the nodes and the real API contract. To
+validate against a local spec file instead of the published one:
 
 ```bash
-# Validate against a local spec file instead of the published one
 CONTRACT_SPEC=./openapi.yaml npm run test:contract
-
-# Skip the mock server and hit a real environment directly, using a local spec that matches it
-CONTRACT_TARGET=https://your-env.example.com/api/v1 CONTRACT_SPEC=./openapi.yaml npm run test:contract
 ```
 
 See `packages/contract-tests/src/registry/` for what's covered per resource.
