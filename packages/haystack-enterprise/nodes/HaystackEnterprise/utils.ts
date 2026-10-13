@@ -365,9 +365,14 @@ export async function consumeSseStream(
 		}
 	};
 
+	// Streaming decoder so a multibyte UTF-8 character split across chunks isn't corrupted.
+	const decoder = new TextDecoder();
+
 	await new Promise<void>((resolve, reject) => {
 		stream.on('data', (chunk: Buffer | string) => {
-			buffer += chunk.toString().replace(/\r\n/g, '\n');
+			const text = typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true });
+			// Normalise after appending: a chunk boundary can split a \r\n pair.
+			buffer = (buffer + text).replace(/\r\n/g, '\n');
 			emitCompleteRecords();
 		});
 		stream.on('end', resolve);

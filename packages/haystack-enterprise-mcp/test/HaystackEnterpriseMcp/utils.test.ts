@@ -25,11 +25,13 @@ const { mockConnect, mockListTools, mockClose, ClientMock, TransportMock } = vi.
 	const mockConnect = vi.fn();
 	const mockListTools = vi.fn();
 	const mockClose = vi.fn();
-	const ClientMock = vi.fn().mockImplementation(() => ({
-		connect: mockConnect,
-		listTools: mockListTools,
-		close: mockClose,
-	}));
+	const ClientMock = vi.fn().mockImplementation(function () {
+		return {
+			connect: mockConnect,
+			listTools: mockListTools,
+			close: mockClose,
+		};
+	});
 	const TransportMock = vi.fn();
 	return { mockConnect, mockListTools, mockClose, ClientMock, TransportMock };
 });
