@@ -97,7 +97,12 @@ function joinErrorItems(items: unknown[], firstOnly: boolean): string | undefine
 	return firstOnly ? messages[0] : messages.join('; ');
 }
 
-/** Extracts messages from the API's standard, validation, and OpenAI-compatible error shapes. */
+/**
+ * Message from a hub API error body, one of:
+ * - `{ errors: [string | { message }] }` for a normal HTTPException
+ * - `{ details: [{ message }] }` for HTTPValidationException, or FastAPI's `{ detail: [{ msg }] }`
+ * - `{ error: { message, type, param, code } }` on OpenAI-compatible chat completions
+ */
 function messageFromApiBody(data: unknown, firstOnly = false): string | undefined {
 	if (!data || typeof data !== 'object' || Array.isArray(data)) return undefined;
 	const body = data as IDataObject;

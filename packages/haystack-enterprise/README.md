@@ -141,21 +141,7 @@ Both nodes (**Haystack Enterprise AI** and **Haystack Enterprise Chat Model**) h
 **Authentication** dropdown offering two ways to authenticate. Both credential types are also used
 by the companion
 [n8n-nodes-haystack-enterprise-mcp](https://www.npmjs.com/package/n8n-nodes-haystack-enterprise-mcp)
-package, so if you have both installed you only need to set each one up once.
-
-### OAuth2 (sign in with your Haystack Enterprise account)
-
-1. On the node, choose **OAuth2** and create a **Haystack Enterprise OAuth2 API** credential.
-2. Leave the default settings as they are.
-3. Click **Connect** and sign in with your Haystack Enterprise account.
-
-The nodes run as the signed-in user, with that user's workspace access and permissions, and n8n
-refreshes the token automatically.
-
-> **Using a private Haystack Enterprise deployment?** Change **Server URL** to your API origin. To
-> configure or reuse an existing OAuth2 client, turn **Use Dynamic Client Registration** off and
-> provide its OAuth2 settings. Add the callback URL shown on the credential as a redirect URI on
-> that client. Public PKCE clients do not require a client secret.
+package.
 
 ### API Key
 
@@ -169,14 +155,18 @@ Make sure the key has permission for the workspaces and resources your workflow 
 
 > for example `https://api.your-company.com`.
 
-## Compatibility
+### OAuth2 (sign in with your Haystack Enterprise account)
 
-This package supports n8n Cloud and self-hosted n8n. OAuth2 with dynamic client registration
-requires n8n 1.119 or newer. n8n Cloud uses `https://oauth.n8n.cloud/oauth2/callback`; self-hosted
-n8n uses `https://<your-n8n-host>/rest/oauth2-credential/callback`.
+1. On the node, choose **OAuth2** and create a **Haystack Enterprise OAuth2 API** credential.
+2. Leave the default settings as they are.
+3. Click **Connect** and sign in with your Haystack Enterprise account.
 
-For a self-hosted Haystack Enterprise Platform deployment, dynamic client registration requires
-Authentik 2026.8 or newer.
+The nodes run as the signed-in user, with that user's workspace access and permissions.
+
+> **Using a private Haystack Enterprise deployment?** Change **Server URL** to your API origin. To
+> configure or reuse an existing OAuth2 client, turn **Use Dynamic Client Registration** off and
+> provide its OAuth2 settings. Add the callback URL shown on the credential as a redirect URI on
+> that client. Public PKCE clients do not require a client secret.
 
 ## Usage
 
