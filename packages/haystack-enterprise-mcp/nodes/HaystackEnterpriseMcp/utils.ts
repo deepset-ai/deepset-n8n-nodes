@@ -316,7 +316,7 @@ function describeWorkspaceListErrorHint(httpCode: string | null): string {
 		return 'Check that the API key is valid, or reconnect the OAuth2 credential.';
 	}
 	if (httpCode === '403') {
-		return "This credential doesn't have permission to list workspaces. Use one that has both workspace access and permission to list workspaces.";
+		return "This credential doesn't have permission to list workspaces.";
 	}
 	return '';
 }
