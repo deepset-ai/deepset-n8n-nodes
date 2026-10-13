@@ -13,6 +13,7 @@ import {
 	getApiBaseUrlForContext,
 	loadDeploymentOptions,
 	loadWorkspaceOptions,
+	readAdditionalParameters,
 	resolveBearerToken,
 } from '../HaystackEnterprise/utils';
 
@@ -206,7 +207,11 @@ export class HaystackEnterpriseChatModel implements INodeType {
 		if (options.topP !== undefined) additionalParams.top_p = options.topP;
 		Object.assign(
 			additionalParams,
-			parseExtraParameters.call(this, itemIndex, options.extraParameters),
+			readAdditionalParameters.call(this, itemIndex, options.extraParameters, [
+				'messages',
+				'model',
+				'stream',
+			]),
 		);
 
 		const temperature = additionalParams.temperature;
@@ -228,39 +233,4 @@ export class HaystackEnterpriseChatModel implements INodeType {
 			additionalParams: Object.keys(additionalParams).length > 0 ? additionalParams : undefined,
 		});
 	}
-}
-
-function parseExtraParameters(
-	this: ISupplyDataFunctions,
-	itemIndex: number,
-	value: unknown,
-): Record<string, unknown> {
-	if (value === undefined || value === null || value === '') {
-		return {};
-	}
-	let parsed: unknown = value;
-	if (typeof value === 'string') {
-		if (value.trim() === '') return {};
-		try {
-			parsed = JSON.parse(value);
-		} catch {
-			throw new NodeOperationError(this.getNode(), '"Extra Parameters (JSON)" is not valid JSON', {
-				itemIndex,
-			});
-		}
-	}
-	if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'"Extra Parameters (JSON)" must be a JSON object',
-			{
-				itemIndex,
-			},
-		);
-	}
-	const extras = { ...(parsed as Record<string, unknown>) };
-	delete extras.messages;
-	delete extras.model;
-	delete extras.stream;
-	return extras;
 }
