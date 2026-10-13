@@ -741,6 +741,23 @@ describe('consumeSseStream', () => {
 		expect(events).toEqual([{ type: 'delta', delta: { text: 'hi' } }]);
 	});
 
+	it('decodes a multibyte character split across byte chunks', async () => {
+		const stream = new FakeStream();
+		const events: IDataObject[] = [];
+
+		const done = consumeSseStream(stream as unknown as NodeJS.ReadableStream, (event) =>
+			events.push(event),
+		);
+		const bytes = Buffer.from('data: {"text":"€"}\n\n');
+		const split = bytes.indexOf(0xe2) + 1; // mid-way through the 3-byte euro sign
+		stream.emit('data', bytes.subarray(0, split));
+		stream.emit('data', bytes.subarray(split));
+		stream.emit('end');
+		await done;
+
+		expect(events).toEqual([{ text: '€' }]);
+	});
+
 	it('ignores keep-alive comments and unparseable records without dropping valid ones', async () => {
 		const stream = new FakeStream();
 		const events: IDataObject[] = [];

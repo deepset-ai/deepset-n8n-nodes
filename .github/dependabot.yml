@@ -35,8 +35,14 @@ updates:
         update-types:
           - 'minor'
           - 'patch'
+    # Majors are welcome (CLI, TypeScript, vitest), except for libs whose major
+    # must match what the n8n host provides to community nodes.
     ignore:
-      - dependency-name: '*'
+      - dependency-name: 'zod'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@langchain/core'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'n8n-*'
         update-types: ['version-update:semver-major']
 
   - package-ecosystem: 'github-actions'

@@ -16,12 +16,13 @@ import {
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import packageJson from '../../package.json';
+
 // Kept in sync by hand with packages/haystack-enterprise/nodes/HaystackEnterprise/utils.ts
 // (DEFAULT_API_ORIGIN / normalizeApiOrigin / getApiOriginFromCredentials / getApiBaseUrlV1FromOrigin).
 export const DEFAULT_API_ORIGIN = 'https://api.cloud.deepset.ai';
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
 const MCP_CLIENT_NAME = 'n8n-nodes-haystack-enterprise-mcp';
-const MCP_CLIENT_VERSION = '0.1.0';
 
 export function normalizeApiOrigin(serverUrl: string): string {
 	return serverUrl.trim().replace(/\/+$/, '');
@@ -70,7 +71,7 @@ export function createMcpTransport(
 	signal?: AbortSignal,
 ): { client: Client; transport: StreamableHTTPClientTransport; mcpUrl: string } {
 	const mcpUrl = `${getApiBaseUrlV2FromOrigin(apiOrigin)}/workspaces/${workspaceId}/mcp`;
-	const client = new Client({ name: MCP_CLIENT_NAME, version: MCP_CLIENT_VERSION });
+	const client = new Client({ name: MCP_CLIENT_NAME, version: packageJson.version });
 	const transport = new StreamableHTTPClientTransport(new URL(mcpUrl), {
 		requestInit: { headers: { Authorization: `Bearer ${apiKey}` }, signal },
 	});
