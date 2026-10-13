@@ -165,9 +165,8 @@ refreshes the token automatically.
 
 Make sure the key has permission for the workspaces and resources your workflow uses.
 
-**Using a private Haystack Enterprise deployment?** Change **Server URL** to your API origin,
-
-> for example `https://api.your-company.com`.
+**Using a private Haystack Enterprise deployment?** Change **Server URL** to your API origin, for
+example `https://api.your-company.com`.
 
 ## Compatibility
 
