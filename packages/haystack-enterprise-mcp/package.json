@@ -55,7 +55,7 @@
 		"prettier": "3.9.10",
 		"release-it": "^20.2.1",
 		"typescript": "6.0.2",
-		"vitest": "^3.0.0"
+		"vitest": "^5.0.4"
 	},
 	"peerDependencies": {
 		"n8n-core": "*",
