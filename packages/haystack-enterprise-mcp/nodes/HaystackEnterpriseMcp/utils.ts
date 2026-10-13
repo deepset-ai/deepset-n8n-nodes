@@ -21,6 +21,8 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 // (DEFAULT_API_ORIGIN / normalizeApiOrigin / getApiOriginFromCredentials / getApiBaseUrlV1FromOrigin).
 export const DEFAULT_API_ORIGIN = 'https://api.cloud.deepset.ai';
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
+// Credential type name, not a secret.
+// eslint-disable-next-line @n8n/community-nodes/no-hardcoded-secrets
 const OAUTH2_CREDENTIAL_NAME = 'haystackEnterpriseOAuth2Api';
 const MCP_CLIENT_NAME = 'n8n-nodes-haystack-enterprise-mcp';
 const MCP_CLIENT_VERSION = '0.1.0';
