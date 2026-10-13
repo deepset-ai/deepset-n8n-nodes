@@ -3,7 +3,7 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 export interface ContractTestCase {
 	operation: string;
 	description: string;
-	/** Fed into `getNodeParameter` — see `buildContractTestContext` in `src/context.ts`. */
+	/** Fed into `getNodeParameter` via `buildContractTestContext`. */
 	params: Record<string, unknown>;
 }
 

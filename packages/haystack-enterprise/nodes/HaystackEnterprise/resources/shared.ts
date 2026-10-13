@@ -32,12 +32,7 @@ export function extraParametersField(
 	};
 }
 
-/**
- * Builds an `apiDocsNotice(operation, urlSlug)` helper bound to a specific
- * resource — a "See the API docs for this endpoint" notice property, shown
- * only when that resource+operation combination is selected. Shared by the
- * File/Index/Search Session resources' description files.
- */
+/** Builds an `apiDocsNotice(operation, urlSlug)` helper: an API docs link notice shown for the matching resource+operation. */
 export function createApiDocsNotice(resource: string) {
 	return (operation: string, urlSlug: string): INodeProperties => ({
 		displayName: `See the <a href="${DOCS_BASE_URL}/${urlSlug}" target="_blank" rel="noopener noreferrer">Haystack Enterprise API docs</a> for this endpoint`,

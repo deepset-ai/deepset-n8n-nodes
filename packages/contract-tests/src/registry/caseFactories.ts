@@ -1,22 +1,9 @@
 import type { ContractTestCase } from './types';
 
-/**
- * Reusable UUID fixture for path/query params across the contract-test
- * suites (file IDs, search session IDs, before/after cursors, ...) — Prism
- * validates these against the spec's `format: uuid` constraint, so any
- * syntactically valid UUID works regardless of what it conceptually stands
- * for at each call site.
- */
+/** Shared UUID fixture; Prism only checks the spec's `format: uuid`. */
 export const CONTRACT_TEST_UUID = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
 
-/**
- * `before`/`after` are mutually exclusive with `page_number` per the spec —
- * shared by every Get Many endpoint that supports both keyset-cursor and
- * offset pagination (Index, Search Session, Service; File uses a different
- * after_value/after_file_id cursor shape). Verifies each resource's getAll()
- * bypasses the shared page_number-based pagination helper for this case (see
- * fetchListWithCursorOrPaging in haystack-enterprise's utils.ts).
- */
+/** `before`/`after` cursor cases (mutually exclusive with `page_number`) for Get Many endpoints. */
 export function cursorPaginationCases(endpointPath: string): ContractTestCase[] {
 	return [
 		{
