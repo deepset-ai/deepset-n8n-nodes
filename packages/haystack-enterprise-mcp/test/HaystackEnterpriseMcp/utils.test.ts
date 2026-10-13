@@ -57,7 +57,7 @@ function createLoadOptionsContext(
 					? 'apiKey'
 					: fallback,
 		getCurrentNodeParameter: () => undefined,
-		getCredentials: async () => credentials,
+		getCredentials: vi.fn(async () => credentials),
 	} as unknown as ILoadOptionsFunctions;
 }
 
@@ -428,14 +428,17 @@ describe('loadWorkspaceOptions', () => {
 
 	it("authenticates with the OAuth2 credential type when the node's Authentication is OAuth2", async () => {
 		const httpRequestWithAuthentication = vi.fn(async () => []);
-		await loadWorkspaceOptions(
-			createLoadOptionsContext(httpRequestWithAuthentication, { authentication: 'oAuth2' }),
-		);
+		const context = createLoadOptionsContext(httpRequestWithAuthentication, {
+			authentication: 'oAuth2',
+		});
+		await loadWorkspaceOptions(context);
 
 		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'haystackEnterpriseOAuth2Api',
 			expect.anything(),
 		);
+		expect(context.getCredentials).toHaveBeenCalledOnce();
+		expect(context.getCredentials).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
 	});
 
 	it('wraps request failures in a NodeOperationError', async () => {
@@ -475,8 +478,8 @@ describe('loadWorkspaceOptions', () => {
 
 		expect(error).toBeInstanceOf(NodeOperationError);
 		expect(error).not.toBeInstanceOf(NodeApiError);
-		expect((error as NodeOperationError).message).toMatch(
-			/doesn't have permission to list workspaces.*workspace access and permission to list workspaces/s,
+		expect((error as NodeOperationError).message).toBe(
+			"This credential doesn't have permission to list workspaces.",
 		);
 	});
 

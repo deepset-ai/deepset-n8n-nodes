@@ -57,6 +57,15 @@ function createGetCredentials(credentials: Record<string, Record<string, unknown
 	});
 }
 
+function getParameterValue(
+	params: Record<string, unknown>,
+	name: string,
+	fallback?: unknown,
+): unknown {
+	if (Object.prototype.hasOwnProperty.call(params, name)) return params[name];
+	return name === 'authentication' ? 'apiKey' : fallback;
+}
+
 /** Returns headers sent by the transport's fetch wrapper. */
 async function sentAuthorizationHeaders(responses: Response[]): Promise<Array<string | null>> {
 	const transportOptions = TransportMock.mock.calls.at(-1)?.[1] as { fetch: typeof fetch };
@@ -82,11 +91,7 @@ function createSupplyDataContext(
 		getNode: () => ({ name: NODE_NAME }),
 		getCredentials: createGetCredentials(credentials),
 		getNodeParameter: vi.fn((name: string, _itemIndex: number, fallback?: unknown) =>
-			Object.prototype.hasOwnProperty.call(params, name)
-				? params[name]
-				: name === 'authentication'
-					? 'apiKey'
-					: fallback,
+			getParameterValue(params, name, fallback),
 		),
 		getExecutionCancelSignal: () => signal,
 		addInputData: vi.fn().mockReturnValue({ index: 0 }),
@@ -111,11 +116,7 @@ function createExecuteContext(
 		getNode: () => ({ name: NODE_NAME }),
 		getCredentials: createGetCredentials(credentials),
 		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-			Object.prototype.hasOwnProperty.call(params, name)
-				? params[name]
-				: name === 'authentication'
-					? 'apiKey'
-					: fallback,
+			getParameterValue(params, name, fallback),
 		getExecutionCancelSignal: () => signal,
 		getInputData: () => items.map((json) => ({ json })),
 		continueOnFail: () => continueOnFail,
@@ -132,11 +133,7 @@ function createLoadOptionsContext(
 		getNode: () => ({ name: NODE_NAME }),
 		getCredentials: createGetCredentials(credentials),
 		getNodeParameter: vi.fn((name: string, fallback?: unknown) =>
-			Object.prototype.hasOwnProperty.call(params, name)
-				? params[name]
-				: name === 'authentication'
-					? 'apiKey'
-					: fallback,
+			getParameterValue(params, name, fallback),
 		),
 		getCurrentNodeParameter: () => undefined,
 		helpers: { httpRequestWithAuthentication },

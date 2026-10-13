@@ -51,15 +51,6 @@ export function getApiBaseUrlV2FromOrigin(origin: string): string {
 	return `${apiOriginWithoutVersionPath(origin)}/api/v2`;
 }
 
-export async function getApiOriginForContext(context: McpContext, itemIndex = 0): Promise<string> {
-	const credentialType =
-		getAuthenticationMode(context, itemIndex) === 'oAuth2'
-			? OAUTH2_CREDENTIAL_NAME
-			: CREDENTIAL_NAME;
-	const credentials = await context.getCredentials(credentialType);
-	return getApiOriginFromCredentials(credentials);
-}
-
 /**
  * Load-options contexts use `getNodeParameter(name, fallback)` while execution contexts include
  * an item index. Calling the former with three arguments silently changes its fallback value.
@@ -327,7 +318,8 @@ export async function loadWorkspaceOptions(
 ): Promise<INodePropertyOptions[]> {
 	const credentialType =
 		getAuthenticationMode(context, 0) === 'oAuth2' ? OAUTH2_CREDENTIAL_NAME : CREDENTIAL_NAME;
-	const apiOrigin = await getApiOriginForContext(context);
+	const credentials = await context.getCredentials(credentialType);
+	const apiOrigin = getApiOriginFromCredentials(credentials);
 
 	let response: unknown;
 	try {

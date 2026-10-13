@@ -128,8 +128,8 @@ Choose **API Key** on the node (the default) and create a "Haystack Enterprise A
 
 1. In Haystack Enterprise Platform, go to Settings → API Keys and generate a key.
 2. In n8n, paste the key into the credential. **Server URL** defaults to the hosted Haystack
-   Enterprise Platform API (`https://api.cloud.deepset.ai`); for dev or private environments,
-   set it to your instance's API origin.
+   Enterprise Platform API (`https://api.cloud.deepset.ai`); for dev or private environments, set it
+   to your instance's API origin.
 
 The key needs at least workspace and search permissions.
 
@@ -138,8 +138,8 @@ The key needs at least workspace and search permissions.
 Choose **OAuth2** on the node and create a "Haystack Enterprise OAuth2 API" credential.
 
 1. Leave **Server URL** at `https://api.cloud.deepset.ai`. The Server URL is the API origin the
-   nodes use for requests and OAuth2 discovery; change it only for dev or private
-   Haystack Enterprise deployments.
+   nodes use for requests and OAuth2 discovery; change it only for dev or private Haystack
+   Enterprise deployments.
 2. Click **Connect** and sign in with your Haystack Enterprise account.
 
 **Manual OAuth2 configuration.** Turn **Use Dynamic Client Registration** off to configure or reuse
