@@ -189,8 +189,8 @@ tool, under Settings → Workspace → MCP.
 Requires a self-hosted n8n instance. Not compatible with n8n Cloud.
 
 OAuth2 with dynamic client registration relies on n8n's own OAuth2 credential support for it, which
-shipped in n8n 1.119 (October 2025); on older n8n versions, use an API key or a manually configured
-OAuth2 client.
+requires n8n 1.119 or newer. For a self-hosted Haystack Enterprise Platform deployment, dynamic
+client registration requires Authentik 2026.8 or newer.
 
 ## Usage
 

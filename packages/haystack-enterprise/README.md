@@ -169,6 +169,15 @@ Make sure the key has permission for the workspaces and resources your workflow 
 
 > for example `https://api.your-company.com`.
 
+## Compatibility
+
+This package supports n8n Cloud and self-hosted n8n. OAuth2 with dynamic client registration
+requires n8n 1.119 or newer. n8n Cloud uses `https://oauth.n8n.cloud/oauth2/callback`; self-hosted
+n8n uses `https://<your-n8n-host>/rest/oauth2-credential/callback`.
+
+For a self-hosted Haystack Enterprise Platform deployment, dynamic client registration requires
+Authentik 2026.8 or newer.
+
 ## Usage
 
 ### Chat and search sessions

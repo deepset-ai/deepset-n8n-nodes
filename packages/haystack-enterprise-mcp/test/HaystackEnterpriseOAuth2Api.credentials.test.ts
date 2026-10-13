@@ -17,6 +17,11 @@ describe('HaystackEnterpriseOAuth2Api', () => {
 			type: 'string',
 			default: 'https://api.cloud.deepset.ai',
 		});
+		expect(properties.get('scope')).toMatchObject({
+			type: 'string',
+			default: 'openid profile email offline_access',
+			displayOptions: { show: { useDynamicClientRegistration: [false] } },
+		});
 		expect(properties.get('clientSecret')).toMatchObject({
 			type: 'string',
 			default: '',
@@ -27,6 +32,7 @@ describe('HaystackEnterpriseOAuth2Api', () => {
 			'dynamicClientRegistrationNotice',
 			'useDynamicClientRegistration',
 			'serverUrl',
+			'scope',
 			'clientSecret',
 		]);
 	});

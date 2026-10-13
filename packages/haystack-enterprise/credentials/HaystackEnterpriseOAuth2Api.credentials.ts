@@ -44,6 +44,14 @@ export class HaystackEnterpriseOAuth2Api implements ICredentialType {
 				'The Haystack Enterprise API origin (for example, https://api.cloud.deepset.ai).',
 		},
 		{
+			displayName: 'Scope',
+			name: 'scope',
+			type: 'string',
+			default: 'openid profile email offline_access',
+			displayOptions: { show: { useDynamicClientRegistration: [false] } },
+			description: 'The OAuth2 scopes requested when using a manually configured client.',
+		},
+		{
 			displayName: 'Client Secret',
 			name: 'clientSecret',
 			type: 'string',
