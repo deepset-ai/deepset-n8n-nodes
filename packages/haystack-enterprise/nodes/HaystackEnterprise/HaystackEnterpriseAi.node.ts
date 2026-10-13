@@ -59,12 +59,37 @@ export class HaystackEnterpriseAi implements INodeType {
 			{
 				name: 'haystackEnterpriseApi',
 				required: true,
+				displayOptions: { show: { authentication: ['apiKey'] } },
+			},
+			{
+				name: 'haystackEnterpriseOAuth2Api',
+				required: true,
+				displayOptions: { show: { authentication: ['oAuth2'] } },
 			},
 		],
 		properties: [
 			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'API Key',
+						value: 'apiKey',
+						description: 'Authenticate with a Haystack Enterprise API key',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+						description: 'Sign in with your Haystack Enterprise user account',
+					},
+				],
+				default: 'apiKey',
+			},
+			{
 				displayName:
-					'Set up your Haystack Enterprise API credentials above first, then select your workspace below.',
+					'Set up your Haystack Enterprise credential above first, then select your workspace below.',
 				name: 'workspaceNotice',
 				type: 'notice',
 				default: '',
@@ -78,7 +103,10 @@ export class HaystackEnterpriseAi implements INodeType {
 				displayName: 'Workspace Name or ID',
 				name: 'workspaceName',
 				type: 'options',
-				typeOptions: { loadOptionsMethod: 'getWorkspaces' },
+				typeOptions: {
+					loadOptionsMethod: 'getWorkspaces',
+					loadOptionsDependsOn: ['authentication'],
+				},
 				default: '',
 				required: true,
 				description:
@@ -172,9 +200,7 @@ export class HaystackEnterpriseAi implements INodeType {
 				if (caught instanceof NodeOperationError) {
 					throw new NodeOperationError(this.getNode(), caught.message, { itemIndex: i });
 				}
-				// Don't construct a new NodeApiError here. Its constructor replaces
-				// .message with the generic status text, and instanceof misses the
-				// NodeApiError n8n threw from its own copy of n8n-workflow.
+				// Preserve errors created by n8n's separate n8n-workflow module copy.
 				if (isNodeApiError(caught)) {
 					if (caught.context) caught.context.itemIndex = i;
 					// eslint-disable-next-line @n8n/community-nodes/require-node-api-error -- already a NodeApiError; constructing a new one replaces .message with the generic status text

@@ -3,8 +3,8 @@ import { vi } from 'vitest';
 
 /**
  * Minimal fake IExecuteFunctions context shared by the resource execute()
- * test suites: `getNodeParameter` reads from `params`, falling back to the
- * caller's own default; `httpRequestWithAuthentication` is any mock
+ * test suites: `getNodeParameter` reads from `params` and applies the node's
+ * API-key default; `httpRequestWithAuthentication` is any mock
  * implementation, so callers can express a static response, a dynamic
  * per-call responder (e.g. pagination), or one that throws. `extraHelpers`
  * merges onto `context.helpers` (e.g. `assertBinaryData`/`prepareBinaryData`);
@@ -24,7 +24,11 @@ export function createExecuteContext(
 		helpers: { httpRequestWithAuthentication: httpRequestMock, ...extraHelpers },
 		getNode: () => ({ name: 'Haystack Enterprise AI' }),
 		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
+			Object.prototype.hasOwnProperty.call(params, name)
+				? params[name]
+				: name === 'authentication'
+					? 'apiKey'
+					: fallback,
 		getCredentials: async () => credentials,
 		...extraContext,
 	} as unknown as IExecuteFunctions;

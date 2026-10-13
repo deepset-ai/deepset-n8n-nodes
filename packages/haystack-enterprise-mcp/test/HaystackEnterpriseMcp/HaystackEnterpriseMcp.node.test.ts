@@ -31,9 +31,7 @@ vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', async (importOrigi
 		await importOriginal<typeof import('@modelcontextprotocol/sdk/client/streamableHttp.js')>();
 	return { ...actual, StreamableHTTPClientTransport: TransportMock };
 });
-// n8n-core is a peer dependency resolved against n8n's own install at runtime
-// (see HaystackEnterpriseMcp.node.ts) and isn't installed locally, so it's
-// mocked here with the same trivial wrapper the real StructuredToolkit is.
+// n8n-core is a runtime peer dependency, so tests provide the required wrapper.
 vi.mock('n8n-core', () => ({
 	StructuredToolkit: class {
 		tools: unknown[];
@@ -46,22 +44,61 @@ vi.mock('n8n-core', () => ({
 	},
 }));
 
+const API_KEY_CREDENTIALS = { haystackEnterpriseApi: { apiKey: 'secret-key' } };
+const OAUTH2_CREDENTIALS = {
+	haystackEnterpriseOAuth2Api: { oauthTokenData: { access_token: 'oauth-token' } },
+};
+
+function createGetCredentials(credentials: Record<string, Record<string, unknown>>) {
+	return vi.fn(async (type: string) => {
+		const found = credentials[type];
+		if (!found) throw new Error(`Credentials of type "${type}" are not set`);
+		return found;
+	});
+}
+
+function getParameterValue(
+	params: Record<string, unknown>,
+	name: string,
+	fallback?: unknown,
+): unknown {
+	if (Object.prototype.hasOwnProperty.call(params, name)) return params[name];
+	return name === 'authentication' ? 'apiKey' : fallback;
+}
+
+/** Returns headers sent by the transport's fetch wrapper. */
+async function sentAuthorizationHeaders(responses: Response[]): Promise<Array<string | null>> {
+	const transportOptions = TransportMock.mock.calls.at(-1)?.[1] as { fetch: typeof fetch };
+	const fetchSpy = vi.spyOn(globalThis, 'fetch');
+	for (const response of responses) fetchSpy.mockResolvedValueOnce(response);
+	try {
+		await transportOptions.fetch('https://example.test/mcp');
+		return fetchSpy.mock.calls.map(([, init]: unknown[]) =>
+			new Headers((init as RequestInit | undefined)?.headers).get('authorization'),
+		);
+	} finally {
+		fetchSpy.mockRestore();
+	}
+}
+
 function createSupplyDataContext(
 	params: Record<string, unknown>,
-	credentials: Record<string, unknown> = { apiKey: 'secret-key' },
+	credentials: Record<string, Record<string, unknown>> = API_KEY_CREDENTIALS,
 	signal?: AbortSignal,
+	helpers: Record<string, unknown> = {},
 ) {
 	return {
 		getNode: () => ({ name: NODE_NAME }),
-		getCredentials: async () => credentials,
+		getCredentials: createGetCredentials(credentials),
 		getNodeParameter: vi.fn((name: string, _itemIndex: number, fallback?: unknown) =>
-			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
+			getParameterValue(params, name, fallback),
 		),
 		getExecutionCancelSignal: () => signal,
 		addInputData: vi.fn().mockReturnValue({ index: 0 }),
 		addOutputData: vi.fn(),
 		logAiEvent: vi.fn(),
 		addExecutionHints: vi.fn(),
+		helpers,
 	} as unknown as ISupplyDataFunctions;
 }
 
@@ -69,32 +106,36 @@ function createExecuteContext(
 	items: Array<Record<string, unknown>>,
 	params: Record<string, unknown>,
 	options: {
-		credentials?: Record<string, unknown>;
+		credentials?: Record<string, Record<string, unknown>>;
 		signal?: AbortSignal;
 		continueOnFail?: boolean;
 	} = {},
 ) {
-	const { credentials = { apiKey: 'secret-key' }, signal, continueOnFail = false } = options;
+	const { credentials = API_KEY_CREDENTIALS, signal, continueOnFail = false } = options;
 	return {
 		getNode: () => ({ name: NODE_NAME }),
-		getCredentials: async () => credentials,
+		getCredentials: createGetCredentials(credentials),
 		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
+			getParameterValue(params, name, fallback),
 		getExecutionCancelSignal: () => signal,
 		getInputData: () => items.map((json) => ({ json })),
 		continueOnFail: () => continueOnFail,
 	} as unknown as IExecuteFunctions;
 }
 
+// Load-options contexts use getNodeParameter(name, fallback) without an item index.
 function createLoadOptionsContext(
 	params: Record<string, unknown>,
-	credentials: Record<string, unknown> = { apiKey: 'secret-key' },
+	credentials: Record<string, Record<string, unknown>> = API_KEY_CREDENTIALS,
 	httpRequestWithAuthentication?: (...args: unknown[]) => unknown,
 ) {
 	return {
 		getNode: () => ({ name: NODE_NAME }),
-		getCredentials: async () => credentials,
-		getNodeParameter: vi.fn((name: string) => params[name]),
+		getCredentials: createGetCredentials(credentials),
+		getNodeParameter: vi.fn((name: string, fallback?: unknown) =>
+			getParameterValue(params, name, fallback),
+		),
+		getCurrentNodeParameter: () => undefined,
 		helpers: { httpRequestWithAuthentication },
 	} as unknown as ILoadOptionsFunctions;
 }
@@ -120,6 +161,25 @@ describe('HaystackEnterpriseMcp', () => {
 		}
 	});
 
+	it('keeps authentication node-wide', () => {
+		const authentication = node.description.properties.find(
+			(property) => property.name === 'authentication',
+		);
+
+		expect(authentication?.noDataExpression).toBe(true);
+	});
+
+	it('reloads every API-backed option when authentication changes', () => {
+		const loadOptionsProperties = node.description.properties.filter(
+			(property) => property.typeOptions?.loadOptionsMethod,
+		);
+
+		expect(loadOptionsProperties.length).toBeGreaterThan(0);
+		for (const property of loadOptionsProperties) {
+			expect(property.typeOptions?.loadOptionsDependsOn).toContain('authentication');
+		}
+	});
+
 	describe('supplyData', () => {
 		it('refuses to run on n8n Cloud', async () => {
 			process.env.N8N_DEPLOYMENT_TYPE = 'cloud';
@@ -132,7 +192,63 @@ describe('HaystackEnterpriseMcp', () => {
 		it('requires a workspace and an API key', async () => {
 			const context = createSupplyDataContext({ workspaceId: '' });
 
-			await expect(node.supplyData.call(context, 0)).rejects.toThrow(/workspace and an API key/);
+			await expect(node.supplyData.call(context, 0)).rejects.toThrow(
+				/workspace and a valid credential/,
+			);
+		});
+
+		it('sends the API key as the bearer token by default (Authentication unset = API Key)', async () => {
+			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
+			const context = createSupplyDataContext({ workspaceId: 'ws-1' });
+
+			await node.supplyData.call(context, 0);
+
+			expect(context.getCredentials).toHaveBeenCalledWith('haystackEnterpriseApi');
+			expect(await sentAuthorizationHeaders([new Response('{}')])).toEqual(['Bearer secret-key']);
+		});
+
+		it('sends the stored OAuth2 access token as the bearer token when Authentication is OAuth2', async () => {
+			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
+			const context = createSupplyDataContext(
+				{ workspaceId: 'ws-1', authentication: 'oAuth2' },
+				OAUTH2_CREDENTIALS,
+			);
+
+			await node.supplyData.call(context, 0);
+
+			expect(context.getCredentials).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
+			expect(context.getCredentials).not.toHaveBeenCalledWith('haystackEnterpriseApi');
+			expect(await sentAuthorizationHeaders([new Response('{}')])).toEqual(['Bearer oauth-token']);
+		});
+
+		it("refreshes an expired OAuth2 token through n8n's refreshOAuth2Token helper and retries the MCP request", async () => {
+			mockListTools.mockResolvedValue({ tools: [{ name: 'search', inputSchema: {} }] });
+			const refreshOAuth2Token = vi.fn(async () => ({ access_token: 'fresh-token' }));
+			const context = createSupplyDataContext(
+				{ workspaceId: 'ws-1', authentication: 'oAuth2' },
+				OAUTH2_CREDENTIALS,
+				undefined,
+				{ refreshOAuth2Token },
+			);
+
+			await node.supplyData.call(context, 0);
+
+			expect(
+				await sentAuthorizationHeaders([new Response('', { status: 401 }), new Response('{}')]),
+			).toEqual(['Bearer oauth-token', 'Bearer fresh-token']);
+			expect(refreshOAuth2Token).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
+		});
+
+		it('tells the user to Connect the OAuth2 credential when it has no access token yet', async () => {
+			const context = createSupplyDataContext(
+				{ workspaceId: 'ws-1', authentication: 'oAuth2' },
+				{
+					haystackEnterpriseOAuth2Api: {},
+				},
+			);
+
+			await expect(node.supplyData.call(context, 0)).rejects.toThrow(/not connected yet.*Connect/);
+			expect(mockConnect).not.toHaveBeenCalled();
 		});
 
 		it('refuses to run if the execution was already cancelled', async () => {
@@ -169,11 +285,7 @@ describe('HaystackEnterpriseMcp', () => {
 		});
 
 		it('wraps a connection failure with the MCP URL', async () => {
-			// A plain "connection refused" message matches one of n8n's built-in
-			// COMMON_ERRORS patterns, so NodeOperationError replaces `.message` with
-			// its own friendlier text and moves our detailed message into `.messages`
-			// instead (see n8n-workflow's NodeError.setDescriptiveErrorMessage) — so
-			// assert against `.messages`, not `.message`.
+			// n8n moves recognized connection errors from `.message` to `.messages`.
 			mockConnect.mockRejectedValue(new Error('ECONNREFUSED'));
 			const context = createSupplyDataContext({ workspaceId: 'ws-1' });
 
@@ -210,7 +322,7 @@ describe('HaystackEnterpriseMcp', () => {
 			const error = await node.supplyData.call(context, 0).catch((caught: unknown) => caught);
 
 			expect((error as NodeOperationError).message).toMatch(
-				/doesn't have access to this workspace.*org-wide key/s,
+				/doesn't have access to this workspace.*org-wide one/s,
 			);
 		});
 
@@ -796,7 +908,7 @@ describe('HaystackEnterpriseMcp', () => {
 			mockListTools.mockResolvedValue({
 				tools: [{ name: 'search', description: 'Search the knowledge base' }],
 			});
-			const context = createLoadOptionsContext({ workspaceId: 'ws-1' }, { apiKey: 'secret-key' });
+			const context = createLoadOptionsContext({ workspaceId: 'ws-1' });
 
 			const options = await node.methods.loadOptions.getAvailableMcpTools.call(context);
 
@@ -805,10 +917,22 @@ describe('HaystackEnterpriseMcp', () => {
 			]);
 			expect(TransportMock).toHaveBeenCalledWith(
 				expect.objectContaining({ href: expect.stringContaining('/workspaces/ws-1/mcp') }),
-				expect.objectContaining({
-					requestInit: { headers: { Authorization: 'Bearer secret-key' } },
-				}),
+				expect.objectContaining({ fetch: expect.any(Function) }),
 			);
+			expect(await sentAuthorizationHeaders([new Response('{}')])).toEqual(['Bearer secret-key']);
+		});
+
+		it('lists tools using the OAuth2 access token when Authentication is OAuth2', async () => {
+			mockListTools.mockResolvedValue({ tools: [{ name: 'search', description: 'Search' }] });
+			const context = createLoadOptionsContext(
+				{ workspaceId: 'ws-1', authentication: 'oAuth2' },
+				OAUTH2_CREDENTIALS,
+			);
+
+			await node.methods.loadOptions.getAvailableMcpTools.call(context);
+
+			expect(context.getCredentials).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
+			expect(await sentAuthorizationHeaders([new Response('{}')])).toEqual(['Bearer oauth-token']);
 		});
 
 		it('turns a 403 from a workspace the API key cannot access into a sensible hint, instead of the raw transport error', async () => {
@@ -821,7 +945,7 @@ describe('HaystackEnterpriseMcp', () => {
 
 			expect(error).toBeInstanceOf(NodeOperationError);
 			expect((error as NodeOperationError).message).toMatch(
-				/doesn't have access to this workspace.*org-wide key/s,
+				/doesn't have access to this workspace.*org-wide one/s,
 			);
 		});
 

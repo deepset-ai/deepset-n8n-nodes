@@ -14,14 +14,27 @@ vi.mock('@n8n/ai-node-sdk', () => ({
 function createSupplyDataContext(
 	params: Record<string, unknown>,
 	credentials: Record<string, unknown> = { apiKey: 'secret-key' },
+	httpRequestWithAuthentication: (...args: unknown[]) => unknown = vi.fn(async () => []),
 ) {
 	return {
 		getNode: () => ({ name: 'Haystack Enterprise Chat Model' }),
-		getCredentials: async () => credentials,
+		getCredentials: vi.fn(async () => credentials),
 		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
+			Object.prototype.hasOwnProperty.call(params, name)
+				? params[name]
+				: name === 'authentication'
+					? 'apiKey'
+					: fallback,
+		helpers: { httpRequestWithAuthentication },
 	} as unknown as ISupplyDataFunctions;
 }
+
+const OAUTH2_PARAMS = {
+	authentication: 'oAuth2',
+	workspaceName: 'acme',
+	deploymentId: 'support-chat',
+	options: {},
+};
 
 describe('HaystackEnterpriseChatModel', () => {
 	const node = new HaystackEnterpriseChatModel();
@@ -113,5 +126,107 @@ describe('HaystackEnterpriseChatModel', () => {
 
 		await expect(node.supplyData.call(context, 0)).rejects.toBeInstanceOf(NodeOperationError);
 		expect(supplyModel).not.toHaveBeenCalled();
+	});
+
+	it('does not make a validation request when authenticating with an API key', async () => {
+		const httpRequestWithAuthentication = vi.fn();
+		const context = createSupplyDataContext(
+			{ workspaceName: 'acme', deploymentId: 'support-chat', options: {} },
+			{ apiKey: 'secret-key' },
+			httpRequestWithAuthentication,
+		);
+
+		await node.supplyData.call(context, 0);
+
+		expect(httpRequestWithAuthentication).not.toHaveBeenCalled();
+		expect(context.getCredentials).toHaveBeenCalledWith('haystackEnterpriseApi');
+	});
+
+	describe('OAuth2', () => {
+		it('validates the token through n8n (so an expired one gets refreshed) and supplies the stored access token', async () => {
+			const httpRequestWithAuthentication = vi.fn(async () => []);
+			const context = createSupplyDataContext(
+				OAUTH2_PARAMS,
+				{ oauthTokenData: { access_token: 'oauth-token' } },
+				httpRequestWithAuthentication,
+			);
+
+			await node.supplyData.call(context, 0);
+
+			expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'haystackEnterpriseOAuth2Api',
+				expect.objectContaining({
+					method: 'GET',
+					url: 'https://api.cloud.deepset.ai/api/v1/workspaces',
+				}),
+			);
+			expect(context.getCredentials).not.toHaveBeenCalledWith('haystackEnterpriseApi');
+			expect(supplyModel).toHaveBeenCalledWith(
+				context,
+				expect.objectContaining({ apiKey: 'oauth-token' }),
+			);
+		});
+
+		it('supplies the refreshed access token when the validation request triggered a refresh', async () => {
+			let tokenData = { access_token: 'stale-token' };
+			const httpRequestWithAuthentication = vi.fn(async () => {
+				tokenData = { access_token: 'fresh-token' };
+				return [];
+			});
+			const context = createSupplyDataContext(OAUTH2_PARAMS, {}, httpRequestWithAuthentication);
+			(context.getCredentials as ReturnType<typeof vi.fn>).mockImplementation(async () => ({
+				oauthTokenData: tokenData,
+			}));
+
+			await node.supplyData.call(context, 0);
+
+			expect(supplyModel).toHaveBeenCalledWith(
+				context,
+				expect.objectContaining({ apiKey: 'fresh-token' }),
+			);
+		});
+
+		it('derives the chat completions URL from the OAuth2 Server URL', async () => {
+			const context = createSupplyDataContext(OAUTH2_PARAMS, {
+				serverUrl: 'https://self-hosted.example.com',
+				oauthTokenData: { access_token: 'oauth-token' },
+			});
+
+			await node.supplyData.call(context, 0);
+
+			expect(supplyModel).toHaveBeenCalledWith(
+				context,
+				expect.objectContaining({
+					baseUrl: 'https://self-hosted.example.com/api/v1/workspaces/acme/deployments/v1',
+				}),
+			);
+		});
+
+		it('tells the user to Connect when the OAuth2 credential has no access token yet', async () => {
+			const httpRequestWithAuthentication = vi.fn();
+			const context = createSupplyDataContext(OAUTH2_PARAMS, {}, httpRequestWithAuthentication);
+
+			await expect(node.supplyData.call(context, 0)).rejects.toThrow(/not connected yet.*Connect/);
+			expect(httpRequestWithAuthentication).not.toHaveBeenCalled();
+			expect(supplyModel).not.toHaveBeenCalled();
+		});
+
+		it('surfaces the API error when the validation request fails (e.g. refresh token revoked)', async () => {
+			const httpRequestWithAuthentication = vi.fn(async () => {
+				throw Object.assign(new Error('Request failed with status code 401'), {
+					response: { status: 401, data: { errors: ['Unauthorized'] } },
+				});
+			});
+			const context = createSupplyDataContext(
+				OAUTH2_PARAMS,
+				{ oauthTokenData: { access_token: 'stale-token' } },
+				httpRequestWithAuthentication,
+			);
+
+			await expect(node.supplyData.call(context, 0)).rejects.toThrow(
+				/reconnect the OAuth2 credential/,
+			);
+			expect(supplyModel).not.toHaveBeenCalled();
+		});
 	});
 });
