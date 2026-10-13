@@ -261,7 +261,7 @@ describe('apiRequest', () => {
 		throw new NodeApiError(node, rawError as unknown as Record<string, unknown>);
 	}
 
-	// API errors come as `{ errors: string[] }` or FastAPI's `{ detail }`, which NodeApiError doesn't recognize, so they must be extracted explicitly.
+	// API errors come as `{ errors: string[] }` or `{ detail }`, which NodeApiError doesn't recognize, so they must be extracted explicitly.
 	it("surfaces deepset's `errors` array from the pre-wrapped NodeApiError as the description", async () => {
 		const node = { name: 'Haystack Enterprise AI' };
 		const context = createContext(async () => {
@@ -386,7 +386,7 @@ describe('apiRequest', () => {
 		});
 	});
 
-	it('joins FastAPI validation error `detail` arrays into a readable description', async () => {
+	it('joins validation error `detail` arrays into a readable description', async () => {
 		const context = createContext(async () => {
 			throw Object.assign(new Error('Request failed with status code 422'), {
 				response: {
@@ -636,7 +636,7 @@ describe('extractStreamErrorDetail', () => {
 		});
 	});
 
-	it('uses a FastAPI string `detail` and falls back when the payload has no message', () => {
+	it('uses a string `detail` and falls back when the payload has no message', () => {
 		expect(extractStreamErrorDetail({ detail: 'something else' })).toEqual({
 			message: 'something else',
 			data: { detail: 'something else' },

@@ -8,8 +8,9 @@ npm workspaces monorepo of n8n community node packages for Haystack Enterprise. 
 - `packages/haystack-enterprise-mcp`: MCP client node, kept in its own package because it is
   self-hosted only. n8n cloud eligibility (`n8n.strict` and the eslint cloud config) applies to a
   whole package.
-- `packages/contract-tests`: tests against a live Haystack Enterprise workspace
-  (`npm run test:contract`).
+- `packages/contract-tests`: tests of the nodes' requests against the Haystack Enterprise OpenAPI
+  spec (`npm run test:contract`); mocked with Prism by default, or run against a real environment
+  via `CONTRACT_TARGET`.
 
 ## Conventions
 
