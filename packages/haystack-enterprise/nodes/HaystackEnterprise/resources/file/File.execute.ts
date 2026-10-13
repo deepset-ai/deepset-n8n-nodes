@@ -74,11 +74,7 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 
 	if (!returnAll) {
 		const limit = this.getNodeParameter('limit', itemIndex) as number;
-		// Manual after_value/after_file_id only apply to a single query — Return
-		// All manages its own cursor internally (see the loop below), so these
-		// are left out of `qs` there to avoid fighting over the same params.
-		// The API only accepts them together — sending just one is likely to
-		// 422 — so only include either if both are actually set.
+		// after_value/after_file_id are only sent for a single query (Return All manages its own cursor), and only when both are set, since the API requires them together.
 		const hasAfterValue = filters.afterValue !== undefined && filters.afterValue !== '';
 		const hasAfterFileId = filters.afterFileId !== undefined && filters.afterFileId !== '';
 		if (hasAfterValue && hasAfterFileId) {
@@ -223,7 +219,7 @@ async function deleteMany(this: IExecuteFunctions, itemIndex: number): Promise<I
 		);
 	}
 
-	// The API's `names` field is required — an empty array tells it to delete every file in the workspace.
+	// `names` is required; an empty array deletes every file in the workspace.
 	await apiRequest.call(this, 'DELETE', `/workspaces/${workspaceName}/files`, { body: { names } });
 	return { deletedNames: names.length > 0 ? names : 'all', success: true };
 }

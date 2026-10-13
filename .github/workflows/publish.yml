@@ -1,73 +1,33 @@
-# Publishes this repo's n8n community node packages to npm on version tag
-# pushes. This is a monorepo (npm workspaces, see root package.json) — each
-# package is released and tagged independently, so the two jobs below are each
-# gated on a package-specific tag prefix and only publish their own package.
+# Publishes the community node packages in this monorepo to npm on version tag
+# pushes. Each package is released and tagged independently; each job below is
+# gated on its package's tag prefix.
 #
-# Starting May 1 2026, n8n requires all community nodes to be published via
-# GitHub Actions with npm provenance statements. This workflow satisfies that
-# requirement. Provenance lets anyone cryptographically verify that a package
-# was built by this exact workflow, from this exact repository and commit.
+# n8n requires community nodes to be published from GitHub Actions with npm
+# provenance (from May 1 2026). `npm run release` passes the provenance flag,
+# which needs @n8n/node-cli >= 0.23.0 in both packages.
 #
-# ─── PREREQUISITES ─────────────────────────────────────────────────────────────
+# npm authentication, per package on npmjs.com:
+#   - Preferred: OIDC Trusted Publishing. Add this repository and workflow
+#     (publish.yml) as a Trusted Publisher and leave NPM_TOKEN unset.
+#   - Fallback: a granular automation token with read/write access to both
+#     packages, stored as the NPM_TOKEN repository secret.
 #
-# @n8n/node-cli ≥ 0.23.0 is required in both packages. Earlier versions do not
-# support the provenance flag passed by `npm run release` in CI, and the
-# publish step will fail. Check the version installed with:
-#
-#   npm list @n8n/node-cli -w packages/haystack-enterprise
-#   npm list @n8n/node-cli -w packages/haystack-enterprise-mcp
-#
-# ─── ONE-TIME SETUP (repeat per package on npmjs.com) ──────────────────────────
-#
-# Option A — OIDC Trusted Publishing (recommended, no long-lived secrets):
-#   1. Log in to npmjs.com and open the package's settings
-#      (n8n-nodes-haystack-enterprise and, separately,
-#      n8n-nodes-haystack-enterprise-mcp).
-#   2. Under "Publish access" → "Trusted Publishers", click "Add a publisher".
-#   3. Select GitHub Actions and fill in:
-#        Repository owner: <your-github-username-or-org>
-#        Repository name:  <your-repo-name>
-#        Workflow name:    publish.yml
-#        Environment:      (leave blank unless you use GitHub Environments)
-#   4. Leave the NPM_TOKEN secret unset in this repository. GitHub's OIDC
-#      token is used instead — no secret ever touches your repo settings.
-#
-# Option B — npm Automation Token (fallback):
-#   1. On npmjs.com: Access Tokens → Generate New Token → Granular Access Token.
-#      Scope it to both packages with "Read and write" publish permission.
-#   2. In GitHub: Settings → Secrets and variables → Actions → New secret.
-#      Name it NPM_TOKEN and paste the token value.
-#
-# Both options work with --provenance. Provenance is signed by GitHub's OIDC
-# infrastructure regardless of how npm authentication is handled.
-#
-# ─── TAG CONVENTION ────────────────────────────────────────────────────────────
-#
-# Bare semver tags (e.g. "0.2.0") don't distinguish which package a release is
-# for in a monorepo, so each package uses a prefixed tag instead:
+# Tags are prefixed per package:
 #   haystack-enterprise-v<version>       e.g. haystack-enterprise-v0.2.0
 #   haystack-enterprise-mcp-v<version>   e.g. haystack-enterprise-mcp-v0.1.0
 #
-# ─── RELEASE PROCESS ───────────────────────────────────────────────────────────
-#
-# `n8n-node release`'s interactive local flow (version bump, changelog, git
-# tag) is written for a single-package repo and does not know about the
-# prefixed tag scheme above. Until that's scripted, cut a release by hand per
-# package:
-#
+# Release by hand per package (`n8n-node release`'s local flow does not know
+# about the prefixed tags):
 #   npm run lint -w packages/<name> && npm run build -w packages/<name>
-#   # for haystack-enterprise specifically, also: npm run test:contract
-#   # bump "version" in packages/<name>/package.json and update its CHANGELOG.md
+#   # haystack-enterprise only: npm run test:contract
+#   # bump "version" in packages/<name>/package.json, update its CHANGELOG.md
 #   git add packages/<name>/package.json packages/<name>/CHANGELOG.md
 #   git commit -m "release: <name> v<version>"
 #   git tag <name>-v<version>
 #   git push && git push origin <name>-v<version>
 #
-# Pushing the tag triggers the matching job below, which lints, builds, and
-# publishes that package with npm provenance. For haystack-enterprise, the
-# job also runs the contract-tests suite (packages/contract-tests) against
-# the published OpenAPI spec first — a version that no longer matches the
-# real, currently-live API contract fails the job before it ever publishes.
+# The haystack-enterprise job also runs the contract tests
+# (packages/contract-tests) before publishing.
 
 name: Publish
 
@@ -84,16 +44,15 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      # Required to mint an OIDC token for npm provenance attestation.
+      # id-token: OIDC token for npm provenance
       id-token: write
-      # Scoped down from the default (write) for least-privilege publishing.
       contents: read
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 'lts/*'
           cache: 'npm'
@@ -105,13 +64,8 @@ jobs:
         run: 'npm run test:contract'
 
       - name: Release
-        # Publishes to npm with a provenance attestation (requires id-token: write above).
-        # Lint and build run automatically as part of `n8n-node release`.
-        #
-        # Option A (OIDC): leave NPM_TOKEN unset — the token step is skipped and
-        #   npm uses the OIDC exchange instead.
-        # Option B (token): set NPM_TOKEN in repo secrets — it is written to
-        #   .npmrc here before publishing.
+        # Lint and build run as part of `n8n-node release`. With NPM_TOKEN
+        # unset, npm authenticates via OIDC.
         run: |
           [ -n "$NPM_TOKEN" ] && npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
           npm run release -w packages/haystack-enterprise
@@ -131,7 +85,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 'lts/*'
           cache: 'npm'

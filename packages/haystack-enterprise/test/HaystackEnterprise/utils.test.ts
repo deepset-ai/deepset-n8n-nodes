@@ -133,17 +133,7 @@ describe('loadWorkspaceOptions', () => {
 		expect(options).toEqual([{ name: 'Workspace-a', value: 'workspace-a' }]);
 	});
 
-	// n8n's own REST client special-cases any error whose serialized `.name`
-	// is exactly "NodeApiError": instead of reconstructing a proper `Error`
-	// instance client-side (like it does for every other error shape), it
-	// re-throws the raw parsed JSON body as-is. The "problem loading the
-	// parameter options" popover only knows how to read `.message` off a
-	// real `instanceof Error`, so for a NodeApiError it silently falls back
-	// to string-coercing that raw object — producing the literal, useless
-	// text "[object Object]" regardless of how good `.message` actually is.
-	// `NodeOperationError` doesn't hit that special case, so load-options
-	// methods must throw that instead of letting apiRequest()'s NodeApiError
-	// escape directly.
+	// Load-options methods must throw NodeOperationError: n8n's UI shows "[object Object]" for a rethrown NodeApiError.
 	it('throws a NodeOperationError (not a NodeApiError) on request failure, preserving the message', async () => {
 		const context = createContext(async () => {
 			throw Object.assign(new Error('Request failed with status code 403'), {
@@ -162,8 +152,7 @@ describe('loadWorkspaceOptions', () => {
 });
 
 describe('loadDeploymentOptions', () => {
-	// The exact scenario reported: a workspace the API key has no access to
-	// selected in "Workspace Name or ID", then opening "Service Name or ID".
+	// Regression: a workspace the key cannot access, then opening "Service Name or ID".
 	it('throws a NodeOperationError with the resource-specific hint on a 403, not a raw NodeApiError', async () => {
 		const context = createLoadOptionsContext(async () => {
 			throw Object.assign(new Error('Request failed with status code 403'), {
@@ -267,25 +256,12 @@ describe('apiRequest', () => {
 		);
 	});
 
-	// This is the shape n8n's helpers.httpRequestWithAuthentication() actually
-	// throws in production: it catches the raw HTTP failure itself and
-	// immediately wraps it in its own NodeApiError (see n8n-core's
-	// authentication.ts), stashing the raw error — the one with the real
-	// `.response.data` — on `.cause`. NodeApiError's constructor returns its
-	// input verbatim when it's already a NodeApiError, ignoring any `options`
-	// passed in, so apiRequest() must mutate `.description` on this instance
-	// rather than try to construct a new one (that was the actual bug: every
-	// previous attempt at fixing this called `new NodeApiError(node, error, ...)`
-	// with an already-wrapped error, which is a silent no-op).
+	// n8n's httpRequestWithAuthentication wraps failures in a NodeApiError (raw error on `.cause`) and the constructor ignores options for an already-wrapped error, so apiRequest() must mutate `.description`.
 	function throwPreWrapped(node: { name: string }, rawError: Error) {
 		throw new NodeApiError(node, rawError as unknown as Record<string, unknown>);
 	}
 
-	// deepset's API reports errors as `{ "errors": string[] }`, and some
-	// endpoints use FastAPI's default `{ "detail": ... }` shape — neither of
-	// which NodeApiError recognizes by default, so without explicit extraction
-	// the real API error is discarded in favor of the generic "Request failed
-	// with status code 500" HTTP client message.
+	// API errors come as `{ errors: string[] }` or `{ detail }`, which NodeApiError doesn't recognize, so they must be extracted explicitly.
 	it("surfaces deepset's `errors` array from the pre-wrapped NodeApiError as the description", async () => {
 		const node = { name: 'Haystack Enterprise AI' };
 		const context = createContext(async () => {
@@ -410,7 +386,7 @@ describe('apiRequest', () => {
 		});
 	});
 
-	it('joins FastAPI validation error `detail` arrays into a readable description', async () => {
+	it('joins validation error `detail` arrays into a readable description', async () => {
 		const context = createContext(async () => {
 			throw Object.assign(new Error('Request failed with status code 422'), {
 				response: {
@@ -473,20 +449,13 @@ describe('apiRequest', () => {
 			});
 		});
 
-		// No explicit description is passed through in this case, so NodeApiError
-		// falls back to its own generic key search, which lands on the raw HTTP
-		// error's `.message` — not ideal, but not something we can improve on
-		// without a real error detail to extract.
+		// Without an explicit description, NodeApiError falls back to the raw HTTP error's `.message`.
 		await expect(apiRequest.call(context, 'GET', '/workspaces')).rejects.toMatchObject({
 			description: 'Request failed with status code 500',
 		});
 	});
 
-	// Mirrors the Haystack Enterprise MCP node's auth-error handling: the
-	// workspace picker lists every workspace in the org regardless of what the
-	// configured API key can actually reach, so a 403 loading a
-	// workspace-scoped dropdown (deployments, files, ...) almost always means
-	// a workspace-scoped key was used with the wrong workspace.
+	// A 403 loading a workspace-scoped dropdown usually means a workspace-scoped key with the wrong workspace.
 	it('replaces the message with a workspace-access hint on a 403, instead of the raw HTTP wrapper text', async () => {
 		const node = { name: 'Haystack Enterprise AI' };
 		const context = createContext(async () => {
@@ -504,12 +473,7 @@ describe('apiRequest', () => {
 		});
 	});
 
-	// A 403 while calling a resource endpoint is ambiguous in a way a plain
-	// workspace-access 403 isn't: deepset also gates access to individual
-	// services/indexes/files/search sessions independently of workspace
-	// access, so the same key can see the workspace fine but still be denied
-	// that specific resource — the generic "doesn't have access to this
-	// workspace" wording would send someone chasing the wrong fix.
+	// A resource-endpoint 403 is ambiguous: the key may see the workspace but lack permission on that resource.
 	it.each([
 		['GET', '/workspaces/ws-1/deployments/dep-1', 'service'],
 		['GET', '/workspaces/ws-1/indexes/my-index', 'index'],
@@ -549,27 +513,14 @@ describe('apiRequest', () => {
 		});
 	});
 
-	// Regression test for the reported bug: hitting a 403 on a workspace-scoped
-	// dropdown (e.g. "Service" > Deployment) showed the literal text
-	// `[object Object]` in n8n's "problem loading the parameter options"
-	// popover. That popover renders `.message` directly. NodeApiError has its
-	// own STATUS_CODE_MESSAGES fallback that guarantees a string message for
-	// any *recognized* HTTP status — but when it can't determine a status
-	// code at all (`.httpCode` stays null, e.g. an error shape without a
-	// `.response.status`/`.statusCode`), it leaves `.message` untouched, and
-	// an earlier assignment (`this.message = errorResponse.message`) can have
-	// already set it to a raw, non-string object — which string-coerces to
-	// exactly that literal text wherever it's rendered as a string.
+	// Regression: a 403 on a dropdown showed "[object Object]" when NodeApiError could not resolve an HTTP status and left a raw object in `.message`.
 	it("never leaves .message as a non-string object when the HTTP status code can't be determined", async () => {
 		const node = { name: 'Haystack Enterprise AI' };
 		const context = createContext(async () => {
 			throwPreWrapped(
 				node,
 				Object.assign(new Error('unused'), {
-					// No `.response`/`.statusCode`/etc. anywhere on this error, so
-					// NodeApiError can't resolve `.httpCode` and skips its own
-					// status-based message fallback — leaving `.message` as this
-					// raw object instead of coercing it to a string.
+					// No status anywhere, so `.httpCode` stays null and `.message` remains the raw object.
 					message: { errors: ['Internal error'] } as unknown as string,
 				}),
 			);
@@ -584,15 +535,7 @@ describe('apiRequest', () => {
 		expect((error as Error).message).not.toBe('[object Object]');
 	});
 
-	// A second, sneakier variant of the same regression: some HTTP clients
-	// build their error via `new Error(body)` with an object `body` — the
-	// native Error constructor stringifies it immediately via ToString(), so
-	// `.message` is already the literal *string* "[object Object]" by the time
-	// we see it, not an object. A plain `typeof !== 'string'` check can't
-	// catch that; the fix has to check for this exact literal too. (No
-	// `.response.status` here — NodeApiError's own STATUS_CODE_MESSAGES
-	// fallback already guarantees a proper string whenever it *can* resolve
-	// an HTTP status, so this case only surfaces when it can't.)
+	// Variant: `new Error(body)` stringifies an object body to the literal "[object Object]", which a typeof check misses.
 	it('replaces .message even when it was already coerced to the literal string "[object Object]" upstream', async () => {
 		const node = { name: 'Haystack Enterprise AI' };
 		const context = createContext(async () => {
@@ -611,23 +554,14 @@ describe('apiRequest', () => {
 		});
 	});
 
-	// Covers the case this bug was actually reported for: the real HTTP client
-	// error shape doesn't expose a status code n8n's NodeApiError can find
-	// (`.httpCode` stays null), so neither STATUS_CODE_MESSAGES nor our own
-	// httpCode-based check ever fires — but deepset's own error body still
-	// literally says "Forbidden"/"Unauthorized", so that text is used as a
-	// fallback signal to still produce the right hint.
+	// The error shape exposes no status (`.httpCode` null), so the body text "Forbidden"/"Unauthorized" is the fallback signal.
 	it("classifies a 403 from the error text alone when the HTTP status code can't be determined", async () => {
 		const node = { name: 'Haystack Enterprise AI' };
 		const context = createContext(async () => {
 			throwPreWrapped(
 				node,
 				Object.assign(new Error('unused'), {
-					// `.response.data` (so the body's own "Forbidden" text is still
-					// extractable) but deliberately no `.response.status`/`.statusCode`
-					// anywhere, so NodeApiError can't resolve `.httpCode` and it stays
-					// null — only the response body's own text is available to
-					// classify this.
+					// `.response.data` is present but no status, so `.httpCode` stays null.
 					response: { data: { errors: ['Forbidden'] } },
 				}),
 			);
@@ -702,7 +636,7 @@ describe('extractStreamErrorDetail', () => {
 		});
 	});
 
-	it('uses a FastAPI string `detail` and falls back when the payload has no message', () => {
+	it('uses a string `detail` and falls back when the payload has no message', () => {
 		expect(extractStreamErrorDetail({ detail: 'something else' })).toEqual({
 			message: 'something else',
 			data: { detail: 'something else' },
@@ -1189,9 +1123,7 @@ describe('withServiceActivationRetry', () => {
 			await vi.runAllTimersAsync();
 
 			await expect(resultPromise).rejects.toBeInstanceOf(NodeApiError);
-			// Initial attempt at t=0, retries at t=2000 and t=3000 — the third
-			// failure's elapsed time (3000ms) no longer satisfies `< maxWaitMs`,
-			// so the loop gives up instead of sleeping again.
+			// Attempts at t=0, 2000, 3000; the third failure (3000ms) no longer satisfies `< maxWaitMs`, so it gives up.
 			expect(fn).toHaveBeenCalledTimes(3);
 		} finally {
 			vi.useRealTimers();
