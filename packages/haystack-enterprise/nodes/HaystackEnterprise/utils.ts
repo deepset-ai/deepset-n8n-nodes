@@ -98,9 +98,9 @@ function joinErrorItems(items: unknown[], firstOnly: boolean): string | undefine
 }
 
 /**
- * Message from a hub API error body, one of:
- * - `{ errors: [string | { message }] }` for a normal HTTPException
- * - `{ details: [{ message }] }` for HTTPValidationException, or FastAPI's `{ detail: [{ msg }] }`
+ * Message from an API error body, one of:
+ * - `{ errors: [string | { message }] }`
+ * - `{ details: [{ message }] }` or `{ detail: [{ msg }] }` for validation errors
  * - `{ error: { message, type, param, code } }` on OpenAI-compatible chat completions
  */
 function messageFromApiBody(data: unknown, firstOnly = false): string | undefined {
