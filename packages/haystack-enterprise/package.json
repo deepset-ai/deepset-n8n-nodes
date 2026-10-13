@@ -51,7 +51,7 @@
 		"@n8n/node-cli": "^0.51.3",
 		"@n8n/scan-community-package": "^0.38.0",
 		"eslint": "9.39.5",
-		"prettier": "3.9.6",
+		"prettier": "3.9.10",
 		"release-it": "^20.2.1",
 		"typescript": "6.0.2",
 		"vitest": "^3.0.0"
