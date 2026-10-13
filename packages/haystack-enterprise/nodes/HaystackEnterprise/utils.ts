@@ -11,6 +11,8 @@ import type {
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
+// Credential type name, not a secret.
+// eslint-disable-next-line @n8n/community-nodes/no-hardcoded-secrets
 const OAUTH2_CREDENTIAL_NAME = 'haystackEnterpriseOAuth2Api';
 export const DEFAULT_API_ORIGIN = 'https://api.cloud.deepset.ai';
 
