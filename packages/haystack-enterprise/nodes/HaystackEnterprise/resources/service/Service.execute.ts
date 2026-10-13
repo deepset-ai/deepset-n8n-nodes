@@ -37,11 +37,7 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 
 	const limit = returnAll ? 100 : (this.getNodeParameter('limit', itemIndex) as number);
 
-	// `before`/`after` are mutually exclusive with `page_number` (per
-	// deployment_controller.py's list_deployments docstring: "Pagination
-	// supports offset (page_number and limit) and keyset cursor (before /
-	// after) modes; use one at a time") — see fetchListWithCursorOrPaging()'s
-	// own docstring for how that's handled.
+	// `before`/`after` cannot be combined with `page_number`; see fetchListWithCursorOrPaging().
 	return fetchListWithCursorOrPaging(
 		this,
 		`/workspaces/${workspaceName}/deployments`,
@@ -64,10 +60,7 @@ async function get(this: IExecuteFunctions, itemIndex: number): Promise<IDataObj
 	)) as IDataObject;
 }
 
-/**
- * GET /workspaces/{workspace}/deployments/v1/models/ — OpenAI-compatible model
- * list. No pagination; each deployment in the workspace is one model entry.
- */
+/** GET /workspaces/{workspace}/deployments/v1/models/ — OpenAI-compatible model list (one entry per deployment, no pagination). */
 async function listModels(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject[]> {
 	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
 
@@ -126,10 +119,7 @@ function applySharedQueryFields(
 	if (files.length > 0) body.files = files;
 }
 
-/**
- * Search session ID is optional on both /chat and /chat-stream. Omit it and
- * Haystack Enterprise creates a session, returning the ID in X-Search-Session-Id.
- */
+/** Search session ID is optional; if omitted, the API creates one and returns it in X-Search-Session-Id. */
 function applyChatSessionFields(
 	body: IDataObject,
 	searchSessionId: string,
@@ -144,10 +134,7 @@ function applyChatSessionFields(
 	}
 }
 
-/**
- * POST /workspaces/{workspace}/deployments/{id}/chat — one JSON result, not SSE.
- * `queries` is an array, unlike chat-stream's singular `query`.
- */
+/** POST .../deployments/{id}/chat — one JSON result (not SSE); `queries` is an array. */
 async function runChat(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
 	const request = readChatRequest.call(this, itemIndex);
 	const body: IDataObject = { queries: [request.query] };
@@ -187,10 +174,7 @@ async function runChat(this: IExecuteFunctions, itemIndex: number): Promise<IDat
 	return result;
 }
 
-/**
- * POST /workspaces/{workspace}/deployments/{id}/chat-stream. Takes a singular
- * `query` string, unlike /chat's `queries: [query]` array.
- */
+/** POST .../deployments/{id}/chat-stream — takes a singular `query` string. */
 async function runChatStream(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject[]> {
 	const request = readChatRequest.call(this, itemIndex);
 	const { additionalFields } = request;
@@ -216,20 +200,13 @@ async function runChatStream(this: IExecuteFunctions, itemIndex: number): Promis
 
 	let searchSessionId: string | undefined = request.searchSessionId || undefined;
 
-	// Relaying chunks live (via sendChunk) only has an observable effect when
-	// this node is the tail of a chat-trigger workflow running in streaming
-	// response mode — isStreaming() is how the node tells the two cases apart.
-	// When this node runs as an AI Agent tool, n8n calls it through
-	// ISupplyDataFunctions instead, which doesn't have isStreaming()/sendChunk
-	// at all, so guard the call rather than assuming IExecuteFunctions.
+	// Relay chunks live only when running in a streaming chat-trigger workflow; as an AI Agent tool (ISupplyDataFunctions) isStreaming()/sendChunk don't exist.
 	const relayLive = typeof this.isStreaming === 'function' && this.isStreaming();
 	if (relayLive) this.sendChunk('begin', itemIndex);
 
 	let stream: NodeJS.ReadableStream;
 	try {
-		// withServiceActivationRetry is generic; calling it via .call() erases its
-		// type parameter to `unknown` (same rationale as withApiErrorWrapping()'s
-		// own docstring in utils.ts), hence the cast.
+		// `.call()` erases the generic type parameter to `unknown`, hence the cast.
 		const response = (await withServiceActivationRetry.call(
 			this,
 			() =>
@@ -243,8 +220,7 @@ async function runChatStream(this: IExecuteFunctions, itemIndex: number): Promis
 			request.maxWaitMinutes * 60_000,
 		)) as { stream: NodeJS.ReadableStream; headers: IDataObject };
 		stream = response.stream;
-		// Echoes back the ID of the session Haystack Enterprise just created
-		// when Search Session ID was left empty.
+		// Echoes the ID of the session the API created when none was given.
 		searchSessionId ||= getResponseHeader(response.headers, 'X-Search-Session-Id');
 	} catch (error) {
 		if (relayLive)
@@ -266,11 +242,7 @@ async function runChatStream(this: IExecuteFunctions, itemIndex: number): Promis
 			const text = typeof delta?.text === 'string' ? delta.text : undefined;
 			if (text) {
 				textContent += text;
-				// sendChunk() JSON.stringifies any non-string content as-is before
-				// relaying it to the chat UI, so passing the raw event here (like
-				// every other event type below) would dump its full JSON into the
-				// chat instead of the plain answer text — only the text piece itself
-				// is meant to be shown live.
+				// Relay only the answer text; sendChunk() would JSON.stringify a raw event into the chat.
 				if (relayLive) this.sendChunk('item', itemIndex, text);
 			}
 		} else if (event.type === 'result') {
@@ -294,9 +266,7 @@ async function runChatStream(this: IExecuteFunctions, itemIndex: number): Promis
 	if (relayLive) this.sendChunk('end', itemIndex);
 
 	if (!simplify) {
-		// Not part of the SSE payload itself (it only ever arrives via the
-		// response header), so stamp it onto every event or raw-mode callers
-		// relying on a freshly auto-created session would have no way to see it.
+		// The session ID only arrives via the response header; stamp it on every event so raw-mode callers can see it.
 		if (searchSessionId) events.forEach((event) => (event.search_session_id = searchSessionId));
 		return events;
 	}
@@ -307,12 +277,7 @@ async function runChatStream(this: IExecuteFunctions, itemIndex: number): Promis
 	return [aggregated];
 }
 
-/**
- * `type: 'json'` parameters arrive as a string or already-parsed value depending
- * on whether the user typed JSON or used an expression. Unlike `parseJsonField()`
- * in utils (typed for objects), this accepts arrays and objects and passes through
- * already-parsed values.
- */
+/** Accepts a JSON string or an already-parsed array/object (unlike parseJsonField(), which is typed for objects). */
 function parseJsonValue(
 	this: IExecuteFunctions,
 	itemIndex: number,
@@ -526,13 +491,7 @@ function simplifyChatCompletion(completion: IDataObject): IDataObject {
 	return simplified;
 }
 
-/**
- * POST /workspaces/{workspace}/deployments/v1/chat/completions — the deployment
- * is selected by `model: "{workspace}/{deployment_id}"` in the body, not a path
- * segment. `stream: false` (default) returns one OpenAI `chat.completion` JSON
- * object; `stream: true` returns OpenAI `chat.completion.chunk` SSE (not the
- * Haystack-native delta/result events that chat-stream uses).
- */
+/** POST .../deployments/v1/chat/completions — deployment selected by `model: "{workspace}/{deployment_id}"`; `stream: true` returns OpenAI `chat.completion.chunk` SSE. */
 async function runChatCompletions(
 	this: IExecuteFunctions,
 	itemIndex: number,

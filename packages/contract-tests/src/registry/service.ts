@@ -5,12 +5,7 @@ import { CONTRACT_TEST_UUID, cursorPaginationCases } from './caseFactories';
 
 const CONTRACT_TEST_DEPLOYMENT_ID = CONTRACT_TEST_UUID;
 
-/**
- * `/chat-stream` declares a bodiless 200 in the spec, so Prism answers with
- * an empty body: the node sees zero SSE events and returns an empty
- * aggregate. That still validates the request shape, which is what these
- * cases are for.
- */
+/** `/chat-stream` declares a bodiless 200, so Prism returns no SSE events; the request shape is still validated. */
 export const serviceSuite: ContractResourceSuite = {
 	resource: 'service',
 	handler: executeService,
@@ -58,7 +53,7 @@ export const serviceSuite: ContractResourceSuite = {
 			},
 		},
 		{
-			// The example-workflow shape: one query, no session, no additional fields.
+			// One query, no session, no additional fields.
 			operation: 'chat',
 			description: 'POST /deployments/{deployment_id}/chat (query only)',
 			params: {

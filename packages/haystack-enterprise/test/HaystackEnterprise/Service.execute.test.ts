@@ -31,10 +31,7 @@ function createStreamContext({
 	const { context, httpRequestWithAuthentication } = createContext(
 		params,
 		async () => {
-			// The *-stream endpoint: resolves immediately with the full response
-			// (returnFullResponse: true), same as the real encoding: 'stream'
-			// behavior — the body arrives later via 'data'/'end' events, not by
-			// awaiting this call any further.
+			// Resolves immediately with the full response; the body arrives later via 'data'/'end' events.
 			if (streamRequestError) throw streamRequestError;
 			return { body: stream, headers: responseHeaders ?? {} };
 		},
@@ -160,10 +157,7 @@ describe('executeService — get many', () => {
 
 describe('executeService — stream request error handling', () => {
 	it('preserves the underlying API error detail when re-wrapping a failed request', async () => {
-		// Regression test: a real HTTP failure caught by apiRequestStream() gets
-		// wrapped in a NodeApiError whose `.description` holds the API's actual
-		// error body (e.g. `response.data.message`), while `.message` is often
-		// just n8n's generic per-status-code fallback text.
+		// Regression: apiRequestStream() failures are wrapped in a NodeApiError whose `.description` holds the API body while `.message` is generic.
 		const apiError = Object.assign(new Error('Request failed with status code 500'), {
 			response: {
 				status: 500,
@@ -190,8 +184,7 @@ describe('executeService — stream request error handling', () => {
 	});
 
 	it('preserves `context.data` (the raw API error body) so n8n\'s UI can render its "Error data" section', async () => {
-		// n8n's node-error-view component only shows the "Error data" section
-		// when `error.context.data` is populated.
+		// The node error view only shows "Error data" when `error.context.data` is set.
 		const apiError = Object.assign(new Error('Request failed with status code 500'), {
 			response: {
 				status: 500,
@@ -218,8 +211,7 @@ describe('executeService — stream request error handling', () => {
 	});
 
 	it('surfaces only the first `errors` entry as the description, unlike non-streaming operations which join them all', async () => {
-		// Full Message should read as one sentence, not several joined by "; " —
-		// the full list is still available via `context.data` for "Error data".
+		// Full Message should be one sentence; the full list stays in `context.data`.
 		const apiError = Object.assign(new Error('Request failed with status code 500'), {
 			response: { status: 500, data: { errors: ['missing component X', 'invalid config Y'] } },
 		});
@@ -448,9 +440,7 @@ describe('executeService — streaming (chatStream)', () => {
 		stream.emit('end');
 		await resultPromise;
 
-		// Only the plain delta text is relayed live, not the raw event object —
-		// sendChunk() JSON.stringifies non-string content before showing it in
-		// the chat UI, so forwarding the raw event would leak its full JSON.
+		// Only delta text is relayed live; sendChunk() would JSON.stringify a raw event.
 		expect(sendChunk).toHaveBeenNthCalledWith(1, 'begin', 0);
 		expect(sendChunk).toHaveBeenNthCalledWith(2, 'item', 0, 'Hi');
 		expect(sendChunk).toHaveBeenNthCalledWith(3, 'end', 0);
@@ -480,10 +470,7 @@ describe('executeService — streaming (chatStream)', () => {
 	});
 
 	it('does not throw when run as an AI Agent tool, where isStreaming/sendChunk do not exist on the context', async () => {
-		// Regression test: n8n executes usableAsTool nodes through
-		// ISupplyDataFunctions, which has no isStreaming()/sendChunk at all —
-		// unlike the isStreaming: false case above, those properties are
-		// missing here, not just falsy.
+		// Regression: usableAsTool nodes run via ISupplyDataFunctions, where isStreaming()/sendChunk are missing, not just falsy.
 		const { context, stream } = createStreamContext({
 			params: {
 				workspaceName: 'ws',

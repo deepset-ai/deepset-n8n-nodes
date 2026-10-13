@@ -11,13 +11,7 @@ const READY_POLL_INTERVAL_MS = 300;
 
 let prismProcess: ChildProcess | undefined;
 
-/**
- * Prism's bundled `@stoplight/json-schema-ref-parser` HTTP resolver is broken
- * against Node's native `fetch` on Node version 24 (worked on Node 22) — it
- * throws `RequestInit: Expected signal ... to be an instance of AbortSignal`
- * when `prism mock` is given a URL directly. So we fetch remote specs
- * ourselves with our own working `fetch()` and hand Prism a local file.
- */
+/** Fetches remote specs to a local file; Prism's own URL resolver fails on Node 24. */
 async function resolveSpecToLocalFile(specSource: string): Promise<string> {
 	if (!specSource.startsWith('http://') && !specSource.startsWith('https://')) {
 		return specSource;
@@ -37,12 +31,7 @@ async function resolveSpecToLocalFile(specSource: string): Promise<string> {
 	return filePath;
 }
 
-/**
- * Prism is up as soon as it accepts a connection at all — a 404 for a path it
- * doesn't recognize still means the HTTP server is listening. `fetch` only
- * throws on connection failure (e.g. ECONNREFUSED before Prism has bound the
- * port), never on a non-2xx response, so any resolved call is "ready".
- */
+/** Ready once Prism accepts a connection; any HTTP response counts. */
 async function waitForPrismReady(port: number, proc: ChildProcess): Promise<void> {
 	const deadline = Date.now() + READY_TIMEOUT_MS;
 	let lastError: unknown;
@@ -64,12 +53,8 @@ async function waitForPrismReady(port: number, proc: ChildProcess): Promise<void
 }
 
 /**
- * `CONTRACT_TARGET=mock` (the default) starts a local Prism mock server from
- * `CONTRACT_SPEC` (default: the publicly published Haystack Enterprise spec)
- * and points the nodes at it. Any other `CONTRACT_TARGET` value is used
- * directly as the real base URL (e.g. an ephemeral environment) — no local
- * Prism started, so `CONTRACT_SPEC` should then point at a local spec file
- * matching that environment's actual code.
+ * `CONTRACT_TARGET=mock` (default) starts a local Prism mock from `CONTRACT_SPEC`.
+ * Any other value is used directly as the base URL and no mock is started.
  */
 export async function setup(): Promise<void> {
 	const target = process.env.CONTRACT_TARGET ?? 'mock';

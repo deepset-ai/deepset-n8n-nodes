@@ -6,17 +6,8 @@ import { CONTRACT_TEST_UUID } from './caseFactories';
 const CONTRACT_TEST_FILE_ID = CONTRACT_TEST_UUID;
 
 /**
- * `get` (the arraybuffer file download) isn't in this registry — and can't be
- * made meaningfully testable just by extending the test harness. The spec declares
- * this endpoint's 200 response as `application/json` with an *empty* schema (`{}`),
- * not a real binary/octet-stream declaration — because the real endpoint
- * returns a raw streaming/file response FastAPI's OpenAPI generator can't
- * introspect a concrete schema for, so it fell back to a generic placeholder.
- * That means Prism can only ever mock back some generic JSON-shaped stand-in
- * for this response, never real file bytes, no matter what the test harness
- * does — so there's nothing to meaningfully validate the actual
- * binary-to-n8n-binary-property conversion path against. Revisit only if the
- * spec ever documents this response's real content type.
+ * `get` (file download) is not covered: the spec declares its 200 response as JSON with an
+ * empty schema, so Prism can't mock real file bytes.
  */
 export const fileSuite: ContractResourceSuite = {
 	resource: 'file',
@@ -35,8 +26,7 @@ export const fileSuite: ContractResourceSuite = {
 			},
 		},
 		{
-			// No optional query params at all — the most common real-world call
-			// shape, since most users won't touch Filters/Sort.
+			// No optional query params.
 			operation: 'getAll',
 			description: 'GET /files (no optional query params)',
 			params: {
@@ -46,9 +36,7 @@ export const fileSuite: ContractResourceSuite = {
 			},
 		},
 		{
-			// Also exercises `name`/`content`/`filter`/`field`/`order` — `field`/
-			// `order` have enum constraints in the spec, so a wrong value here
-			// would actually fail against Prism.
+			// `field`/`order` are enums in the spec, so invalid values fail against Prism.
 			operation: 'getAll',
 			description: 'GET /files (with name + content + filter + sort query params)',
 			params: {
@@ -64,9 +52,7 @@ export const fileSuite: ContractResourceSuite = {
 			},
 		},
 		{
-			// Manual after_value/after_file_id cursor for a single (non-Return-All)
-			// query — distinct from the automatic cursor-walk Return All uses
-			// internally (see Index's before/after cases for the analogous check).
+			// Manual cursor for a single (non-Return-All) query.
 			operation: 'getAll',
 			description: 'GET /files (with after_value/after_file_id cursor)',
 			params: {
