@@ -177,9 +177,10 @@ describe('createBearerFetch', () => {
 	});
 
 	it('retries once with the refreshed token after a 401, and keeps using it afterwards', async () => {
+		const rejectedResponse = unauthorizedResponse();
 		const baseFetch = vi
 			.fn(async () => okResponse())
-			.mockImplementationOnce(async () => unauthorizedResponse());
+			.mockImplementationOnce(async () => rejectedResponse);
 		const refresh = vi.fn(async () => 'fresh-token');
 		const fetchWithAuth = createBearerFetch(
 			{ token: 'stale-token', apiOrigin: DEFAULT_API_ORIGIN, refresh },
@@ -190,6 +191,7 @@ describe('createBearerFetch', () => {
 		await fetchWithAuth('https://example.test/mcp');
 
 		expect(response.status).toBe(200);
+		expect(rejectedResponse.bodyUsed).toBe(true);
 		expect(refresh).toHaveBeenCalledTimes(1);
 		const sentTokens = baseFetch.mock.calls.map(([, init]: unknown[]) =>
 			new Headers((init as RequestInit).headers).get('authorization'),
@@ -198,10 +200,11 @@ describe('createBearerFetch', () => {
 	});
 
 	it('shares one rotating-token refresh across concurrent 401 responses', async () => {
+		const rejectedResponses = [unauthorizedResponse(), unauthorizedResponse()];
 		const baseFetch = vi
 			.fn(async () => okResponse())
-			.mockImplementationOnce(async () => unauthorizedResponse())
-			.mockImplementationOnce(async () => unauthorizedResponse());
+			.mockImplementationOnce(async () => rejectedResponses[0])
+			.mockImplementationOnce(async () => rejectedResponses[1]);
 		const refresh = vi.fn(async () => 'fresh-token');
 		const fetchWithAuth = createBearerFetch(
 			{ token: 'stale-token', apiOrigin: DEFAULT_API_ORIGIN, refresh },
@@ -214,6 +217,7 @@ describe('createBearerFetch', () => {
 		]);
 
 		expect(responses.map(({ status }) => status)).toEqual([200, 200]);
+		expect(rejectedResponses.every(({ bodyUsed }) => bodyUsed)).toBe(true);
 		expect(refresh).toHaveBeenCalledTimes(1);
 		const sentTokens = baseFetch.mock.calls.map(([, init]: unknown[]) =>
 			new Headers((init as RequestInit).headers).get('authorization'),
@@ -227,7 +231,8 @@ describe('createBearerFetch', () => {
 	});
 
 	it('surfaces the original 401 without retrying when the refresh fails', async () => {
-		const baseFetch = vi.fn(async () => unauthorizedResponse());
+		const rejectedResponse = unauthorizedResponse();
+		const baseFetch = vi.fn(async () => rejectedResponse);
 		const fetchWithAuth = createBearerFetch(
 			{ token: 'stale-token', apiOrigin: DEFAULT_API_ORIGIN, refresh: async () => undefined },
 			baseFetch,
@@ -236,11 +241,15 @@ describe('createBearerFetch', () => {
 		const response = await fetchWithAuth('https://example.test/mcp');
 
 		expect(response.status).toBe(401);
+		expect(rejectedResponse.bodyUsed).toBe(false);
 		expect(baseFetch).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not loop when the refreshed token is also rejected', async () => {
-		const baseFetch = vi.fn(async () => unauthorizedResponse());
+		const rejectedResponses = [unauthorizedResponse(), unauthorizedResponse()];
+		const baseFetch = vi
+			.fn(async () => rejectedResponses[1])
+			.mockImplementationOnce(async () => rejectedResponses[0]);
 		const fetchWithAuth = createBearerFetch(
 			{ token: 'stale-token', apiOrigin: DEFAULT_API_ORIGIN, refresh: async () => 'fresh-token' },
 			baseFetch,
@@ -249,6 +258,8 @@ describe('createBearerFetch', () => {
 		const response = await fetchWithAuth('https://example.test/mcp');
 
 		expect(response.status).toBe(401);
+		expect(rejectedResponses[0].bodyUsed).toBe(true);
+		expect(rejectedResponses[1].bodyUsed).toBe(false);
 		expect(baseFetch).toHaveBeenCalledTimes(2);
 	});
 });

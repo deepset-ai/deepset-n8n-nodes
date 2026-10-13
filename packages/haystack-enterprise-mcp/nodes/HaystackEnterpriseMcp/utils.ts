@@ -137,6 +137,7 @@ export function createBearerFetch(auth: McpAuth, baseFetch?: FetchLike): FetchLi
 		}
 
 		if (token !== attemptedToken) {
+			await response.body?.cancel().catch(() => undefined);
 			return send(url, init, token);
 		}
 
@@ -147,6 +148,7 @@ export function createBearerFetch(auth: McpAuth, baseFetch?: FetchLike): FetchLi
 		if (!refreshedToken) {
 			return response;
 		}
+		await response.body?.cancel().catch(() => undefined);
 		token = refreshedToken;
 		return send(url, init, token);
 	};

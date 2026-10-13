@@ -13,4 +13,5 @@ Initial release.
 - **Haystack Enterprise Chat Model**: language-model sub-node for n8n's AI Agent, using Chat
   Completions on a Haystack Enterprise service
 - **Authentication**: choose API Key or OAuth2 on the node. The OAuth2 credential registers your n8n
-  instance with Haystack Enterprise automatically via Dynamic Client Registration (RFC 7591).
+  instance with Haystack Enterprise automatically via Dynamic Client Registration (RFC 7591). OAuth2
+  requires n8n 2.19.2 or later.

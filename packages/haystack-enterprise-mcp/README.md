@@ -134,6 +134,8 @@ The key needs at least workspace and search permissions.
 
 ### OAuth2 (sign in with your Haystack Enterprise account)
 
+OAuth2 credentials require n8n 2.19.2 or later.
+
 Choose **OAuth2** on the node and create a "Haystack Enterprise OAuth2 API" credential.
 
 1. Leave **Server URL** at `https://api.cloud.deepset.ai`. The Server URL is the API origin the

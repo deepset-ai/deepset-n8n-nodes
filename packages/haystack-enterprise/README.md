@@ -155,6 +155,8 @@ example `https://api.your-company.com`.
 
 ### OAuth2 (sign in with your Haystack Enterprise account)
 
+OAuth2 credentials require n8n 2.19.2 or later.
+
 1. On the node, choose **OAuth2** and create a **Haystack Enterprise OAuth2 API** credential.
 2. Leave the default settings as they are.
 3. Click **Connect** and sign in with your Haystack Enterprise account.

@@ -13,5 +13,5 @@ Initial release.
   instance with Haystack Enterprise automatically via Dynamic Client Registration (RFC 7591) — just
   click Connect and sign in, no client ID/secret to copy. Expired access tokens are refreshed and
   the MCP request retried transparently. Manual OAuth2 configuration remains available for existing
-  clients and private deployments (DCR requires n8n ≥ 1.119; for self-hosted Haystack Enterprise,
-  Authentik 2026.8+).
+  clients and private deployments. OAuth2 requires n8n 2.19.2 or later; Dynamic Client Registration
+  in private Haystack Enterprise deployments requires Authentik 2026.8 or later.
