@@ -371,7 +371,8 @@ export async function consumeSseStream(
 	await new Promise<void>((resolve, reject) => {
 		stream.on('data', (chunk: Buffer | string) => {
 			const text = typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true });
-			buffer += text.replace(/\r\n/g, '\n');
+			// Normalise after appending: a chunk boundary can split a \r\n pair.
+			buffer = (buffer + text).replace(/\r\n/g, '\n');
 			emitCompleteRecords();
 		});
 		stream.on('end', resolve);

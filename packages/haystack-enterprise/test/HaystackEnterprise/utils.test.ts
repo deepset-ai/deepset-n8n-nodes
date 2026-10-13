@@ -793,6 +793,22 @@ describe('consumeSseStream', () => {
 		expect(events).toEqual([{ type: 'delta', delta: { text: 'hi' } }]);
 	});
 
+	it('handles CRLF line endings split across chunk boundaries', async () => {
+		const stream = new FakeStream();
+		const events: IDataObject[] = [];
+
+		const done = consumeSseStream(stream as unknown as NodeJS.ReadableStream, (event) =>
+			events.push(event),
+		);
+		stream.emit('data', 'data: {"a":1}\r\n\r');
+		stream.emit('data', '\ndata: {"b":2}\r');
+		stream.emit('data', '\n\r\n');
+		stream.emit('end');
+		await done;
+
+		expect(events).toEqual([{ a: 1 }, { b: 2 }]);
+	});
+
 	it('decodes a multibyte character split across byte chunks', async () => {
 		const stream = new FakeStream();
 		const events: IDataObject[] = [];
