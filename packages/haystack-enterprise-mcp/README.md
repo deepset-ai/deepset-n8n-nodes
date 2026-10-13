@@ -7,9 +7,8 @@ This is an n8n community node. It lets you use pipelines you've enabled as MCP t
 workflow automation platform.
 
 [Installation](#installation) [Local testing (pre-release)](#local-testing-pre-release)
-[Operations](#operations) [Credentials](#credentials) [Compatibility](#compatibility)
-[Usage](#usage) [Linting](#linting) [Testing](#testing) [Resources](#resources)
-[Version history](#version-history)
+[Operations](#operations) [Credentials](#credentials) [Usage](#usage) [Linting](#linting)
+[Testing](#testing) [Resources](#resources) [Version history](#version-history)
 
 ## Installation
 
@@ -120,30 +119,35 @@ an n8n AI Agent as tools:
 
 ## Credentials
 
-You need a Haystack Enterprise API credential:
+The node's **Authentication** dropdown offers two ways to authenticate.
+
+### API Key
+
+Choose **API Key** on the node (the default) and create a "Haystack Enterprise API" credential:
 
 1. In Haystack Enterprise Platform, go to Settings → API Keys and generate a key.
-2. In n8n, create a "Haystack Enterprise API" credential. **Server URL** defaults to the hosted
-   Haystack Enterprise Platform API (`https://api.cloud.deepset.ai`); for self-hosted or dev
-   environments, set it to your instance's API origin (scheme and host only). Paste your API key.
+2. In n8n, paste the key into the credential. **Server URL** defaults to the hosted Haystack
+   Enterprise Platform API (`https://api.cloud.deepset.ai`); for dev or private environments, set it
+   to your instance's API origin.
 
 The key needs at least workspace and search permissions.
 
-This is the same credential type used by
-[n8n-nodes-haystack-enterprise](https://www.npmjs.com/package/n8n-nodes-haystack-enterprise), so if
-you have both packages installed you only need to configure it once. The two packages currently
-duplicate the credential's source file by hand rather than sharing it via a common dependency,
-because that dependency would make `n8n-nodes-haystack-enterprise` ineligible for n8n Cloud
-(cloud-eligible packages can't declare runtime dependencies). Once this package is also
-cloud-eligible (or that restriction no longer applies), the two should be unified into one shared
-package.
+### OAuth2 (sign in with your Haystack Enterprise account)
 
-You'll also need to create an MCP server for your workspace and enable at least one pipeline as a
-tool, under Settings → Workspace → MCP.
+OAuth2 credentials require n8n 2.19.2 or later.
 
-## Compatibility
+Choose **OAuth2** on the node and create a "Haystack Enterprise OAuth2 API" credential.
 
-Requires a self-hosted n8n instance. Not compatible with n8n Cloud.
+1. Leave **Server URL** at `https://api.cloud.deepset.ai`. The Server URL is the API origin the
+   nodes use for requests and OAuth2 discovery; change it only for dev or private Haystack
+   Enterprise deployments.
+2. Click **Connect** and sign in with your Haystack Enterprise account.
+
+**Manual OAuth2 configuration.** Turn **Use Dynamic Client Registration** off to configure or reuse
+an existing OAuth2 client, including clients for private Haystack Enterprise deployments. Keep
+**Server URL** pointed at the Haystack Enterprise API, fill in the OAuth2 settings, and register the
+callback URL shown on the credential as a redirect URI on the client. Leave **Client Secret** empty
+for a public PKCE client; confidential clients still require their secret.
 
 ## Usage
 

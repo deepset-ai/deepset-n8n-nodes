@@ -39,7 +39,8 @@
 		"aiNodeSdkVersion": 1,
 		"strict": true,
 		"credentials": [
-			"dist/credentials/HaystackEnterpriseApi.credentials.js"
+			"dist/credentials/HaystackEnterpriseApi.credentials.js",
+			"dist/credentials/HaystackEnterpriseOAuth2Api.credentials.js"
 		],
 		"nodes": [
 			"dist/nodes/HaystackEnterprise/HaystackEnterpriseAi.node.js",
