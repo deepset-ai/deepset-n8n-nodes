@@ -2,7 +2,7 @@ import type { IExecuteFunctions, IHttpRequestOptions } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 
 export interface ContractTestContextOptions {
-	/** Flat parameter map — `getNodeParameter(name, _itemIndex, fallback)` reads from this, falling back like real n8n does when the parameter is absent. */
+	/** Flat node parameter map used by the contract-test context. */
 	params: Record<string, unknown>;
 }
 
@@ -114,7 +114,11 @@ export function buildContractTestContext({
 	return {
 		getNode: () => ({ name: 'Haystack Enterprise AI (contract test)' }),
 		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
+			Object.prototype.hasOwnProperty.call(params, name)
+				? params[name]
+				: name === 'authentication'
+					? 'apiKey'
+					: fallback,
 		helpers: { httpRequestWithAuthentication },
 		isStreaming: () => false,
 		sendChunk: () => undefined,

@@ -37,7 +37,8 @@
 		"n8nNodesApiVersion": 1,
 		"strict": false,
 		"credentials": [
-			"dist/credentials/HaystackEnterpriseApi.credentials.js"
+			"dist/credentials/HaystackEnterpriseApi.credentials.js",
+			"dist/credentials/HaystackEnterpriseOAuth2Api.credentials.js"
 		],
 		"nodes": [
 			"dist/nodes/HaystackEnterpriseMcp/HaystackEnterpriseMcp.node.js"
@@ -51,7 +52,7 @@
 	"devDependencies": {
 		"@n8n/node-cli": "^0.51.3",
 		"eslint": "9.39.5",
-		"prettier": "3.9.6",
+		"prettier": "3.9.10",
 		"release-it": "^20.2.1",
 		"typescript": "6.0.2",
 		"vitest": "^3.0.0"

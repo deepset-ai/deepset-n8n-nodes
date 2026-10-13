@@ -14,6 +14,7 @@ import {
 	loadDeploymentOptions,
 	loadWorkspaceOptions,
 	readAdditionalParameters,
+	resolveBearerToken,
 } from '../HaystackEnterprise/utils';
 
 export class HaystackEnterpriseChatModel implements INodeType {
@@ -50,9 +51,34 @@ export class HaystackEnterpriseChatModel implements INodeType {
 			{
 				name: 'haystackEnterpriseApi',
 				required: true,
+				displayOptions: { show: { authentication: ['apiKey'] } },
+			},
+			{
+				name: 'haystackEnterpriseOAuth2Api',
+				required: true,
+				displayOptions: { show: { authentication: ['oAuth2'] } },
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'API Key',
+						value: 'apiKey',
+						description: 'Authenticate with a Haystack Enterprise API key',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+						description: 'Sign in with your Haystack Enterprise user account',
+					},
+				],
+				default: 'apiKey',
+			},
 			{
 				displayName:
 					'Connect this node to an AI Agent Model input. The Agent builds the conversation; this node only supplies the Haystack Enterprise service.',
@@ -62,7 +88,7 @@ export class HaystackEnterpriseChatModel implements INodeType {
 			},
 			{
 				displayName:
-					'Set up your Haystack Enterprise API credentials above first, then select your workspace below.',
+					'Set up your Haystack Enterprise credential above first, then select your workspace below.',
 				name: 'workspaceNotice',
 				type: 'notice',
 				default: '',
@@ -76,7 +102,10 @@ export class HaystackEnterpriseChatModel implements INodeType {
 				displayName: 'Workspace Name or ID',
 				name: 'workspaceName',
 				type: 'options',
-				typeOptions: { loadOptionsMethod: 'getWorkspaces' },
+				typeOptions: {
+					loadOptionsMethod: 'getWorkspaces',
+					loadOptionsDependsOn: ['authentication'],
+				},
 				default: '',
 				required: true,
 				description:
@@ -88,7 +117,7 @@ export class HaystackEnterpriseChatModel implements INodeType {
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getDeployments',
-					loadOptionsDependsOn: ['workspaceName'],
+					loadOptionsDependsOn: ['authentication', 'workspaceName'],
 				},
 				default: '',
 				required: true,
@@ -161,15 +190,8 @@ export class HaystackEnterpriseChatModel implements INodeType {
 			);
 		}
 
-		const credentials = await this.getCredentials('haystackEnterpriseApi');
-		const apiKey = credentials.apiKey;
-		if (typeof apiKey !== 'string' || apiKey === '') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'The Haystack Enterprise API credential is missing an API key.',
-				{ itemIndex },
-			);
-		}
+		// The SDK accepts a static token, so OAuth2 credentials are validated before use.
+		const apiKey = await resolveBearerToken(this);
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			extraParameters?: unknown;
