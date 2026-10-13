@@ -14,13 +14,6 @@ Each package lives in its own directory under `packages/`, with its own `package
 `credentials/`, `test/`, and `README.md`. See each package's README for what it does, its
 operations/credentials, and how to install and use it.
 
-## Status: pre-release
-
-Neither package is published to npm yet. If you're a colleague testing these nodes locally ahead of
-an official release, see the **"Local testing (pre-release)"** section in each package's README for
-how to install n8n locally and load the node into it, along with ready-made example workflows under
-each package's `test/examples/`.
-
 ## Development
 
 This repo uses n8n's
@@ -58,8 +51,8 @@ environment variables let you point it elsewhere instead:
 # Validate against a local spec file instead of the published one
 CONTRACT_SPEC=./openapi.yaml npm run test:contract
 
-# Skip the mock server and hit a real environment directly (e.g. an ephemeral env), using a local spec that matches it
-CONTRACT_TARGET=https://your-ephemeral-env.example.com/api/v1 CONTRACT_SPEC=./openapi.yaml npm run test:contract
+# Skip the mock server and hit a real environment directly, using a local spec that matches it
+CONTRACT_TARGET=https://your-env.example.com/api/v1 CONTRACT_SPEC=./openapi.yaml npm run test:contract
 ```
 
 See `packages/contract-tests/src/registry/` for what's covered per resource.
