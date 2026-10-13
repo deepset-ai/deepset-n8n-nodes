@@ -16,8 +16,7 @@ export const searchSessionSuite: ContractResourceSuite = {
 			},
 		},
 		{
-			// No optional query params at all — the most common real-world call
-			// shape, since most users won't touch Filters.
+			// No optional query params.
 			operation: 'getAll',
 			description: 'GET /search_sessions (no optional query params)',
 			params: {

@@ -14,13 +14,6 @@ Each package lives in its own directory under `packages/`, with its own `package
 `credentials/`, `test/`, and `README.md`. See each package's README for what it does, its
 operations/credentials, and how to install and use it.
 
-## Status: pre-release
-
-Neither package is published to npm yet. If you're a colleague testing these nodes locally ahead of
-an official release, see the **"Local testing (pre-release)"** section in each package's README for
-how to install n8n locally and load the node into it, along with ready-made example workflows under
-each package's `test/examples/`.
-
 ## Development
 
 This repo uses n8n's
@@ -37,9 +30,7 @@ npm run format:check # CI: verify formatting
 npm run test       # run every package's test suite
 ```
 
-See each package's README for package-specific details, and
-[`.agents/workflow.md`](./.agents/workflow.md) for the fuller development workflow (including known
-issues and local Docker-based testing notes).
+See each package's README for package-specific details.
 
 ### Contract tests
 
@@ -53,15 +44,11 @@ npm run test:contract   # from the repo root, or inside packages/contract-tests
 
 By default this starts a local [Prism](https://github.com/stoplightio/prism) mock server from the
 publicly published spec (`https://docs.cloud.deepset.ai/openapi.yaml`) and runs the nodes' real
-request-building code against it, catching drift between the nodes and the real API contract. Two
-environment variables let you point it elsewhere instead:
+request-building code against it, catching drift between the nodes and the real API contract. To
+validate against a local spec file instead of the published one:
 
 ```bash
-# Validate against a local spec file instead of the published one
 CONTRACT_SPEC=./openapi.yaml npm run test:contract
-
-# Skip the mock server and hit a real environment directly (e.g. an ephemeral env), using a local spec that matches it
-CONTRACT_TARGET=https://your-ephemeral-env.example.com/api/v1 CONTRACT_SPEC=./openapi.yaml npm run test:contract
 ```
 
 See `packages/contract-tests/src/registry/` for what's covered per resource.
