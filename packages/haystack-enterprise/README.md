@@ -12,9 +12,8 @@ with users, and run and monitor your apps in production.
 workflow automation platform.
 
 [Installation](#installation) [Local testing (pre-release)](#local-testing-pre-release)
-[Operations](#operations) [Credentials](#credentials) [Compatibility](#compatibility)
-[Usage](#usage) [Linting](#linting) [Testing](#testing) [Resources](#resources)
-[Version history](#version-history)
+[Operations](#operations) [Credentials](#credentials) [Usage](#usage) [Linting](#linting)
+[Testing](#testing) [Resources](#resources) [Version history](#version-history)
 
 ## Installation
 
@@ -135,22 +134,37 @@ The package ships two nodes:
 
 ## Credentials
 
-You need a Haystack Enterprise API credential:
+Both nodes (**Haystack Enterprise AI** and **Haystack Enterprise Chat Model**) have an
+**Authentication** dropdown offering two ways to authenticate. Both credential types are also used
+by the companion
+[n8n-nodes-haystack-enterprise-mcp](https://www.npmjs.com/package/n8n-nodes-haystack-enterprise-mcp)
+package.
 
-1. In Haystack Enterprise Platform, go to Settings → API Keys and generate a key.
-2. In n8n, create a "Haystack Enterprise API" credential. **Server URL** defaults to the hosted
-   Haystack Enterprise Platform API (`https://api.cloud.deepset.ai`); for self-hosted or dev
-   environments, set it to your instance's API origin (scheme and host only). Paste your API key.
+### API Key
 
-Use a workspace- or organization-level key with sufficient permissions for the operations and
-resources you plan to use.
+1. In Haystack Enterprise Platform, go to **Settings → API Keys** and generate a key.
+2. On the node, choose **API Key** and create a **Haystack Enterprise API** credential.
+3. Paste the key into the credential.
 
-## Compatibility
+Make sure the key has permission for the workspaces and resources your workflow uses.
 
-This node has no known version incompatibilities and is eligible for n8n Cloud. Its companion
-package,
-[n8n-nodes-haystack-enterprise-mcp](https://www.npmjs.com/package/n8n-nodes-haystack-enterprise-mcp),
-is self-hosted-only — see that package's README.
+**Using a private Haystack Enterprise deployment?** Change **Server URL** to your API origin, for
+example `https://api.your-company.com`.
+
+### OAuth2 (sign in with your Haystack Enterprise account)
+
+OAuth2 credentials require n8n 2.19.2 or later.
+
+1. On the node, choose **OAuth2** and create a **Haystack Enterprise OAuth2 API** credential.
+2. Leave the default settings as they are.
+3. Click **Connect** and sign in with your Haystack Enterprise account.
+
+The nodes run as the signed-in user, with that user's workspace access and permissions.
+
+> **Using a private Haystack Enterprise deployment?** Change **Server URL** to your API origin. To
+> configure or reuse an existing OAuth2 client, turn **Use Dynamic Client Registration** off and
+> provide its OAuth2 settings. Add the callback URL shown on the credential as a redirect URI on
+> that client. Public PKCE clients do not require a client secret.
 
 ## Usage
 

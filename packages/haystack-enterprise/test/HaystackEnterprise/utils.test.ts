@@ -11,7 +11,7 @@ import {
 	extractWorkspaceList,
 	fetchPaginatedResults,
 	getApiBaseUrlFromCredentials,
-	getApiBaseUrlV1FromOrigin,
+	getCredentialType,
 	loadDeploymentOptions,
 	loadDeploymentOptionsWithAllOption,
 	loadFileOptions,
@@ -32,6 +32,8 @@ function createContext<T = ILoadOptionsFunctions>(
 	return {
 		helpers: { httpRequestWithAuthentication },
 		getNode: () => ({ name: 'Haystack Enterprise AI' }),
+		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
+			name === 'authentication' ? 'apiKey' : fallback,
 		getCredentials: async () => credentials,
 	} as unknown as T;
 }
@@ -44,7 +46,8 @@ function createLoadOptionsContext(
 	return {
 		helpers: { httpRequestWithAuthentication },
 		getNode: () => ({ name: 'Haystack Enterprise AI' }),
-		getNodeParameter: (name: string) => (name === 'workspaceName' ? workspaceName : undefined),
+		getNodeParameter: (name: string) =>
+			name === 'authentication' ? 'apiKey' : name === 'workspaceName' ? workspaceName : undefined,
 		getCredentials: async () => credentials,
 	} as unknown as ILoadOptionsFunctions;
 }
@@ -70,13 +73,13 @@ describe('getApiBaseUrlFromCredentials', () => {
 		);
 	});
 
-	it('does not double /api/v1 when the credential already includes it', () => {
+	it('does not duplicate a version path supplied in the Server URL', () => {
 		expect(
-			getApiBaseUrlFromCredentials({ apiKey: 'k', serverUrl: 'https://dev.internal/api/v1/' }),
+			getApiBaseUrlFromCredentials({
+				apiKey: 'k',
+				serverUrl: 'https://dev.internal/api/v1',
+			}),
 		).toBe('https://dev.internal/api/v1');
-		expect(getApiBaseUrlV1FromOrigin('https://dev.internal/api/v1')).toBe(
-			'https://dev.internal/api/v1',
-		);
 	});
 });
 
@@ -143,7 +146,7 @@ describe('loadWorkspaceOptions', () => {
 		expect(error).toBeInstanceOf(NodeOperationError);
 		expect(error).not.toBeInstanceOf(NodeApiError);
 		expect((error as NodeOperationError).message).toMatch(
-			/doesn't have access to this workspace.*org-wide key/s,
+			/doesn't have access to this workspace.*org-wide one/s,
 		);
 	});
 });
@@ -186,7 +189,56 @@ describe('loadDeploymentOptionsWithAllOption', () => {
 	});
 });
 
+describe('getCredentialType', () => {
+	it('picks the API key credential when selected', () => {
+		const context = {
+			getNodeParameter: vi.fn(() => 'apiKey'),
+		} as unknown as IExecuteFunctions;
+
+		expect(getCredentialType(context)).toBe('haystackEnterpriseApi');
+	});
+
+	it('picks the OAuth2 credential on an execute context, reading item index 0', () => {
+		const getNodeParameter = vi.fn(() => 'oAuth2');
+		const context = { getNodeParameter } as unknown as IExecuteFunctions;
+
+		expect(getCredentialType(context)).toBe('haystackEnterpriseOAuth2Api');
+		expect(getNodeParameter).toHaveBeenCalledWith('authentication', 0);
+	});
+
+	it('picks the OAuth2 credential on a load-options context', () => {
+		const getNodeParameter = vi.fn(() => 'oAuth2');
+		const context = {
+			getNodeParameter,
+			getCurrentNodeParameter: vi.fn(),
+		} as unknown as ILoadOptionsFunctions;
+
+		expect(getCredentialType(context)).toBe('haystackEnterpriseOAuth2Api');
+		expect(getNodeParameter).toHaveBeenCalledWith('authentication');
+	});
+});
+
 describe('apiRequest', () => {
+	it("authenticates with the OAuth2 credential type when the node's Authentication is OAuth2", async () => {
+		const httpRequestWithAuthentication = vi.fn(async () => ({}));
+		const getCredentials = vi.fn(async () => ({ oauthTokenData: { access_token: 'token' } }));
+		const context = {
+			helpers: { httpRequestWithAuthentication },
+			getNode: () => ({ name: 'Haystack Enterprise AI' }),
+			getCredentials,
+			getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
+				name === 'authentication' ? 'oAuth2' : fallback,
+		} as unknown as IExecuteFunctions;
+
+		await apiRequest.call(context, 'GET', '/workspaces');
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'haystackEnterpriseOAuth2Api',
+			expect.objectContaining({ method: 'GET', url: expect.stringContaining('/workspaces') }),
+		);
+		expect(getCredentials).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
+	});
+
 	it('uses the Server URL from credentials when building the request URL', async () => {
 		const httpRequestWithAuthentication = vi.fn(async () => ({ ok: true }));
 		const context = createContext(httpRequestWithAuthentication, {
@@ -417,7 +469,7 @@ describe('apiRequest', () => {
 		Object.assign(context, { getNode: () => node });
 
 		await expect(apiRequest.call(context, 'GET', '/workspaces')).rejects.toMatchObject({
-			message: expect.stringMatching(/doesn't have access to this workspace.*org-wide key/s),
+			message: expect.stringMatching(/doesn't have access to this workspace.*org-wide one/s),
 		});
 	});
 

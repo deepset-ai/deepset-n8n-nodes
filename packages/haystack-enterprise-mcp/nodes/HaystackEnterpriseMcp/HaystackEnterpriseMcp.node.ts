@@ -24,13 +24,13 @@ import {
 	createMcpTransport,
 	describeToolCallErrorHint,
 	describeTransportErrorHint,
-	getApiOriginForContext,
 	getSelectedTools,
 	isStructuredContent,
 	listAllMcpTools,
 	loadMcpToolOptions,
 	loadWorkspaceOptions,
 	normalizeMcpInputSchema,
+	resolveMcpAuth,
 } from './utils';
 
 const SELF_HOSTED_ONLY_MESSAGE =
@@ -42,7 +42,9 @@ function assertSelfHosted(node: INode): void {
 	}
 }
 
-/** Connects, lists tools and applies the include/exclude filter; shared by supplyData and execute. */
+/**
+ * Connects to a workspace MCP server and returns tools matching the node's filter.
+ */
 async function connectAndListFilteredTools(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
 	itemIndex: number,
@@ -58,26 +60,24 @@ async function connectAndListFilteredTools(
 		throw new NodeOperationError(ctx.getNode(), 'Execution was cancelled', { itemIndex });
 	}
 
-	const credentials = await ctx.getCredentials('haystackEnterpriseApi');
 	const workspaceId = ctx.getNodeParameter('workspaceId', itemIndex) as string;
-	const apiKey = credentials.apiKey as string;
+	const auth = await resolveMcpAuth(ctx, itemIndex);
 	const timeout = ctx.getNodeParameter('options.timeout', itemIndex, 60000) as number;
 
-	if (!workspaceId || !apiKey) {
+	if (!workspaceId || !auth.token) {
 		throw new NodeOperationError(
 			ctx.getNode(),
-			'A workspace and an API key are required. Select a workspace above and make sure the Haystack Enterprise MCP API credential has a valid API key.',
+			'A workspace and a valid credential (API key or OAuth2) are required. Select a workspace above and make sure the Haystack Enterprise credential is set up correctly.',
 			{ itemIndex },
 		);
 	}
 
-	const apiOrigin = await getApiOriginForContext(ctx);
-	const { client, transport, mcpUrl } = createMcpTransport(workspaceId, apiKey, apiOrigin, signal);
+	const { client, transport, mcpUrl } = createMcpTransport(workspaceId, auth, signal);
 
 	try {
 		await client.connect(transport);
 	} catch (error) {
-		// Prefer the short hint on its own.
+		// Keep parameter-popover errors concise.
 		throw new NodeOperationError(
 			ctx.getNode(),
 			describeTransportErrorHint(error) ||
@@ -175,6 +175,12 @@ export class HaystackEnterpriseMcp implements INodeType {
 			{
 				name: 'haystackEnterpriseApi',
 				required: true,
+				displayOptions: { show: { authentication: ['apiKey'] } },
+			},
+			{
+				name: 'haystackEnterpriseOAuth2Api',
+				required: true,
+				displayOptions: { show: { authentication: ['oAuth2'] } },
 			},
 		],
 		properties: [
@@ -186,6 +192,25 @@ export class HaystackEnterpriseMcp implements INodeType {
 				default: '',
 			},
 			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'API Key',
+						value: 'apiKey',
+						description: 'Authenticate with a Haystack Enterprise API key',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+						description: 'Sign in with your Haystack Enterprise user account',
+					},
+				],
+				default: 'apiKey',
+			},
+			{
 				displayName:
 					'Make sure you have created an MCP server and enabled at least one pipeline as a tool in Haystack Enterprise Platform under Settings → Workspace → MCP. See the <a href="https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool/" target="_blank" rel="noopener noreferrer">docs on using a pipeline as an MCP tool</a>.',
 				name: 'mcpServerNotice',
@@ -193,12 +218,14 @@ export class HaystackEnterpriseMcp implements INodeType {
 				default: '',
 			},
 			{
-				// Plain `options` (not resourceLocator): loadOptionsDependsOn doesn't reliably
-				// refresh the dependent tool dropdowns otherwise.
+				// Plain options keep dependent tool lists refreshable in n8n.
 				displayName: 'Workspace Name or ID',
 				name: 'workspaceId',
 				type: 'options',
-				typeOptions: { loadOptionsMethod: 'getWorkspaces' },
+				typeOptions: {
+					loadOptionsMethod: 'getWorkspaces',
+					loadOptionsDependsOn: ['authentication'],
+				},
 				default: '',
 				required: true,
 				description:
@@ -235,7 +262,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getAvailableMcpTools',
-					loadOptionsDependsOn: ['workspaceId'],
+					loadOptionsDependsOn: ['authentication', 'workspaceId'],
 				},
 				default: [],
 				description:
@@ -248,7 +275,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getAvailableMcpTools',
-					loadOptionsDependsOn: ['workspaceId'],
+					loadOptionsDependsOn: ['authentication', 'workspaceId'],
 				},
 				default: [],
 				description:
@@ -290,8 +317,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 					return [];
 				}
 
-				const credentials = await this.getCredentials('haystackEnterpriseApi');
-				return loadMcpToolOptions(this, workspaceId, credentials.apiKey as string);
+				return loadMcpToolOptions(this, workspaceId, await resolveMcpAuth(this, 0));
 			},
 		},
 	};
@@ -314,15 +340,14 @@ export class HaystackEnterpriseMcp implements INodeType {
 		}
 
 		const tools = filteredTools.map((mcpTool) => {
-			// The schema is replaced below with raw JSON Schema so n8n converts it with its own
-			// Zod (our bundled Zod version would fail n8n's instanceof check).
+			// Use raw JSON Schema so n8n can convert it with its own Zod version.
 			const tool = new DynamicStructuredTool({
-				// Sanitized, node-namespaced name for the LLM; the MCP call uses mcpTool.name.
+				// Provider-facing names must be valid and unique across node instances.
 				name: buildMcpToolName(this.getNode().name, mcpTool.name),
 				description: mcpTool.description ?? mcpTool.name,
 				schema: z.object({}), // placeholder — replaced below
 				func: async (input: Record<string, unknown>) => {
-					// Trace each call on this node, including the tool name so calls are distinguishable.
+					// Record each tool call in the node's execution and AI traces.
 					const { index: runIndex } = this.addInputData(NodeConnectionTypes.AiTool, [
 						[{ json: { tool: mcpTool.name, input: input as IDataObject } }],
 					]);
@@ -337,7 +362,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 							undefined,
 							{ timeout, signal },
 						);
-						// isError can come on a normal response; throw so it is handled like a callTool error.
+						// MCP failures may be returned as successful responses with `isError`.
 						if (result.isError) {
 							throw new NodeOperationError(
 								this.getNode(),
@@ -346,7 +371,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 								{ itemIndex },
 							);
 						}
-						// Append structuredContent so typed output isn't dropped.
+						// Preserve typed MCP output returned alongside text content.
 						output = [
 							contentToString(result.content),
 							isStructuredContent(result.structuredContent)
@@ -377,6 +402,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 				},
 			});
 
+			// Replace the cross-version Zod placeholder with JSON Schema.
 			(tool as unknown as { schema: unknown }).schema = normalizeMcpInputSchema(
 				mcpTool.inputSchema,
 			);
@@ -385,9 +411,9 @@ export class HaystackEnterpriseMcp implements INodeType {
 		});
 
 		return {
-			// n8n expects a StructuredToolkit here; a bare array breaks "Execute step".
+			// StructuredToolkit supports both agent runs and n8n's tool-testing path.
 			response: new StructuredToolkit(tools),
-			// Keep the connection open for the agent's tool calls; close on teardown.
+			// Keep the MCP connection open while the agent can invoke tools.
 			closeFunction: async () => {
 				await client.close();
 			},
@@ -395,8 +421,8 @@ export class HaystackEnterpriseMcp implements INodeType {
 	}
 
 	/**
-	 * Runs as a regular workflow step: each item's "tool" field selects the pipeline and
-	 * the other fields are its arguments. Honors the same include/exclude filter as supplyData.
+	 * Calls one filtered MCP tool per input item when used as a regular workflow step.
+	 * The `tool` field selects the tool; remaining fields become its arguments.
 	 */
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		assertSelfHosted(this.getNode());

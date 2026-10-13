@@ -126,7 +126,7 @@ const chatHistoryGranularityField: INodeProperties = {
 	],
 };
 
-/** Flags for the *-stream endpoints that enable extra event types (tool calls, tool call results, reasoning). */
+/** Selects the additional event types returned by streaming endpoints. */
 const extraBodyParameters = extraParametersOption('body');
 
 const streamingAdditionalFields: INodeProperties[] = [
@@ -191,7 +191,7 @@ export const serviceFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDeployments',
-			loadOptionsDependsOn: ['workspaceName'],
+			loadOptionsDependsOn: ['authentication', 'workspaceName'],
 		},
 		default: '',
 		required: true,

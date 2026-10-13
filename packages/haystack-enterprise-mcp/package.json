@@ -37,7 +37,8 @@
 		"n8nNodesApiVersion": 1,
 		"strict": false,
 		"credentials": [
-			"dist/credentials/HaystackEnterpriseApi.credentials.js"
+			"dist/credentials/HaystackEnterpriseApi.credentials.js",
+			"dist/credentials/HaystackEnterpriseOAuth2Api.credentials.js"
 		],
 		"nodes": [
 			"dist/nodes/HaystackEnterpriseMcp/HaystackEnterpriseMcp.node.js"

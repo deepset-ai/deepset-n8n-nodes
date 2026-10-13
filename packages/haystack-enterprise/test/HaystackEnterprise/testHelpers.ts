@@ -1,7 +1,16 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { vi } from 'vitest';
 
-/** Minimal fake IExecuteFunctions: `getNodeParameter` reads `params`; `extraHelpers`/`extraContext` merge onto helpers/context. */
+/**
+ * Minimal fake IExecuteFunctions context shared by the resource execute()
+ * test suites: `getNodeParameter` reads from `params` and applies the node's
+ * API-key default; `httpRequestWithAuthentication` is any mock
+ * implementation, so callers can express a static response, a dynamic
+ * per-call responder (e.g. pagination), or one that throws. `extraHelpers`
+ * merges onto `context.helpers` (e.g. `assertBinaryData`/`prepareBinaryData`);
+ * `extraContext` merges onto the context itself (e.g. `isStreaming`/
+ * `sendChunk`).
+ */
 export function createExecuteContext(
 	params: Record<string, unknown>,
 	httpRequestWithAuthentication: (...args: unknown[]) => unknown,
@@ -15,7 +24,11 @@ export function createExecuteContext(
 		helpers: { httpRequestWithAuthentication: httpRequestMock, ...extraHelpers },
 		getNode: () => ({ name: 'Haystack Enterprise AI' }),
 		getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
+			Object.prototype.hasOwnProperty.call(params, name)
+				? params[name]
+				: name === 'authentication'
+					? 'apiKey'
+					: fallback,
 		getCredentials: async () => credentials,
 		...extraContext,
 	} as unknown as IExecuteFunctions;
