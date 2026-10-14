@@ -3,13 +3,22 @@ updates:
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
-      interval: 'weekly'
+      interval: 'monthly'
     labels:
       - 'dependencies'
       - 'npm'
     commit-message:
       prefix: 'build(deps): '
     groups:
+      # n8n packages must move together (see the axios/ai-node-sdk/node-cli bump);
+      # listed first because a dependency goes to the first group it matches.
+      n8n:
+        patterns:
+          - '@n8n/*'
+          - 'n8n-*'
+        update-types:
+          - 'minor'
+          - 'patch'
       dev-dependencies:
         patterns:
           - '@types/*'
@@ -30,9 +39,17 @@ updates:
         update-types:
           - 'minor'
           - 'patch'
-    # Majors are welcome (CLI, TypeScript, vitest), except for libs whose major
-    # must match what the n8n host provides to community nodes.
+    # Majors are welcome (CLI, vitest), except for libs whose major must match
+    # what the n8n host provides to community nodes, and for the lint/compile
+    # toolchain, which we keep on what @n8n/node-cli supports (e.g. its eslint
+    # plugin breaks on ESLint 10). Revisit when @n8n/node-cli's template moves.
     ignore:
+      - dependency-name: 'eslint'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'prettier'
+        update-types: ['version-update:semver-major']
       - dependency-name: 'zod'
         update-types: ['version-update:semver-major']
       - dependency-name: '@langchain/core'
@@ -43,9 +60,13 @@ updates:
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
-      interval: 'weekly'
+      interval: 'monthly'
     labels:
       - 'dependencies'
       - 'github-actions'
+    groups:
+      github-actions:
+        patterns:
+          - '*'
     commit-message:
       prefix: 'ci(deps): '
