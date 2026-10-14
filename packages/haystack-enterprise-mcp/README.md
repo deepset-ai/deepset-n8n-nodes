@@ -12,8 +12,8 @@ workflow automation platform.
 
 ## Supported n8n versions
 
-This package supports n8n 2.16 and later in the 2.x series. n8n 1.x isn't supported. We also check
-the package against the latest n8n release.
+This package supports n8n 2.16 and later in the 2.x series. We also check the package against the
+latest n8n release.
 
 ## Installation
 
