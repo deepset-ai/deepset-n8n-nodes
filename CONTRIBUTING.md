@@ -38,18 +38,6 @@ npm run dev -- --external-n8n
 N8N_DEV_RELOAD=true N8N_USER_FOLDER=~/.n8n-node-cli n8n start
 ```
 
-The example workflows of `haystack-enterprise` use the node types of the published npm package (for
-example `n8n-nodes-haystack-enterprise.haystackEnterpriseAi`). A node loaded with `npm run dev` is
-called `CUSTOM.<nodeName>` instead, so to import an example into a local dev instance, replace the
-package-name prefix in the JSON first, for example:
-
-```bash
-sed 's/n8n-nodes-haystack-enterprise\./CUSTOM./g' test/examples/chat-example.json > /tmp/chat-example.json
-```
-
-The `haystack-enterprise-mcp` example still uses `CUSTOM.haystackEnterpriseMcp`, because that
-package isn't published yet. Switch it to the npm type once it is.
-
 ### Linting
 
 ```bash
