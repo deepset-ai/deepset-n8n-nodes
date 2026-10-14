@@ -9,10 +9,10 @@ for building, deploying and running Haystack-based AI applications.
 
 ## Packages
 
-| Package                             | What it does                                                                                                                                                        | Docs                                                   |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `n8n-nodes-haystack-enterprise`     | Query AI services (search, chat) and manage files/indexes/search sessions on a Haystack Enterprise Platform workspace. n8n Cloud eligible. Ready for first release. | [README](./packages/haystack-enterprise/README.md)     |
-| `n8n-nodes-haystack-enterprise-mcp` | Expose pipelines you've enabled as MCP tools on a Haystack Enterprise Platform workspace as tools for an n8n AI Agent. Self-hosted n8n only. Not yet published.     | [README](./packages/haystack-enterprise-mcp/README.md) |
+| Package                             | What it does                                                                                                                                                                                                    | Docs                                                   |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `n8n-nodes-haystack-enterprise`     | Chat with deployed AI services, use them as a chat model for AI Agents, and manage files, indexes and search sessions in a Haystack Enterprise Platform workspace. n8n Cloud eligible. Ready for first release. | [README](./packages/haystack-enterprise/README.md)     |
+| `n8n-nodes-haystack-enterprise-mcp` | Expose pipelines you've enabled as MCP tools on a Haystack Enterprise Platform workspace as tools for an n8n AI Agent. Self-hosted n8n only. Not yet published.                                                 | [README](./packages/haystack-enterprise-mcp/README.md) |
 
 Each package lives in its own directory under `packages/`, with its own `package.json`, `nodes/`,
 `credentials/`, `test/`, and `README.md`. See each package's README for what it does, its
