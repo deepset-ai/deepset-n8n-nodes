@@ -15,8 +15,61 @@ npm run format:check
 npm run test
 ```
 
-Use `npm run format` to apply Prettier. See the [README](./README.md) and each package's README for
-details, including the contract tests (`npm run test:contract`).
+Use `npm run format` to apply Prettier.
+
+## Local development
+
+Run a node in a local n8n instance with hot reload (use a self-hosted instance for the MCP package,
+which refuses to run on n8n Cloud):
+
+```bash
+cd packages/haystack-enterprise   # or packages/haystack-enterprise-mcp
+npm run dev    # builds the node, loads it into n8n and starts n8n at http://localhost:5678
+```
+
+If `npm run dev` fails with `Error: Command "start" not found` (an upstream dependency conflict in
+n8n's bundled AI nodes), run it in external mode and start your own n8n instance (for example
+`npm install -g n8n`) against the same custom nodes folder:
+
+```bash
+npm run dev -- --external-n8n
+
+# in another terminal:
+N8N_DEV_RELOAD=true N8N_USER_FOLDER=~/.n8n-node-cli n8n start
+```
+
+The example workflows under each package's `test/examples/` use the `CUSTOM.` node type prefix of a
+locally loaded node.
+
+### Linting
+
+```bash
+npm run lint       # from the repo root, or inside a package
+npm run lint:fix
+```
+
+`packages/haystack-enterprise` is n8n Cloud eligible, so its `lint` runs in two passes: n8n's
+cloud-eligible ruleset over `nodes credentials package.json`, then the non-cloud ruleset
+(`eslint.test.config.mjs`) over `test/`, which would otherwise flag the `vitest` import.
+`packages/haystack-enterprise-mcp` isn't cloud eligible, so one non-cloud pass covers everything.
+`npm run cloud-scan -w packages/haystack-enterprise` runs n8n's community-package scanner against a
+packed build, as n8n does when a node is submitted for verification.
+
+### Testing
+
+```bash
+npm run test            # unit tests of every package (vitest)
+npm run test:contract   # contract tests against the OpenAPI spec, see below
+```
+
+### Contract tests
+
+`packages/contract-tests` validates `n8n-nodes-haystack-enterprise`'s nodes against the Haystack
+Enterprise Platform's OpenAPI spec. By default it starts a local
+[Prism](https://github.com/stoplightio/prism) mock server from the published spec
+(`https://docs.cloud.deepset.ai/openapi.yaml`), so no credentials are needed. To use a local spec
+file: `CONTRACT_SPEC=./openapi.yaml npm run test:contract`. See
+`packages/contract-tests/src/registry/` for what is covered.
 
 ## Pull requests
 

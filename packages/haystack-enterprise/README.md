@@ -11,9 +11,9 @@ with users, and run and monitor your apps in production.
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/)
 workflow automation platform.
 
-[Installation](#installation) [Local development](#local-development) [Operations](#operations)
-[Credentials](#credentials) [Usage](#usage) [Linting](#linting) [Testing](#testing)
-[Resources](#resources) [Version history](#version-history)
+[Installation](#installation) [Example workflows](#example-workflows) [Operations](#operations)
+[Credentials](#credentials) [Usage](#usage) [Resources](#resources)
+[Version history](#version-history) [Contributing](#contributing)
 
 ## Supported n8n versions
 
@@ -23,38 +23,19 @@ latest n8n release.
 ## Installation
 
 Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in
-the n8n community nodes documentation.
+the n8n community nodes documentation and search for `n8n-nodes-haystack-enterprise`.
 
-## Local development
+The package is n8n Cloud eligible and also works on self-hosted n8n.
 
-Clone the repo and run the node in a local n8n instance with hot reload:
+## Prerequisites
 
-```bash
-git clone https://github.com/deepset-ai/deepset-n8n-nodes.git
-cd deepset-n8n-nodes
-npm install
+- A [Haystack Enterprise Platform](https://www.deepset.ai) account with access to a workspace.
+- Either an API key (**Settings → API Keys**) or a sign-in with your Haystack Enterprise account
+  (OAuth2, n8n 2.19.2 or later). See [Credentials](#credentials).
 
-cd packages/haystack-enterprise
-npm run dev    # builds the node, loads it into n8n and starts n8n at http://localhost:5678
-```
+## Example workflows
 
-`npm run dev` watches for changes and hot-reloads the node.
-
-If `npm run dev` fails with `Error: Command "start" not found` (an upstream dependency conflict in
-n8n's bundled AI nodes), run it in external mode and start your own n8n instance (for example
-`npm install -g n8n`) against the same custom nodes folder:
-
-```bash
-npm run dev -- --external-n8n
-
-# in another terminal:
-N8N_DEV_RELOAD=true N8N_USER_FOLDER=~/.n8n-node-cli n8n start
-```
-
-### Example workflows
-
-[`test/examples/`](./test/examples) has ready-made workflows for trying out the node once it's
-loaded into your n8n instance:
+[`test/examples/`](./test/examples) has ready-made workflows to import into your n8n instance:
 
 - [`chat-example.json`](./test/examples/chat-example.json) — a form-triggered workflow that submits
   a question straight to **Chat** and shows the answer. The simplest example to start with.
@@ -83,7 +64,10 @@ To import one: in the n8n editor, open the menu (**⋮** in the top right) → *
 select the JSON file. You'll still need to fill in your own credentials, and any service-specific
 nodes (e.g. Google Drive) with your own credentials/settings.
 
-The node `type` fields use the `CUSTOM.` prefix; adjust it if you installed the package from npm.
+The workflow JSON files reference the node type `CUSTOM.haystackEnterpriseAi`, which is what a
+locally loaded copy of the node is called. If you installed the package from npm, the type is
+`n8n-nodes-haystack-enterprise.haystackEnterpriseAi`: after importing, replace the node with the one
+from the node panel, or search and replace the type in the JSON before importing.
 
 ## Operations
 
@@ -98,10 +82,7 @@ The package ships two nodes:
 ## Credentials
 
 Both nodes (**Haystack Enterprise AI** and **Haystack Enterprise Chat Model**) have an
-**Authentication** dropdown offering two ways to authenticate. Both credential types are also used
-by the companion
-[n8n-nodes-haystack-enterprise-mcp](https://www.npmjs.com/package/n8n-nodes-haystack-enterprise-mcp)
-package.
+**Authentication** dropdown offering two ways to authenticate.
 
 ### API Key
 
@@ -163,27 +144,6 @@ To make a Haystack Enterprise **service** the Agent's language model (not just a
 **Haystack Enterprise Chat Model** to the Agent's Model input. See
 [`haystack-chat-model-agent-example.json`](./test/examples/haystack-chat-model-agent-example.json).
 
-## Linting
-
-```bash
-npm run lint       # from packages/haystack-enterprise
-npm run lint:fix
-```
-
-This package is n8n-Cloud-eligible, so `lint`/`lint:fix` run in two passes: n8n's cloud-eligible
-ruleset over `nodes credentials package.json` (the code that actually ships), then the non-cloud
-ruleset (`eslint.test.config.mjs`) over `test/`, since that ruleset would otherwise flag `test/`'s
-`vitest` import as a cloud violation. Run from the repo root instead to lint every package in the
-workspace: `npm run lint` / `npm run lint:fix`.
-
-## Testing
-
-```bash
-npm run test        # from packages/haystack-enterprise, runs vitest
-```
-
-Or from the repo root, to run tests for every package in the workspace: `npm run test`.
-
 ## Resources
 
 - [n8n community nodes documentation](https://docs.n8n.io/integrations/#community-nodes)
@@ -191,4 +151,11 @@ Or from the repo root, to run tests for every package in the workspace: `npm run
 
 ## Version history
 
-- **0.1.0** — Initial release.
+See the [changelog](./CHANGELOG.md).
+
+## Contributing
+
+Developing or testing changes locally? See
+[CONTRIBUTING.md](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/CONTRIBUTING.md). Report
+security issues as described in
+[SECURITY.md](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/SECURITY.md).
