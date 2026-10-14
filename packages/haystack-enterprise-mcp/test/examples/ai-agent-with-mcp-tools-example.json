@@ -51,7 +51,7 @@
 			},
 			"id": "b2c3d4e5-0004-4a1a-9a1a-000000000004",
 			"name": "Haystack Enterprise MCP",
-			"type": "n8n-nodes-haystack-enterprise-mcp.haystackEnterpriseMcp",
+			"type": "CUSTOM.haystackEnterpriseMcp",
 			"typeVersion": 1,
 			"position": [-420, 220],
 			"credentials": {
