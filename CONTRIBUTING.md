@@ -28,9 +28,25 @@ details, including the contract tests (`npm run test:contract`).
 
 By contributing, you agree that your contributions are licensed under the [MIT License](./LICENSE).
 
+## CI
+
+`.github/workflows/ci.yml` runs on every pull request and on every push to `main`. Runs for the same
+branch or PR cancel each other when superseded. Jobs:
+
+- **lint-and-build**: `npm run lint`, `npm run format:check` (Prettier) and `npm run build` across
+  all packages.
+- **test**: the unit tests of every package (`npm run test`).
+- **contract-tests**: validates the nodes' request-building code against a local Prism mock of the
+  published Haystack Enterprise Platform OpenAPI spec. No credentials needed.
+- **latest-n8n**: upgrades `n8n-workflow` and `n8n-core` to the latest versions, then builds and
+  tests, to catch breakage with newer n8n releases. The lockfile pins the supported floor.
+
+Dependabot opens monthly dependency update PRs (`.github/dependabot.yml`). Run the same checks
+locally before pushing: `npm run lint && npm run format:check && npm run build && npm run test`.
+
 ## Releasing
 
 Maintainers only. Each package is released and tagged independently
 (`haystack-enterprise-v<version>`, `haystack-enterprise-mcp-v<version>`); pushing the tag triggers
-`.github/workflows/publish.yml`, which publishes to npm with provenance. See the header of that
-workflow for the full steps.
+`.github/workflows/publish.yml`, which (for `haystack-enterprise`, after re-running the contract
+tests) publishes to npm with provenance. See the header of that workflow for the full steps.
