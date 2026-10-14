@@ -25,9 +25,12 @@ latest n8n release.
 
 ## Installation
 
-> **Status: not yet published to npm.** This package is not part of the first release and is not
-> submitted for n8n verification. Until it is published, run it from a local checkout, see
-> [CONTRIBUTING.md](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/CONTRIBUTING.md#local-development).
+> **Status: not yet published.** This package is not available on npm yet, so you can't install it
+> from n8n's **Settings → Community Nodes** by name. It has also not been submitted for n8n
+> verification. For now you can use it by running it from a clone of this repository on a
+> self-hosted n8n instance, see
+> [Local development](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/CONTRIBUTING.md#local-development).
+> The released `n8n-nodes-haystack-enterprise` package is unaffected.
 
 **This node is only supported on self-hosted n8n.** It is not available on n8n Cloud and refuses to
 run there (the node checks n8n's own `N8N_DEPLOYMENT_TYPE` environment variable at runtime).
@@ -44,10 +47,6 @@ loaded into your n8n instance:
 To import it: in the n8n editor, open the menu (**⋮** in the top right) → **Import from File**, and
 select the JSON file. You'll still need to fill in your own credentials (including the OpenAI Chat
 Model node's) and select your own workspace on the Haystack Enterprise MCP node.
-
-The workflow JSON references the node type `CUSTOM.haystackEnterpriseMcp`, which is the name of a
-node loaded from a local checkout (the package isn't published yet). Once it is published and
-installed from npm, replace the node with the one from the node panel after importing.
 
 ## Operations
 
