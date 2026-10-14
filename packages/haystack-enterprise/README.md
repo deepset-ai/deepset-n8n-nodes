@@ -13,9 +13,18 @@ with users, and run and monitor your apps in production. It is built by
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/)
 workflow automation platform.
 
-[Installation](#installation) [Example workflows](#example-workflows) [Operations](#operations)
-[Credentials](#credentials) [Usage](#usage) [Resources](#resources)
-[Version history](#version-history) [Contributing](#contributing)
+## Contents
+
+- [Supported n8n versions](#supported-n8n-versions)
+- [Installation](#installation)
+- [Prerequisites](#prerequisites)
+- [Example workflows](#example-workflows)
+- [Operations](#operations)
+- [Credentials](#credentials)
+- [Usage](#usage)
+- [Resources](#resources)
+- [Version history](#version-history)
+- [Contributing](#contributing)
 
 ## Supported n8n versions
 

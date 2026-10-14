@@ -6,9 +6,17 @@ This is an n8n community node. It lets you use pipelines you've enabled as MCP t
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/)
 workflow automation platform.
 
-[Installation](#installation) [Example workflows](#example-workflows) [Operations](#operations)
-[Credentials](#credentials) [Usage](#usage) [Resources](#resources)
-[Version history](#version-history) [Contributing](#contributing)
+## Contents
+
+- [Supported n8n versions](#supported-n8n-versions)
+- [Installation](#installation)
+- [Example workflows](#example-workflows)
+- [Operations](#operations)
+- [Credentials](#credentials)
+- [Usage](#usage)
+- [Resources](#resources)
+- [Version history](#version-history)
+- [Contributing](#contributing)
 
 ## Supported n8n versions
 
