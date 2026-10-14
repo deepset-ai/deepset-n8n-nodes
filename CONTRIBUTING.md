@@ -19,23 +19,18 @@ Use `npm run format` to apply Prettier.
 
 ## Local development
 
-Run a node in a local n8n instance with hot reload (use a self-hosted instance for the MCP package,
-which refuses to run on n8n Cloud):
+Run a node in a local n8n instance with hot reload:
 
 ```bash
 cd packages/haystack-enterprise   # or packages/haystack-enterprise-mcp
 npm run dev    # builds the node, loads it into n8n and starts n8n at http://localhost:5678
 ```
 
-If `npm run dev` fails with `Error: Command "start" not found` (an upstream dependency conflict in
-n8n's bundled AI nodes), run it in external mode and start your own n8n instance (for example
-`npm install -g n8n`) against the same custom nodes folder:
+`npm run dev` watches for changes and hot-reloads the node. If another n8n instance is already
+running on your machine, give the dev instance its own ports:
 
 ```bash
-npm run dev -- --external-n8n
-
-# in another terminal:
-N8N_DEV_RELOAD=true N8N_USER_FOLDER=~/.n8n-node-cli n8n start
+N8N_PORT=5679 N8N_RUNNERS_BROKER_PORT=5681 npm run dev
 ```
 
 ### Linting
