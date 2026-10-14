@@ -6,9 +6,17 @@ This is an n8n community node. It lets you use pipelines you've enabled as MCP t
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/)
 workflow automation platform.
 
-[Installation](#installation) [Local development](#local-development) [Operations](#operations)
-[Credentials](#credentials) [Usage](#usage) [Linting](#linting) [Testing](#testing)
-[Resources](#resources) [Version history](#version-history)
+## Contents
+
+- [Supported n8n versions](#supported-n8n-versions)
+- [Installation](#installation)
+- [Example workflows](#example-workflows)
+- [Operations](#operations)
+- [Credentials](#credentials)
+- [Usage](#usage)
+- [Resources](#resources)
+- [Version history](#version-history)
+- [Contributing](#contributing)
 
 ## Supported n8n versions
 
@@ -17,40 +25,17 @@ latest n8n release.
 
 ## Installation
 
-Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in
-the n8n community nodes documentation.
+> **Status: not yet published.** This package is not available on npm yet, so you can't install it
+> from n8n's **Settings → Community Nodes** by name. It has also not been submitted for n8n
+> verification. For now you can use it by running it from a clone of this repository on a
+> self-hosted n8n instance, see
+> [Local development](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/CONTRIBUTING.md#local-development).
+> The released `n8n-nodes-haystack-enterprise` package is unaffected.
 
 **This node is only supported on self-hosted n8n.** It is not available on n8n Cloud and refuses to
 run there (the node checks n8n's own `N8N_DEPLOYMENT_TYPE` environment variable at runtime).
 
-## Local development
-
-Clone the repo and run the node in a local n8n instance with hot reload:
-
-```bash
-git clone https://github.com/deepset-ai/deepset-n8n-nodes.git
-cd deepset-n8n-nodes
-npm install
-
-cd packages/haystack-enterprise-mcp
-npm run dev    # builds the node, loads it into n8n and starts n8n at http://localhost:5678
-```
-
-`npm run dev` watches for changes and hot-reloads the node. This node refuses to run on n8n Cloud,
-so use a self-hosted instance.
-
-If `npm run dev` fails with `Error: Command "start" not found` (an upstream dependency conflict in
-n8n's bundled AI nodes), run it in external mode and start your own n8n instance (for example
-`npm install -g n8n`) against the same custom nodes folder:
-
-```bash
-npm run dev -- --external-n8n
-
-# in another terminal:
-N8N_DEV_RELOAD=true N8N_USER_FOLDER=~/.n8n-node-cli n8n start
-```
-
-### Example workflows
+## Example workflows
 
 [`test/examples/`](./test/examples) has a ready-made workflow for trying out the node once it's
 loaded into your n8n instance:
@@ -62,8 +47,6 @@ loaded into your n8n instance:
 To import it: in the n8n editor, open the menu (**⋮** in the top right) → **Import from File**, and
 select the JSON file. You'll still need to fill in your own credentials (including the OpenAI Chat
 Model node's) and select your own workspace on the Haystack Enterprise MCP node.
-
-The node `type` field uses the `CUSTOM.` prefix; adjust it if you installed the package from npm.
 
 ## Operations
 
@@ -130,26 +113,6 @@ You'll see a "Custom API Call" option at the bottom of some dropdowns. This is a
 by n8n to any node with a token/API-key credential — it's not something this node adds, and it has
 no effect here. You can safely ignore it.
 
-## Linting
-
-```bash
-npm run lint       # from packages/haystack-enterprise-mcp
-npm run lint:fix
-```
-
-This package isn't n8n-Cloud-eligible, so its single non-cloud ruleset can safely cover
-`nodes credentials package.json test` in one pass — unlike `packages/haystack-enterprise`, which
-needs a second, non-cloud config just for `test/`. Run from the repo root instead to lint every
-package in the workspace: `npm run lint` / `npm run lint:fix`.
-
-## Testing
-
-```bash
-npm run test        # from packages/haystack-enterprise-mcp, runs vitest
-```
-
-Or from the repo root, to run tests for every package in the workspace: `npm run test`.
-
 ## Resources
 
 - [n8n community nodes documentation](https://docs.n8n.io/integrations/#community-nodes)
@@ -157,4 +120,10 @@ Or from the repo root, to run tests for every package in the workspace: `npm run
 
 ## Version history
 
-- **0.1.0** — Initial release.
+See the [changelog](./CHANGELOG.md).
+
+## Contributing
+
+See [CONTRIBUTING.md](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/CONTRIBUTING.md).
+Report security issues as described in
+[SECURITY.md](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/SECURITY.md).
