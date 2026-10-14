@@ -36,10 +36,7 @@ export function createExecuteContext(
 	return { context, httpRequestWithAuthentication: httpRequestMock };
 }
 
-/**
- * Minimal stand-in for a Node.js Readable in 'data'/'end'/'error' mode — all
- * consumeSseStream()/apiRequestStream() actually rely on.
- */
+/** Minimal Readable stand-in for 'data'/'end'/'error' consumption. */
 export class FakeStream {
 	private listeners: Record<string, Array<(...args: unknown[]) => void>> = {};
 

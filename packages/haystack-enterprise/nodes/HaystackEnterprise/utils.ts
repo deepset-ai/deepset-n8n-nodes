@@ -100,9 +100,9 @@ function joinErrorItems(items: unknown[], firstOnly: boolean): string | undefine
 }
 
 /**
- * Message from a hub API error body, one of:
- * - `{ errors: [string | { message }] }` for a normal HTTPException
- * - `{ details: [{ message }] }` for HTTPValidationException, or FastAPI's `{ detail: [{ msg }] }`
+ * Message from an API error body, one of:
+ * - `{ errors: [string | { message }] }`
+ * - `{ details: [{ message }] }` or `{ detail: [{ msg }] }` for validation errors
  * - `{ error: { message, type, param, code } }` on OpenAI-compatible chat completions
  */
 function messageFromApiBody(data: unknown, firstOnly = false): string | undefined {
@@ -549,11 +549,8 @@ const MAX_RETRY_DELAY_MS = 30000;
 const RETRY_BACKOFF_FACTOR = 1.5;
 
 /**
- * Retries `fn` with growing backoff while it fails with HTTP 591 (the service
- * is inactive and is being activated), for up to `maxWaitMs` in total, then
- * rethrows that failure unchanged when it is already a NodeApiError, so its
- * message is not replaced by the generic status text. Runs `fn` exactly
- * once when `enabled` is false.
+ * Retries `fn` with growing backoff on HTTP 591 (service being activated) for up to `maxWaitMs`,
+ * then rethrows the original NodeApiError. Runs `fn` once when `enabled` is false.
  */
 export async function withServiceActivationRetry<T>(
 	this: IExecuteFunctions,
@@ -589,10 +586,7 @@ export async function withServiceActivationRetry<T>(
 	}
 }
 
-/**
- * List/paginated endpoints keyed by a name other than `data` (search sessions
- * respond with `{ search_sessions: [...], has_more, total }`).
- */
+/** List endpoints keyed by `search_sessions` instead of `data`. */
 export function extractSearchSessionList(response: unknown): IDataObject[] {
 	if (
 		response &&
@@ -633,16 +627,12 @@ export async function loadSearchSessionOptions(
 				typeof session.title === 'string' && session.title.trim() !== '' ? session.title : id;
 			return { name: title, value: id };
 		},
-		// Same deployment-only scoping as SearchSession's getAll() — see the comment there.
+		// Only deployment-owned sessions, as in SearchSession's getAll().
 		{ limit: 100, page_number: 1, filter: 'deployment_id ne null' },
 	);
 }
 
-/**
- * Splits a user-supplied comma-separated string parameter (e.g. "File Names")
- * into trimmed, non-empty items. Shared by File's `deleteMany` and Service's
- * stream operations' `files` field.
- */
+/** Splits a comma-separated parameter into trimmed, non-empty items. */
 export function parseCommaSeparatedList(value: unknown): string[] {
 	if (typeof value !== 'string' || value.trim() === '') {
 		return [];
@@ -690,10 +680,7 @@ export function readAdditionalParameters(
 	return extras;
 }
 
-/**
- * Parses a user-supplied JSON string parameter (e.g. a `type: 'json'` field),
- * throwing a NodeOperationError that points at the offending field if invalid.
- */
+/** Parses a JSON string parameter, throwing a NodeOperationError naming the field if invalid. */
 export function parseJsonField(
 	this: IExecuteFunctions,
 	itemIndex: number,

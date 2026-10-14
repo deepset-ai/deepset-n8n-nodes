@@ -11,9 +11,9 @@ with users, and run and monitor your apps in production.
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/)
 workflow automation platform.
 
-[Installation](#installation) [Local testing (pre-release)](#local-testing-pre-release)
-[Operations](#operations) [Credentials](#credentials) [Usage](#usage) [Linting](#linting)
-[Testing](#testing) [Resources](#resources) [Version history](#version-history)
+[Installation](#installation) [Local development](#local-development) [Operations](#operations)
+[Credentials](#credentials) [Usage](#usage) [Linting](#linting) [Testing](#testing)
+[Resources](#resources) [Version history](#version-history)
 
 ## Supported n8n versions
 
@@ -27,71 +27,29 @@ against the latest release. The floor is documented, not enforced: n8n's lint ru
 Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in
 the n8n community nodes documentation.
 
-> This package isn't published to npm yet. Until it is, use
-> [Local testing (pre-release)](#local-testing-pre-release) below instead.
+## Local development
 
-## Local testing (pre-release)
-
-This section is for internal/colleague testing before the package is published to npm. Once it's
-published, use the [Installation](#installation) instructions above instead.
-
-### Prerequisites
-
-- Node.js and npm
-- A running n8n instance to load the node into (a local Docker container, a global `n8n` install, or
-  the one `n8n-node dev` can start for you)
-
-### Installing and running n8n itself
-
-You don't need to do this to try `npm run dev` below — by default it starts and manages its own n8n
-instance for you. Set up your own n8n instance only if you hit the known dependency issue below
-(which needs the `--external-n8n` workaround) or you'd simply rather manage n8n yourself. Two common
-options:
-
-- **Global/npx install** — needed for the `--external-n8n` workaround below, since it shares your
-  host filesystem with `n8n-node`'s custom nodes folder:
-  ```bash
-  npm install -g n8n
-  n8n start
-  # or, without installing anything: npx n8n
-  ```
-- **Docker** — see n8n's own
-  [Docker installation docs](https://docs.n8n.io/hosting/installation/docker/) for the up-to-date
-  command, e.g.:
-  ```bash
-  docker volume create n8n_data
-  docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n
-  ```
-  Note that pointing a Dockerized n8n at this repo's build output needs extra
-  volume-mounting/`docker cp` steps beyond the `--external-n8n` workaround below — see
-  `.agents/workflow.md` for a worked example.
-
-Either way, n8n is served at [http://localhost:5678](http://localhost:5678).
-
-### Run n8n locally with the node loaded
+Clone the repo and run the node in a local n8n instance with hot reload:
 
 ```bash
 git clone https://github.com/deepset-ai/deepset-n8n-nodes.git
 cd deepset-n8n-nodes
-npm install                        # installs deps for every package in the workspace
+npm install
 
 cd packages/haystack-enterprise
-npm run dev                        # builds the node, symlinks it into n8n's custom
-                                    # nodes folder, and starts n8n at http://localhost:5678
+npm run dev    # builds the node, loads it into n8n and starts n8n at http://localhost:5678
 ```
 
-Open [http://localhost:5678](http://localhost:5678) and the node should be available in the nodes
-panel. `npm run dev` watches for changes and hot-reloads the node.
+`npm run dev` watches for changes and hot-reloads the node.
 
-**Known issue:** bare `npm run dev` can fail with `Error: Command "start" not found`. This is caused
-by an upstream dependency conflict in n8n's bundled AI/langchain nodes, not by this package (see
-`.agents/workflow.md` for the full root cause). If you hit it, run in external mode instead and
-point your own n8n instance (the global/npx install from above) at the same custom nodes folder:
+If `npm run dev` fails with `Error: Command "start" not found` (an upstream dependency conflict in
+n8n's bundled AI nodes), run it in external mode and start your own n8n instance (for example
+`npm install -g n8n`) against the same custom nodes folder:
 
 ```bash
 npm run dev -- --external-n8n
 
-# in another terminal, with the n8n install from above:
+# in another terminal:
 N8N_DEV_RELOAD=true N8N_USER_FOLDER=~/.n8n-node-cli n8n start
 ```
 
@@ -127,9 +85,7 @@ To import one: in the n8n editor, open the menu (**⋮** in the top right) → *
 select the JSON file. You'll still need to fill in your own credentials, and any service-specific
 nodes (e.g. Google Drive) with your own credentials/settings.
 
-These were exported from a local dev setup where the node is loaded via n8n's `CUSTOM` custom-nodes
-folder (see `.agents/workflow.md`), so their Haystack Enterprise node `type` fields use the
-`CUSTOM.` prefix.
+The node `type` fields use the `CUSTOM.` prefix; adjust it if you installed the package from npm.
 
 ## Operations
 
@@ -219,9 +175,8 @@ npm run lint:fix
 This package is n8n-Cloud-eligible, so `lint`/`lint:fix` run in two passes: n8n's cloud-eligible
 ruleset over `nodes credentials package.json` (the code that actually ships), then the non-cloud
 ruleset (`eslint.test.config.mjs`) over `test/`, since that ruleset would otherwise flag `test/`'s
-`vitest` import as a cloud violation — see the "Known issues" section in `.agents/workflow.md` for
-why. Run from the repo root instead to lint every package in the workspace: `npm run lint` /
-`npm run lint:fix`.
+`vitest` import as a cloud violation. Run from the repo root instead to lint every package in the
+workspace: `npm run lint` / `npm run lint:fix`.
 
 ## Testing
 

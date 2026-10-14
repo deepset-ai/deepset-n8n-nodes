@@ -1,20 +1,24 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
-
 version: 2
 updates:
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
-      interval: 'weekly'
+      interval: 'monthly'
     labels:
       - 'dependencies'
       - 'npm'
     commit-message:
       prefix: 'build(deps): '
     groups:
+      # n8n packages must move together (see the axios/ai-node-sdk/node-cli bump);
+      # listed first because a dependency goes to the first group it matches.
+      n8n:
+        patterns:
+          - '@n8n/*'
+          - 'n8n-*'
+        update-types:
+          - 'minor'
+          - 'patch'
       dev-dependencies:
         patterns:
           - '@types/*'
@@ -35,22 +39,35 @@ updates:
         update-types:
           - 'minor'
           - 'patch'
-    # Majors are welcome (CLI, TypeScript, vitest), except for libs whose major
-    # must match what the n8n host provides to community nodes.
+    # Majors are welcome (CLI, vitest), except for libs whose major must match
+    # what the n8n host provides to community nodes, and for the lint/compile
+    # toolchain, which we keep on what @n8n/node-cli supports (e.g. its eslint
+    # plugin breaks on ESLint 10). Revisit when @n8n/node-cli's template moves.
     ignore:
+      - dependency-name: 'eslint'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'prettier'
+        update-types: ['version-update:semver-major']
       - dependency-name: 'zod'
         update-types: ['version-update:semver-major']
+      # Must match the @langchain/core copy n8n provides; a newer range makes npm nest a
+      # second copy (and the MCP node hands its tools to n8n's StructuredToolkit).
       - dependency-name: '@langchain/core'
-        update-types: ['version-update:semver-major']
       - dependency-name: 'n8n-*'
         update-types: ['version-update:semver-major']
 
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
-      interval: 'weekly'
+      interval: 'monthly'
     labels:
       - 'dependencies'
       - 'github-actions'
+    groups:
+      github-actions:
+        patterns:
+          - '*'
     commit-message:
       prefix: 'ci(deps): '
