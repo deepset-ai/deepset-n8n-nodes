@@ -45,7 +45,7 @@
 		]
 	},
 	"dependencies": {
-		"@langchain/core": ">=0.3.0",
+		"@langchain/core": ">=1.2.17",
 		"@modelcontextprotocol/sdk": "^1.32.1",
 		"zod": "^3.25.76"
 	},
@@ -54,7 +54,7 @@
 		"eslint": "9.39.5",
 		"prettier": "3.9.10",
 		"release-it": "^21.1.1",
-		"typescript": "6.0.2",
+		"typescript": "6.0.3",
 		"vitest": "^5.0.4"
 	},
 	"peerDependencies": {
