@@ -52,8 +52,9 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: 'zod'
         update-types: ['version-update:semver-major']
+      # Must match the @langchain/core copy n8n provides; a newer range makes npm nest a
+      # second copy (and the MCP node hands its tools to n8n's StructuredToolkit).
       - dependency-name: '@langchain/core'
-        update-types: ['version-update:semver-major']
       - dependency-name: 'n8n-*'
         update-types: ['version-update:semver-major']
 
