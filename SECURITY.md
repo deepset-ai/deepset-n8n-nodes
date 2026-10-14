@@ -32,10 +32,10 @@ before submitting.
 
 The nodes act on the Haystack Enterprise Platform on behalf of the user whose credentials are
 configured in n8n. The nodes connect to _services_, the stable entities users interact with on the
-platform; each service runs a pipeline under the hood. For example, the Haystack Enterprise AI node
-queries services, and the pipelines behind them can contain the user's own code. The nodes can also
-create, read, update and delete resources such as files, indexes and search sessions in the user's
-workspace.
+platform; each service runs at least one pipeline under the hood. For example, the Haystack
+Enterprise AI node queries services, and the pipelines behind them can contain the user's own code.
+The nodes can also create, read, update and delete resources such as files, indexes and search
+sessions in the user's workspace.
 
 **Running user-authored services and modifying one's own resources is the intended behavior.** The
 security responsibility lies with the operator: services and the inputs passed to them must be
