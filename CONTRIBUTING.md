@@ -3,6 +3,9 @@
 Thanks for your interest in contributing! Please follow our [Code of Conduct](./CODE_OF_CONDUCT.md).
 Report security issues as described in [SECURITY.md](./SECURITY.md), not in public issues.
 
+For bugs and feature requests, open a GitHub issue. For other questions, contact us at
+[info@deepset.ai](mailto:info@deepset.ai).
+
 ## Setup
 
 This is an npm workspaces monorepo; each package lives under `packages/`. Use a current LTS release
