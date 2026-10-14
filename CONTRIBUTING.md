@@ -30,19 +30,16 @@ By contributing, you agree that your contributions are licensed under the [MIT L
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every pull request and on every push to `main`. Runs for the same
-branch or PR cancel each other when superseded. Jobs:
+`.github/workflows/ci.yml` runs on every pull request and on every push to `main`:
 
-- **lint-and-build**: `npm run lint`, `npm run format:check` (Prettier) and `npm run build` across
-  all packages.
-- **test**: the unit tests of every package (`npm run test`).
-- **contract-tests**: validates the nodes' request-building code against a local Prism mock of the
-  published Haystack Enterprise Platform OpenAPI spec. No credentials needed.
-- **latest-n8n**: upgrades `n8n-workflow` and `n8n-core` to the latest versions, then builds and
-  tests, to catch breakage with newer n8n releases. The lockfile pins the supported floor.
+- **lint-and-build**: lint, Prettier format check and build for all packages.
+- **test**: unit tests of every package.
+- **contract-tests**: checks the nodes against a mock of the published Haystack Enterprise Platform
+  OpenAPI spec (no credentials needed).
+- **latest-n8n**: builds and tests against the latest `n8n-workflow` and `n8n-core`.
 
-Dependabot opens monthly dependency update PRs (`.github/dependabot.yml`). Run the same checks
-locally before pushing: `npm run lint && npm run format:check && npm run build && npm run test`.
+Run the same checks locally:
+`npm run lint && npm run format:check && npm run build && npm run test`.
 
 ## Releasing
 
