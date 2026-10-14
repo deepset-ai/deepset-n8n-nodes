@@ -15,6 +15,11 @@ workflow automation platform.
 [Credentials](#credentials) [Usage](#usage) [Linting](#linting) [Testing](#testing)
 [Resources](#resources) [Version history](#version-history)
 
+## Supported n8n versions
+
+This package supports n8n 2.16 and later in the 2.x series. We also check the package against the
+latest n8n release.
+
 ## Installation
 
 Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in
