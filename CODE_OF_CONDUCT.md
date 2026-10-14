@@ -51,8 +51,10 @@ an appointed representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community
-leaders responsible for enforcement at engage@deepset.ai. All complaints will be reviewed and
-investigated promptly and fairly.
+leaders responsible for enforcement by using GitHub's "Report content" feature on the offending
+issue, pull request, or comment, or by contacting a repository maintainer directly on GitHub. Please
+do not post sensitive details in a public issue. All complaints will be reviewed and investigated
+promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the reporter of any
 incident.
