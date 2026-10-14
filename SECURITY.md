@@ -63,8 +63,8 @@ The server URL in the credentials is chosen by the operator, and the nodes send 
 without restricting which hosts or IP ranges are reachable. **Restricting outbound network access is
 the responsibility of the n8n deployment and the network layer**, for example through egress
 firewall rules. Reports that only show the nodes can be pointed at an internal address by someone
-who controls the credentials are out of scope. URL-fetching behaviour inside services on the
-platform is not part of these nodes.
+who controls the credentials are out of scope. Issues in services running on the platform should be
+reported to deepset via the address above.
 
 ---
 
