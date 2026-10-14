@@ -1,12 +1,14 @@
 # n8n-nodes-haystack-enterprise
 
 This is an n8n community node. It lets you query AI services and manage files on a
-[Haystack Enterprise Platform](https://www.deepset.ai) workspace from your n8n workflows.
+[Haystack Enterprise Platform](https://cloud.deepset.ai/) workspace from your n8n workflows.
 
 Haystack Enterprise Platform is a platform for building production-ready AI-powered applications and
 managing them across the full lifecycle — from prototyping to large-scale production. You get
 everything you need to work with your data, choose your models, build and evaluate, share prototypes
-with users, and run and monitor your apps in production.
+with users, and run and monitor your apps in production. It is built by
+[deepset](https://www.deepset.ai/), the company behind
+[Haystack](https://github.com/deepset-ai/haystack), the open source AI orchestration framework.
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/)
 workflow automation platform.
@@ -29,7 +31,7 @@ The package is n8n Cloud eligible and also works on self-hosted n8n.
 
 ## Prerequisites
 
-- A [Haystack Enterprise Platform](https://www.deepset.ai) account with access to a workspace.
+- A [Haystack Enterprise Platform](https://cloud.deepset.ai/) account with access to a workspace.
 - Either an API key (**Settings → API Keys**) or a sign-in with your Haystack Enterprise account
   (OAuth2, n8n 2.19.2 or later). See [Credentials](#credentials).
 

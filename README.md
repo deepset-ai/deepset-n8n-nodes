@@ -1,7 +1,11 @@
 # Haystack Enterprise Platform n8n community nodes
 
 This repo contains deepset's [n8n](https://n8n.io/) community node packages for integrating n8n
-workflows with [Haystack Enterprise Platform](https://www.deepset.ai).
+workflows with [Haystack Enterprise Platform](https://cloud.deepset.ai/).
+
+[deepset](https://www.deepset.ai/) develops [Haystack](https://github.com/deepset-ai/haystack), the
+open source AI orchestration framework, and the Haystack Enterprise Platform, its managed platform
+for building, deploying and running Haystack-based AI applications.
 
 ## Packages
 
