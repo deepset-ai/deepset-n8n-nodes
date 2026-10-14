@@ -21,6 +21,8 @@ export class HaystackEnterpriseChatModel implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Haystack Enterprise Chat Model',
 		name: 'haystackEnterpriseChatModel',
+		// The icon is designed to work on both light and dark themes, so a single file is enough.
+		// eslint-disable-next-line @n8n/community-nodes/icon-prefer-themed-variants
 		icon: 'file:../HaystackEnterprise/haystack-enterprise-electric-blue.svg',
 		group: ['transform'],
 		version: 1,
