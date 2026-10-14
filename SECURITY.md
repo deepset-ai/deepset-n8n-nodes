@@ -28,18 +28,20 @@ issues in the Haystack Enterprise Platform API to deepset via the address above.
 The following area has been deliberately scoped out below and we ask that you read it carefully
 before submitting.
 
-### Running Pipelines and Managing Resources on the Platform
+### Running Services and Managing Resources on the Platform
 
 The nodes act on the Haystack Enterprise Platform on behalf of the user whose credentials are
-configured in n8n. For example, the Haystack Enterprise AI node runs pipelines (services) on the
-platform, and those pipelines can contain the user's own code. The nodes can also create, read,
-update and delete resources such as files, indexes and search sessions in the user's workspace.
+configured in n8n. The nodes only connect to _services_, the stable entities users interact with on
+the platform; each service runs a pipeline under the hood. For example, the Haystack Enterprise AI
+node queries services, and the pipelines behind them can contain the user's own code. The nodes can
+also create, read, update and delete resources such as files, indexes and search sessions in the
+user's workspace.
 
-**Executing user-authored pipelines and modifying one's own resources is the intended behavior.**
-The security responsibility lies with the operator: workflows, pipelines and the inputs passed to
-them must be treated as code, reviewed accordingly, and never built from untrusted or
+**Running user-authored services and modifying one's own resources is the intended behavior.** The
+security responsibility lies with the operator: workflows, the services they call and the inputs
+passed to them must be treated as code, reviewed accordingly, and never built from untrusted or
 user-controlled input without review. API keys should be scoped to what the workflow needs. Reports
-that demonstrate, for example, code execution through a pipeline the operator chose to run, or
+that demonstrate, for example, code execution through a service the operator chose to run, or
 changes to resources the credentials are authorized to modify, are out of scope.
 
 ---
