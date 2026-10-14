@@ -5,7 +5,9 @@ Report security issues as described in [SECURITY.md](./SECURITY.md), not in publ
 
 ## Setup
 
-This is an npm workspaces monorepo; each package lives under `packages/`.
+This is an npm workspaces monorepo; each package lives under `packages/`. Use a current LTS release
+of Node.js, as CI does. Newer non-LTS releases may fail to install, because a native dependency of
+the n8n tooling (`isolated-vm`) does not build on them yet.
 
 ```bash
 npm install
