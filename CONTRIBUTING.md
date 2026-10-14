@@ -94,8 +94,62 @@ Run the same checks locally:
 
 ## Releasing
 
-Maintainers only. Each package is released and tagged independently
-(`haystack-enterprise-v<version>`, `haystack-enterprise-mcp-v<version>`); pushing the tag triggers
-`.github/workflows/publish.yml`, which (for `haystack-enterprise`, after re-running the contract
-tests and n8n's community-node scan) publishes to npm with provenance. See the header of that
-workflow for the full steps.
+Maintainers only. Each package is released and tagged independently. Pushing a release tag triggers
+[`.github/workflows/publish.yml`](./.github/workflows/publish.yml), which publishes that package to
+npm with a provenance statement (required by n8n for verified community nodes).
+
+| Package                             | Tag format                           | Notes                                             |
+| ----------------------------------- | ------------------------------------ | ------------------------------------------------- |
+| `n8n-nodes-haystack-enterprise`     | `haystack-enterprise-v<version>`     | Re-runs contract tests and n8n's scan first.      |
+| `n8n-nodes-haystack-enterprise-mcp` | `haystack-enterprise-mcp-v<version>` | Not published yet. Don't tag it until it's ready. |
+
+Release tags are protected by a repository ruleset: only repository admins can create, move or
+delete them.
+
+### Create a release
+
+1. **Prepare the release in a pull request.** In `packages/<name>/`, set the new `version` in
+   `package.json` and move the `CHANGELOG.md` entries from `Unreleased` to a heading with that
+   version. Merge the pull request into `main` after CI passes.
+2. **Check `main`.** Pull the latest `main` and confirm the merge commit contains the version bump.
+   The tag must point at this commit, and the tag version must match `package.json`: the workflow
+   publishes the version in `package.json`, not the one in the tag name.
+3. **Create and push the tag.** From a clean checkout of `main`:
+
+   ```bash
+   git checkout main && git pull
+   git tag -a haystack-enterprise-v0.1.0 -m "n8n-nodes-haystack-enterprise 0.1.0"
+   git push origin haystack-enterprise-v0.1.0
+   ```
+
+   Or in the GitHub UI: **Releases → Draft a new release → Choose a tag**, type the new tag name,
+   select **Create new tag on publish**, set the target to `main`, add release notes and click
+   **Publish release**.
+
+4. **Watch the workflow.** Open the **Actions** tab and follow the **Publish** run. It lints, builds
+   and publishes. It fails, without publishing, if the contract tests, the n8n scan or the build
+   fail.
+5. **Verify.** On [npmjs.com](https://www.npmjs.com/) check that the new version is listed and shows
+   the **Provenance** badge linking to the workflow run. Then install it in a test n8n instance and
+   import one of the example workflows.
+
+### If a release fails
+
+- **Failed before publishing** (tests, scan or build): fix the problem in a pull request. Then
+  delete the tag (`git push --delete origin <tag> && git tag -d <tag>`) and tag the fixed commit.
+- **Already published to npm:** a version can never be published twice. Bump the version and release
+  again, and deprecate the bad one with `npm deprecate <package>@<version> "<reason>"`.
+
+### One-time npm setup
+
+Before the first release of a package, and only then:
+
+1. The package doesn't exist on npm yet, so publish the first version with a temporary
+   [granular access token](https://docs.npmjs.com/about-access-tokens) (read and write, bypass
+   two-factor authentication, short expiry) stored as the `NPM_TOKEN` repository secret.
+2. After the package exists, open its npm **Settings → Trusted Publisher → GitHub Actions** and add:
+   organization `deepset-ai`, repository `deepset-n8n-nodes`, workflow `publish.yml`, no
+   environment, and allow `npm publish`. npm doesn't validate this when you save it, and the
+   configuration expires if no publish succeeds within 2 days, so add it shortly before the next
+   release.
+3. Delete the `NPM_TOKEN` secret and revoke the token. Later releases authenticate through OIDC.
