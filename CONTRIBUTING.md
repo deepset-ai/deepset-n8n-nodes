@@ -20,7 +20,8 @@ details, including the contract tests (`npm run test:contract`).
 
 ## Pull requests
 
-1. Fork the repo and branch from `main`.
+1. Branch from `main`. External contributors: fork the repo first. deepset maintainers: clone the
+   repo directly.
 2. Keep changes focused, add or update tests, and update the package's `CHANGELOG.md` for
    user-visible changes.
 3. Make sure lint, format check, build and tests pass. CI runs them on every PR.
