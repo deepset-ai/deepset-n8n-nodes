@@ -21,10 +21,6 @@ latest n8n release.
 > submitted for n8n verification. Until it is published, run it from a local checkout, see
 > [CONTRIBUTING.md](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/CONTRIBUTING.md#local-development).
 
-Once published, follow the
-[installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n
-community nodes documentation.
-
 **This node is only supported on self-hosted n8n.** It is not available on n8n Cloud and refuses to
 run there (the node checks n8n's own `N8N_DEPLOYMENT_TYPE` environment variable at runtime).
 

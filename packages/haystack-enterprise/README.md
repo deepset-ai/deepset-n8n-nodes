@@ -64,11 +64,6 @@ To import one: in the n8n editor, open the menu (**⋮** in the top right) → *
 select the JSON file. You'll still need to fill in your own credentials, and any service-specific
 nodes (e.g. Google Drive) with your own credentials/settings.
 
-The workflow JSON files reference the node type `CUSTOM.haystackEnterpriseAi`, which is what a
-locally loaded copy of the node is called. If you installed the package from npm, the type is
-`n8n-nodes-haystack-enterprise.haystackEnterpriseAi`: after importing, replace the node with the one
-from the node panel, or search and replace the type in the JSON before importing.
-
 ## Operations
 
 The package ships two nodes:
