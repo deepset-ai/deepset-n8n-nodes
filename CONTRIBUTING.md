@@ -6,8 +6,7 @@ Report security issues as described in [SECURITY.md](./SECURITY.md), not in publ
 ## Setup
 
 This is an npm workspaces monorepo; each package lives under `packages/`. Use a current LTS release
-of Node.js, as CI does. Newer non-LTS releases may fail to install, because a native dependency of
-the n8n tooling (`isolated-vm`) does not build on them yet.
+of Node.js, as CI does.
 
 ```bash
 npm install
@@ -83,6 +82,8 @@ By contributing, you agree that your contributions are licensed under the [MIT L
 - **test**: unit tests of every package.
 - **contract-tests**: checks the nodes against a mock of the published Haystack Enterprise Platform
   OpenAPI spec (no credentials needed).
+- **cloud-scan**: runs n8n's community-package scanner against a packed build of
+  `haystack-enterprise`, the same checks n8n applies when a node is submitted for verification.
 - **latest-n8n**: builds and tests against the latest `n8n-workflow` and `n8n-core`.
 
 Run the same checks locally:
@@ -93,4 +94,5 @@ Run the same checks locally:
 Maintainers only. Each package is released and tagged independently
 (`haystack-enterprise-v<version>`, `haystack-enterprise-mcp-v<version>`); pushing the tag triggers
 `.github/workflows/publish.yml`, which (for `haystack-enterprise`, after re-running the contract
-tests) publishes to npm with provenance. See the header of that workflow for the full steps.
+tests and n8n's community-node scan) publishes to npm with provenance. See the header of that
+workflow for the full steps.

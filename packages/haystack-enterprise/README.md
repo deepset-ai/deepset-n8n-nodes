@@ -60,8 +60,6 @@ The package is n8n Cloud eligible and also works on self-hosted n8n.
   — recommended for conversational chat: n8n **AI Agent** with **Haystack Enterprise Chat Model** on
   the Model port (deployment chat completions) and Simple Memory. Use this instead of wiring **Chat
   Completions** directly to a Chat Trigger.
-- For programmatic use, call **Service → Chat Completions** on **Haystack Enterprise AI** and supply
-  the OpenAI-style `messages` array yourself (fields or JSON).
 - [`agent-with-chat-tools-example.json`](./test/examples/agent-with-chat-tools-example.json) — an AI
   Agent with two separate tool instances of this node, one running **Chat** for a one-off question
   and one running **Chat (Streaming)** for a conversational follow-up, so it can pick whichever fits
@@ -70,6 +68,9 @@ The package is n8n Cloud eligible and also works on self-hosted n8n.
   — a nightly scheduled workflow that diffs a Google Drive folder against files already indexed in
   Haystack Enterprise, uploading new files, updating changed ones, deleting removed ones, and
   waiting for indexing to finish before reporting.
+
+For programmatic use without an example, call **Service → Chat Completions** on **Haystack
+Enterprise AI** and supply the OpenAI-style `messages` array yourself (fields or JSON).
 
 To import one: in the n8n editor, open the menu (**⋮** in the top right) → **Import from File**, and
 select the JSON file. You'll still need to fill in your own credentials, and any service-specific

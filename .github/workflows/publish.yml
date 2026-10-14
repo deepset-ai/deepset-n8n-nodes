@@ -27,7 +27,7 @@
 #   git push && git push origin <name>-v<version>
 #
 # The haystack-enterprise job also runs the contract tests
-# (packages/contract-tests) before publishing.
+# (packages/contract-tests) and n8n's community-node scan before publishing.
 
 name: Publish
 
@@ -62,6 +62,9 @@ jobs:
 
       - name: Run contract tests against the published OpenAPI spec
         run: 'npm run test:contract'
+
+      - name: Scan the package with n8n's community-node checks
+        run: 'npm run cloud-scan -w packages/haystack-enterprise'
 
       - name: Release
         # Lint and build run as part of `n8n-node release`. With NPM_TOKEN

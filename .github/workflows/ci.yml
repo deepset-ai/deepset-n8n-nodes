@@ -72,6 +72,26 @@ jobs:
       - name: Run contract tests against the published OpenAPI spec
         run: 'npm run test:contract'
 
+  # Runs n8n's own community-package scanner (the check n8n applies when a node is submitted for
+  # verification) against a packed build of the n8n Cloud eligible package.
+  cloud-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: 'npm ci'
+
+      - name: Scan the package with n8n's community-node checks
+        run: 'npm run cloud-scan -w packages/haystack-enterprise'
+
   # The lockfile pins the supported floor (n8n 2.16); this job checks the newest n8n-workflow/n8n-core.
   latest-n8n:
     runs-on: ubuntu-latest
