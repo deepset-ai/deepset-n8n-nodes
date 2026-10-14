@@ -107,7 +107,7 @@
 			},
 			"id": "0debaba5-ecc0-4ec8-955f-d29290585d36",
 			"name": "Get Existing Haystack Files",
-			"type": "CUSTOM.haystackEnterpriseAi",
+			"type": "n8n-nodes-haystack-enterprise.haystackEnterpriseAi",
 			"typeVersion": 1,
 			"position": [-1200, 0],
 			"alwaysOutputData": true,
@@ -177,7 +177,7 @@
 			},
 			"id": "deb26c56-ad65-4163-98e4-7fc2769c3e62",
 			"name": "Get File Meta",
-			"type": "CUSTOM.haystackEnterpriseAi",
+			"type": "n8n-nodes-haystack-enterprise.haystackEnterpriseAi",
 			"typeVersion": 1,
 			"position": [-500, 140],
 			"credentials": {
@@ -326,7 +326,7 @@
 			},
 			"id": "8fa8e921-58ef-4d83-820e-d2c6e5209437",
 			"name": "Upload To Haystack",
-			"type": "CUSTOM.haystackEnterpriseAi",
+			"type": "n8n-nodes-haystack-enterprise.haystackEnterpriseAi",
 			"typeVersion": 1,
 			"position": [-200, -220],
 			"credentials": {
@@ -369,7 +369,7 @@
 			},
 			"id": "a9184893-3a71-4046-a8b1-2927879c3cbc",
 			"name": "Overwrite In Haystack",
-			"type": "CUSTOM.haystackEnterpriseAi",
+			"type": "n8n-nodes-haystack-enterprise.haystackEnterpriseAi",
 			"typeVersion": 1,
 			"position": [0, 0],
 			"credentials": {
@@ -387,7 +387,7 @@
 			},
 			"id": "618d940d-9661-4434-97a3-417462b86c81",
 			"name": "Delete From Haystack",
-			"type": "CUSTOM.haystackEnterpriseAi",
+			"type": "n8n-nodes-haystack-enterprise.haystackEnterpriseAi",
 			"typeVersion": 1,
 			"position": [0, 220],
 			"onError": "continueRegularOutput",
@@ -441,7 +441,7 @@
 			},
 			"id": "81b72abb-3f5a-4b08-9df0-0ab69da5653d",
 			"name": "Check Index Status",
-			"type": "CUSTOM.haystackEnterpriseAi",
+			"type": "n8n-nodes-haystack-enterprise.haystackEnterpriseAi",
 			"typeVersion": 1,
 			"position": [600, 0],
 			"credentials": {
@@ -522,7 +522,7 @@
 		},
 		{
 			"parameters": {
-				"content": "## Before running this\n- Set your Drive folder ID/name and Haystack workspace (6x \"Workspace Name or ID\" dropdowns) after import.\n- This mirrors ONE flat folder (no subfolders). Recursive mirroring would need an extra folder-walk step.\n- The \"Get Existing Haystack Files\" -> per-file \"Get File Meta\" loop is N+1 API calls. Fine for hundreds of files/night; reconsider for very large workspaces.\n- \"Get Existing Haystack Files\" has \"Execute Once\" enabled - required, not optional. Its input (\"Normalize Drive Files\") emits one item per Drive file, and the Haystack Enterprise AI node's own execute() re-runs its chosen operation once per input item by design (correct for per-file operations like Upload/Delete, wrong for a blanket \"list everything\" call like getAll). Without Execute Once, getAll reran once per Drive file, returning that many duplicate copies of the file list concatenated together - which silently survived the source_id-keyed unchanged/updated comparison but surfaced as the same file being flagged for deletion many times over in the orphan-detection pass.\n- Node type is 'CUSTOM.haystackEnterpriseAi', matching a locally-loaded custom node (~/.n8n/custom). If installing this as a real published community node instead, change the type to 'n8n-nodes-haystack-enterprise.haystackEnterpriseAi' on all 6 Haystack Enterprise AI nodes.\n- Only files tagged 'source_system: google_drive' in their metadata are considered \"managed\" by this workflow, so it won't touch unrelated files already in the workspace.\n- Google-native files (Docs/Sheets/Slides/Drawings) get exported on download using the Drive node's default conversion formats (HTML/CSV/PPTX/JPEG) since no explicit \"Google File Conversion\" is configured - check the two \"Download From Drive\" nodes' Options if you want PDF/DOCX instead.\n- Metadata field types are inferred from the FIRST value Haystack ever sees for a key and locked for the whole workspace from then on (see https://docs.cloud.deepset.ai/docs/add-metadata#metadata-format ). content_hash is stored as content_hash_text (the _text suffix forces string typing) because its value's shape differs by file type (md5 hash vs. Google Drive revision ID vs. timestamp fallback) and would otherwise get its type locked inconsistently. There is no API to reset an already-locked field's type short of deleting the index/workspace - if you see a 400 mentioning \"failed to parse field ... of type ...\", rename the offending metadata key (add a _text/_int/etc. suffix) rather than trying to fix the old field.\n- \"Get Existing Haystack Files\" has \"Always Output Data\" enabled so the diff still runs on a brand-new/empty workspace: n8n skips a node entirely (not \"runs with 0 items\") when its only input branch carries 0 items, which cascades - a fresh workspace's empty file list would otherwise silently stop \"Loop Existing Files\", and everything after it, forever. The placeholder item this produces has no file_id, so \"Has Existing File?\" routes it straight back into the loop instead of into \"Get File Meta\". The one true no-op case left is both the Drive folder and the workspace being empty at the same time; nothing to sync, so nothing runs, which is correct.",
+				"content": "## Before running this\n- Set your Drive folder ID/name and Haystack workspace (6x \"Workspace Name or ID\" dropdowns) after import.\n- This mirrors ONE flat folder (no subfolders). Recursive mirroring would need an extra folder-walk step.\n- The \"Get Existing Haystack Files\" -> per-file \"Get File Meta\" loop is N+1 API calls. Fine for hundreds of files/night; reconsider for very large workspaces.\n- \"Get Existing Haystack Files\" has \"Execute Once\" enabled - required, not optional. Its input (\"Normalize Drive Files\") emits one item per Drive file, and the Haystack Enterprise AI node's own execute() re-runs its chosen operation once per input item by design (correct for per-file operations like Upload/Delete, wrong for a blanket \"list everything\" call like getAll). Without Execute Once, getAll reran once per Drive file, returning that many duplicate copies of the file list concatenated together - which silently survived the source_id-keyed unchanged/updated comparison but surfaced as the same file being flagged for deletion many times over in the orphan-detection pass.\n- The node type is the one of the installed npm package (n8n-nodes-haystack-enterprise). If you load the node from a local checkout instead, it is called 'CUSTOM.haystackEnterpriseAi'.\n- Only files tagged 'source_system: google_drive' in their metadata are considered \"managed\" by this workflow, so it won't touch unrelated files already in the workspace.\n- Google-native files (Docs/Sheets/Slides/Drawings) get exported on download using the Drive node's default conversion formats (HTML/CSV/PPTX/JPEG) since no explicit \"Google File Conversion\" is configured - check the two \"Download From Drive\" nodes' Options if you want PDF/DOCX instead.\n- Metadata field types are inferred from the FIRST value Haystack ever sees for a key and locked for the whole workspace from then on (see https://docs.cloud.deepset.ai/docs/add-metadata#metadata-format ). content_hash is stored as content_hash_text (the _text suffix forces string typing) because its value's shape differs by file type (md5 hash vs. Google Drive revision ID vs. timestamp fallback) and would otherwise get its type locked inconsistently. There is no API to reset an already-locked field's type short of deleting the index/workspace - if you see a 400 mentioning \"failed to parse field ... of type ...\", rename the offending metadata key (add a _text/_int/etc. suffix) rather than trying to fix the old field.\n- \"Get Existing Haystack Files\" has \"Always Output Data\" enabled so the diff still runs on a brand-new/empty workspace: n8n skips a node entirely (not \"runs with 0 items\") when its only input branch carries 0 items, which cascades - a fresh workspace's empty file list would otherwise silently stop \"Loop Existing Files\", and everything after it, forever. The placeholder item this produces has no file_id, so \"Has Existing File?\" routes it straight back into the loop instead of into \"Get File Meta\". The one true no-op case left is both the Drive folder and the workspace being empty at the same time; nothing to sync, so nothing runs, which is correct.",
 				"height": 600,
 				"width": 980,
 				"color": 5

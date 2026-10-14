@@ -36,7 +36,7 @@
 			},
 			"id": "e5f6a7b8-0002-4c1c-9c1c-000000000002",
 			"name": "Haystack Enterprise AI",
-			"type": "CUSTOM.haystackEnterpriseAi",
+			"type": "n8n-nodes-haystack-enterprise.haystackEnterpriseAi",
 			"typeVersion": 1,
 			"position": [-480, 0],
 			"credentials": {

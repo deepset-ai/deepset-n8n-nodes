@@ -38,8 +38,14 @@ npm run dev -- --external-n8n
 N8N_DEV_RELOAD=true N8N_USER_FOLDER=~/.n8n-node-cli n8n start
 ```
 
-The example workflows under each package's `test/examples/` use the `CUSTOM.` node type prefix of a
-locally loaded node.
+The example workflows under each package's `test/examples/` use the node types of the published npm
+packages (for example `n8n-nodes-haystack-enterprise.haystackEnterpriseAi`). A node loaded with
+`npm run dev` is called `CUSTOM.<nodeName>` instead, so to import an example into a local dev
+instance, replace the package-name prefix in the JSON first, for example:
+
+```bash
+sed 's/n8n-nodes-haystack-enterprise\./CUSTOM./g' test/examples/chat-example.json > /tmp/chat-example.json
+```
 
 ### Linting
 

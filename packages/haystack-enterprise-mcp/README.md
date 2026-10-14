@@ -37,9 +37,8 @@ To import it: in the n8n editor, open the menu (**⋮** in the top right) → **
 select the JSON file. You'll still need to fill in your own credentials (including the OpenAI Chat
 Model node's) and select your own workspace on the Haystack Enterprise MCP node.
 
-The workflow JSON references the node type `CUSTOM.haystackEnterpriseMcp`, which is the name of a
-locally loaded node. Replace the node with the one from the node panel after importing if you
-installed the package from npm.
+The example uses the node type of the npm package. To import it into a local dev instance, see
+[CONTRIBUTING.md](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/CONTRIBUTING.md#local-development).
 
 ## Operations
 
