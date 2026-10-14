@@ -17,10 +17,8 @@ workflow automation platform.
 
 ## Supported n8n versions
 
-n8n **2.16 or newer** (2.x only; 1.x is not supported). This is the version the packages are built
-and tested against (`n8n-workflow` / `n8n-core` in `package-lock.json`); CI also builds and tests
-against the latest release. The floor is documented, not enforced: n8n's lint rule requires the
-`n8n-workflow` peer dependency to stay `*`.
+This package supports n8n 2.16 and later in the 2.x series. n8n 1.x isn't supported. We also check
+the package against the latest n8n release.
 
 ## Installation
 
