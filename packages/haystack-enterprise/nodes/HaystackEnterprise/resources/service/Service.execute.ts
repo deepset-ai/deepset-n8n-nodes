@@ -12,6 +12,7 @@ import {
 	parseCommaSeparatedList,
 	parseJsonField,
 	readAdditionalParameters,
+	toNodeApiError,
 	withServiceActivationRetry,
 } from '../../utils';
 
@@ -225,8 +226,7 @@ async function runChatStream(this: IExecuteFunctions, itemIndex: number): Promis
 	} catch (error) {
 		if (relayLive)
 			this.sendChunk('error', itemIndex, error instanceof Error ? error.message : 'Request failed');
-		// eslint-disable-next-line @n8n/community-nodes/require-node-api-error -- already a NodeApiError (apiRequestStream/withServiceActivationRetry always throw one); rethrowing in place preserves .context.data (see apiRequest()'s docstring in utils.ts)
-		throw error;
+		throw toNodeApiError(this.getNode(), error);
 	}
 
 	const events: IDataObject[] = [];
@@ -545,8 +545,7 @@ async function runChatCompletions(
 	} catch (error) {
 		if (relayLive)
 			this.sendChunk('error', itemIndex, error instanceof Error ? error.message : 'Request failed');
-		// eslint-disable-next-line @n8n/community-nodes/require-node-api-error -- already a NodeApiError (apiRequestStream/withServiceActivationRetry always throw one); rethrowing in place preserves .context.data (see apiRequest()'s docstring in utils.ts)
-		throw error;
+		throw toNodeApiError(this.getNode(), error);
 	}
 
 	const chunks: IDataObject[] = [];

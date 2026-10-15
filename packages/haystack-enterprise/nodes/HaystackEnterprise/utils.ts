@@ -4,6 +4,7 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
+	INode,
 	INodePropertyOptions,
 	ISupplyDataFunctions,
 	JsonObject,
@@ -81,6 +82,25 @@ export async function getApiBaseUrlForContext(context: NodeContext): Promise<str
  */
 export function isNodeApiError(error: unknown): error is NodeApiError {
 	return error instanceof NodeApiError || (error instanceof Error && error.name === 'NodeApiError');
+}
+
+/**
+ * Returns `error` as it is when it already is a NodeApiError, which keeps its message,
+ * description and `context.data`. Anything else is wrapped in a new NodeApiError.
+ * (Constructing a new NodeApiError from one created by another n8n-workflow module copy would
+ * replace its message with generic status text.)
+ */
+export function toNodeApiError(
+	node: INode,
+	error: unknown,
+	options: { itemIndex?: number } = {},
+): NodeApiError {
+	if (isNodeApiError(error)) {
+		if (options.itemIndex !== undefined && error.context)
+			error.context.itemIndex = options.itemIndex;
+		return error;
+	}
+	return new NodeApiError(node, error as JsonObject, options);
 }
 
 function textFromErrorItem(item: unknown): string | undefined {
@@ -577,11 +597,7 @@ export async function withServiceActivationRetry<T>(
 				delayMs = Math.min(delayMs * RETRY_BACKOFF_FACTOR, MAX_RETRY_DELAY_MS);
 				continue;
 			}
-			if (isNodeApiError(error)) {
-				// eslint-disable-next-line @n8n/community-nodes/require-node-api-error -- already a NodeApiError; constructing a new one replaces .message with the generic status text
-				throw error;
-			}
-			throw new NodeApiError(this.getNode(), error as JsonObject);
+			throw toNodeApiError(this.getNode(), error);
 		}
 	}
 }
