@@ -1,7 +1,8 @@
 # @deepset-ai/n8n-nodes-haystack-enterprise
 
 This is an n8n community node. It lets you query AI services and manage files on a
-[Haystack Enterprise Platform](https://cloud.deepset.ai/) workspace from your n8n workflows.
+[Haystack Enterprise Platform](https://www.deepset.ai/haystack-platform) workspace from your n8n
+workflows.
 
 Haystack Enterprise Platform is a platform for building production-ready AI-powered applications and
 managing them across the full lifecycle — from prototyping to large-scale production. You get
@@ -9,6 +10,9 @@ everything you need to work with your data, choose your models, build and evalua
 with users, and run and monitor your apps in production. It is built by
 [deepset](https://www.deepset.ai/), the company behind
 [Haystack](https://github.com/deepset-ai/haystack), the open source AI orchestration framework.
+
+New to Haystack Enterprise Platform? Start with the
+[getting started guide](https://docs.cloud.deepset.ai/docs/getting-started).
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/)
 workflow automation platform.
@@ -62,7 +66,8 @@ The package ships two nodes:
 
 ## Example workflows
 
-[`test/examples/`](./test/examples) has ready-made workflows to import into your n8n instance:
+The example workflows are not part of the npm package. They live in the repository, in
+[`packages/haystack-enterprise/test/examples/`](https://github.com/deepset-ai/deepset-n8n-nodes/tree/main/packages/haystack-enterprise/test/examples):
 
 - [`chat-example.json`](./test/examples/chat-example.json) — a form-triggered workflow that submits
   a question straight to **Chat** and shows the answer. The simplest example to start with.
@@ -85,12 +90,16 @@ The package ships two nodes:
   Haystack Enterprise, uploading new files, updating changed ones, deleting removed ones, and
   waiting for indexing to finish before reporting.
 
-For programmatic use without an example, call **Service → Chat Completions** on **Haystack
-Enterprise AI** and supply the OpenAI-style `messages` array yourself (fields or JSON).
+To use one, either:
 
-To import one: in the n8n editor, open the menu (**⋮** in the top right) → **Import from File**, and
-select the JSON file. You'll still need to fill in your own credentials, and any service-specific
-nodes (e.g. Google Drive) with your own credentials/settings.
+- open the file on GitHub, click **Copy raw file**, and paste it onto the n8n canvas (Ctrl/Cmd+V),
+  or
+- clone the repository (`git clone https://github.com/deepset-ai/deepset-n8n-nodes.git`) and, in the
+  n8n editor, open the menu (**⋮** in the top right) → **Import from File** and select the JSON
+  file.
+
+You'll still need to fill in your own credentials, and any service-specific nodes (e.g. Google
+Drive) with your own credentials and settings.
 
 ## Credentials
 
@@ -99,7 +108,8 @@ Both nodes (**Haystack Enterprise AI** and **Haystack Enterprise Chat Model**) h
 
 ### API Key
 
-1. In Haystack Enterprise Platform, go to **Settings → API Keys** and generate a key.
+1. In [Haystack Enterprise Platform](https://cloud.deepset.ai/), go to **Settings → API Keys** and
+   generate a key. See [Generate an API key](https://docs.cloud.deepset.ai/docs/generate-api-key).
 2. On the node, choose **API Key** and create a **Haystack Enterprise API** credential.
 3. Paste the key into the credential.
 
@@ -114,7 +124,8 @@ OAuth2 credentials require n8n 2.19.2 or later.
 
 1. On the node, choose **OAuth2** and create a **Haystack Enterprise OAuth2 API** credential.
 2. Leave the default settings as they are.
-3. Click **Connect** and sign in with your Haystack Enterprise account.
+3. Click **Connect** and sign in with your [Haystack Enterprise Platform](https://cloud.deepset.ai/)
+   account.
 
 The nodes run as the signed-in user, with that user's workspace access and permissions.
 
@@ -132,17 +143,25 @@ history. Leave it empty and the node starts a session automatically, returning i
 output's `search_session_id` field — feed that back into **Search Session ID** on the next call to
 continue the conversation. For a one-off question, leave it empty and ignore the returned ID. To
 manage sessions explicitly instead (e.g. to list or delete them later), create one with the **Search
-Session** resource's **Create** operation and pass its ID in from the start.
+Session** resource's **Create** operation
+([API reference](https://docs.cloud.deepset.ai/docs/api/main/create-search-session-api-v-1-workspaces-workspace-name-deployments-deployment-id-search-sessions-post))
+and pass its ID in from the start.
 
-**Chat** (`/chat`) returns one JSON result when generation finishes. **Chat (Streaming)**
-(`chat-stream`) returns the answer incrementally; with **Simplify Output** on, that is one item
-whose `content` is the concatenated answer.
+**Chat**
+([API reference](https://docs.cloud.deepset.ai/docs/api/main/chat-api-v-1-workspaces-workspace-name-deployments-deployment-id-chat-post))
+returns one JSON result when generation finishes. **Chat (Streaming)**
+([API reference](https://docs.cloud.deepset.ai/docs/api/main/chat-stream-api-v-1-workspaces-workspace-name-deployments-deployment-id-chat-stream-post))
+returns the answer incrementally; with **Simplify Output** on, that is one item whose `content` is
+the concatenated answer.
 
-**Chat Completions** is the OpenAI-compatible alternative: you send the full conversation as
-`messages` (the client owns history — there is no search session) and get a `chat.completion` back.
-Turn **Stream** on to receive OpenAI SSE chunks instead of a single JSON response. Use **List Models
-(Chat Completions)** to discover valid `model` values (`{workspace}/{deployment_id}`) for Chat
-Completions in that workspace.
+**Chat Completions**
+([API reference](https://docs.cloud.deepset.ai/docs/api/main/chat-completions-api-v-1-workspaces-workspace-name-deployments-v-1-chat-completions-post))
+is the OpenAI-compatible alternative: you send the full conversation as `messages` (the client owns
+history — there is no search session) and get a `chat.completion` back. Turn **Stream** on to
+receive OpenAI SSE chunks instead of a single JSON response. Use **List Models (Chat Completions)**
+([API reference](https://docs.cloud.deepset.ai/docs/api/main/list-models-api-v-1-workspaces-workspace-name-deployments-v-1-models-get))
+to discover valid `model` values (`{workspace}/{deployment_id}`) for Chat Completions in that
+workspace.
 
 For multi-turn chat on an **AI Agent**, use **Haystack Enterprise Chat Model**: it runs Chat
 Completions on the selected service, n8n's Agent and Simple Memory build `messages` for you.
@@ -160,7 +179,11 @@ To make a Haystack Enterprise **service** the Agent's language model (not just a
 ## Resources
 
 - [n8n community nodes documentation](https://docs.n8n.io/integrations/#community-nodes)
+- [Haystack Enterprise Platform website](https://www.deepset.ai/haystack-platform)
+- [Haystack Enterprise Platform](https://cloud.deepset.ai/)
+- [Haystack Enterprise Platform: getting started](https://docs.cloud.deepset.ai/docs/getting-started)
 - [Haystack Enterprise Platform docs](https://docs.cloud.deepset.ai/)
+- [Haystack Enterprise Platform API reference](https://docs.cloud.deepset.ai/docs/api/)
 
 ## Version history
 
