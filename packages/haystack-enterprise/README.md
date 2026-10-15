@@ -10,6 +10,9 @@ with users, and run and monitor your apps in production. It is built by
 [deepset](https://www.deepset.ai/), the company behind
 [Haystack](https://github.com/deepset-ai/haystack), the open source AI orchestration framework.
 
+New to Haystack Enterprise Platform? Start with the
+[getting started guide](https://docs.cloud.deepset.ai/docs/getting-started).
+
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/)
 workflow automation platform.
 
@@ -176,6 +179,7 @@ To make a Haystack Enterprise **service** the Agent's language model (not just a
 
 - [n8n community nodes documentation](https://docs.n8n.io/integrations/#community-nodes)
 - [Haystack Enterprise Platform](https://cloud.deepset.ai/)
+- [Haystack Enterprise Platform: getting started](https://docs.cloud.deepset.ai/docs/getting-started)
 - [Haystack Enterprise Platform docs](https://docs.cloud.deepset.ai/)
 - [Haystack Enterprise Platform API reference](https://docs.cloud.deepset.ai/docs/api/)
 
