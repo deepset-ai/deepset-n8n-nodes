@@ -21,6 +21,10 @@ npm run test
 
 Use `npm run format` to apply Prettier.
 
+`npm install` also enables a pre-commit hook (`.githooks/pre-commit`) that checks the formatting of
+the files you commit. If it fails, run `npm run format` and stage the changes. You can skip it with
+`git commit --no-verify`; CI runs the same check.
+
 ## Local development
 
 Run a node in a local n8n instance with hot reload:

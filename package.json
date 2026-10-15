@@ -12,6 +12,7 @@
 		"packages/*"
 	],
 	"scripts": {
+		"prepare": "git config core.hooksPath .githooks || true",
 		"build": "npm run build --workspaces --if-present",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
