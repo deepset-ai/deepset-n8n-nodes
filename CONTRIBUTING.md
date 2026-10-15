@@ -60,8 +60,8 @@ npm run test:contract   # contract tests against the OpenAPI spec, see below
 
 ### Contract tests
 
-`packages/contract-tests` validates `n8n-nodes-haystack-enterprise`'s nodes against the Haystack
-Enterprise Platform's OpenAPI spec. By default it starts a local
+`packages/contract-tests` validates `@deepset-ai/n8n-nodes-haystack-enterprise`'s nodes against the
+Haystack Enterprise Platform's OpenAPI spec. By default it starts a local
 [Prism](https://github.com/stoplightio/prism) mock server from the published spec
 (`https://docs.cloud.deepset.ai/openapi.yaml`), so no credentials are needed. To use a local spec
 file: `CONTRACT_SPEC=./openapi.yaml npm run test:contract`. See

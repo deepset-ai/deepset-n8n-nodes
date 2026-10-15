@@ -39,7 +39,7 @@ on:
 
 jobs:
   publish-haystack-enterprise:
-    name: Publish n8n-nodes-haystack-enterprise
+    name: Publish @deepset-ai/n8n-nodes-haystack-enterprise
     if: startsWith(github.ref_name, 'haystack-enterprise-v')
     runs-on: ubuntu-latest
 
@@ -76,7 +76,7 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-haystack-enterprise-mcp:
-    name: Publish n8n-nodes-haystack-enterprise-mcp
+    name: Publish @deepset-ai/n8n-nodes-haystack-enterprise-mcp
     if: startsWith(github.ref_name, 'haystack-enterprise-mcp-v')
     runs-on: ubuntu-latest
 

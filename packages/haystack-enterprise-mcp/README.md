@@ -1,4 +1,4 @@
-# n8n-nodes-haystack-enterprise-mcp
+# @deepset-ai/n8n-nodes-haystack-enterprise-mcp
 
 This is an n8n community node. It lets you use pipelines you've enabled as MCP tools on a
 [Haystack Enterprise Platform](https://cloud.deepset.ai/) workspace as tools for an n8n AI Agent.
@@ -30,7 +30,7 @@ latest n8n release.
 > verification. For now you can use it by running it from a clone of this repository on a
 > self-hosted n8n instance, see
 > [Local development](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/CONTRIBUTING.md#local-development).
-> The released `n8n-nodes-haystack-enterprise` package is unaffected.
+> The released `@deepset-ai/n8n-nodes-haystack-enterprise` package is unaffected.
 
 **This node is only supported on self-hosted n8n.** It is not available on n8n Cloud and refuses to
 run there (the node checks n8n's own `N8N_DEPLOYMENT_TYPE` environment variable at runtime).

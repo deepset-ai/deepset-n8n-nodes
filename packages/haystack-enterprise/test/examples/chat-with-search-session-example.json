@@ -64,7 +64,7 @@
 			},
 			"id": "a1b2c3d4-0005-4a1a-9a1a-000000000005",
 			"name": "Create Search Session",
-			"type": "n8n-nodes-haystack-enterprise.haystackEnterpriseAi",
+			"type": "@deepset-ai/n8n-nodes-haystack-enterprise.haystackEnterpriseAi",
 			"typeVersion": 1,
 			"position": [-460, 120],
 			"credentials": {
@@ -96,7 +96,7 @@
 			},
 			"id": "a1b2c3d4-0007-4a1a-9a1a-000000000007",
 			"name": "Haystack Enterprise AI",
-			"type": "n8n-nodes-haystack-enterprise.haystackEnterpriseAi",
+			"type": "@deepset-ai/n8n-nodes-haystack-enterprise.haystackEnterpriseAi",
 			"typeVersion": 1,
 			"position": [-20, 0],
 			"credentials": {

@@ -1,4 +1,4 @@
-# n8n-nodes-haystack-enterprise
+# @deepset-ai/n8n-nodes-haystack-enterprise
 
 This is an n8n community node. It lets you query AI services and manage files on a
 [Haystack Enterprise Platform](https://cloud.deepset.ai/) workspace from your n8n workflows.
@@ -34,7 +34,8 @@ latest n8n release.
 ## Installation
 
 Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in
-the n8n community nodes documentation and search for `n8n-nodes-haystack-enterprise`.
+the n8n community nodes documentation and enter the package name
+`@deepset-ai/n8n-nodes-haystack-enterprise`.
 
 The package is n8n Cloud eligible and also works on self-hosted n8n.
 
