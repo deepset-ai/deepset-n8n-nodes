@@ -1,5 +1,5 @@
 {
-	"name": "n8n-nodes-haystack-enterprise",
+	"name": "@deepset-ai/n8n-nodes-haystack-enterprise",
 	"version": "0.1.0",
 	"description": "N8n community node package for integrating with Haystack Enterprise Platform.",
 	"license": "MIT",
@@ -30,6 +30,9 @@
 		"cloud-scan": "node scripts/cloud-scan.mjs",
 		"release": "n8n-node release",
 		"prepublishOnly": "n8n-node prerelease"
+	},
+	"publishConfig": {
+		"access": "public"
 	},
 	"files": [
 		"dist"

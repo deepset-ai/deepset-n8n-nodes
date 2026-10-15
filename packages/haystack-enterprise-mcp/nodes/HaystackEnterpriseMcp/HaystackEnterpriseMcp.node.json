@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-haystack-enterprise-mcp",
+	"node": "@deepset-ai/n8n-nodes-haystack-enterprise-mcp",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Development"],
