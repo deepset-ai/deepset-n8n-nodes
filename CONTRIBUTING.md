@@ -136,20 +136,3 @@ npm with a provenance statement (required by n8n for verified community nodes).
   delete the tag (`git push --delete origin <tag> && git tag -d <tag>`) and tag the fixed commit.
 - **Already published to npm:** a version can never be published twice. Bump the version and release
   again, and deprecate the bad one with `npm deprecate <package>@<version> "<reason>"`.
-
-### One-time npm setup
-
-Before the first release of a package, and only then:
-
-1. The packages are published under the `@deepset-ai` npm organization, and a package doesn't exist
-   on npm until its first publish. So publish the first version with a temporary
-   [granular access token](https://docs.npmjs.com/about-access-tokens) of an organization member
-   (read and write on the organization's packages, bypass two-factor authentication, short expiry)
-   stored as the `NPM_TOKEN` repository secret. `publishConfig.access` is already set to `public` in
-   each `package.json`.
-2. After the package exists, open its npm **Settings → Trusted Publisher → GitHub Actions** and add:
-   organization `deepset-ai`, repository `deepset-n8n-nodes`, workflow `publish.yml`, no
-   environment, and allow `npm publish`. npm doesn't validate this when you save it, and the
-   configuration expires if no publish succeeds within 2 days, so add it shortly before the next
-   release.
-3. Delete the `NPM_TOKEN` secret and revoke the token. Later releases authenticate through OIDC.
