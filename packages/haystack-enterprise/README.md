@@ -1,7 +1,8 @@
 # @deepset-ai/n8n-nodes-haystack-enterprise
 
 This is an n8n community node. It lets you query AI services and manage files on a
-[Haystack Enterprise Platform](https://cloud.deepset.ai/) workspace from your n8n workflows.
+[Haystack Enterprise Platform](https://www.deepset.ai/haystack-platform) workspace from your n8n
+workflows.
 
 Haystack Enterprise Platform is a platform for building production-ready AI-powered applications and
 managing them across the full lifecycle — from prototyping to large-scale production. You get
