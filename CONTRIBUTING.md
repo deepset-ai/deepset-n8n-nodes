@@ -48,6 +48,7 @@ npm run lint:fix
 cloud-eligible ruleset over `nodes credentials package.json`, then the non-cloud ruleset
 (`eslint.test.config.mjs`) over `test/`, which would otherwise flag the `vitest` import.
 `packages/haystack-enterprise-mcp` isn't cloud eligible, so one non-cloud pass covers everything.
+
 `npm run cloud-scan -w packages/haystack-enterprise` runs the two checks n8n applies when a node is
 submitted for verification:
 
