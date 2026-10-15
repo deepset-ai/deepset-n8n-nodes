@@ -85,10 +85,8 @@ export function isNodeApiError(error: unknown): error is NodeApiError {
 }
 
 /**
- * Returns `error` as it is when it already is a NodeApiError, which keeps its message,
- * description and `context.data`. Anything else is wrapped in a new NodeApiError.
- * (Constructing a new NodeApiError from one created by another n8n-workflow module copy would
- * replace its message with generic status text.)
+ * Keep existing `NodeApiError`s unchanged so their message, description, and context are preserved.
+ * Wrap other errors in a `NodeApiError`.
  */
 export function toNodeApiError(
 	node: INode,
