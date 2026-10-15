@@ -178,6 +178,7 @@ To make a Haystack Enterprise **service** the Agent's language model (not just a
 ## Resources
 
 - [n8n community nodes documentation](https://docs.n8n.io/integrations/#community-nodes)
+- [Haystack Enterprise Platform website](https://www.deepset.ai/haystack-platform)
 - [Haystack Enterprise Platform](https://cloud.deepset.ai/)
 - [Haystack Enterprise Platform: getting started](https://docs.cloud.deepset.ai/docs/getting-started)
 - [Haystack Enterprise Platform docs](https://docs.cloud.deepset.ai/)
