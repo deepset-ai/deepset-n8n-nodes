@@ -12,7 +12,7 @@ for building, deploying and running Haystack-based AI applications.
 | Package                                         | What it does                                                                                                                                                                           | Docs                                                   |
 | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
 | `@deepset-ai/n8n-nodes-haystack-enterprise`     | Chat with deployed AI services, use them as a chat model for AI Agents, and manage files, indexes and search sessions in a Haystack Enterprise Platform workspace. n8n Cloud eligible. | [README](./packages/haystack-enterprise/README.md)     |
-| `@deepset-ai/n8n-nodes-haystack-enterprise-mcp` | Expose pipelines you've enabled as MCP tools on a Haystack Enterprise Platform workspace as tools for an n8n AI Agent. Self-hosted n8n only. Not yet published.                        | [README](./packages/haystack-enterprise-mcp/README.md) |
+| `@deepset-ai/n8n-nodes-haystack-enterprise-mcp` | Expose pipelines you've enabled as MCP tools on a Haystack Enterprise Platform workspace as tools for an n8n AI Agent. Self-hosted n8n only. Not n8n-verified.                         | [README](./packages/haystack-enterprise-mcp/README.md) |
 
 Each package lives in its own directory under `packages/`, with its own `package.json`, `nodes/`,
 `credentials/`, `test/`, and `README.md`. See each package's README for what it does, its
@@ -20,9 +20,9 @@ operations/credentials, and how to install and use it.
 
 ## Status
 
-`@deepset-ai/n8n-nodes-haystack-enterprise` is released (0.1.0) and available on npm as an n8n
-community node. `@deepset-ai/n8n-nodes-haystack-enterprise-mcp` is not yet published. It is
-self-hosted only and is not submitted for verification.
+`@deepset-ai/n8n-nodes-haystack-enterprise` is available on npm as an n8n community node and has
+been submitted for n8n verification. `@deepset-ai/n8n-nodes-haystack-enterprise-mcp` is available on
+npm for self-hosted n8n only. It is not n8n-verified, because it depends on external libraries.
 
 ## Contributing
 

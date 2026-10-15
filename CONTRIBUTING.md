@@ -100,10 +100,10 @@ Maintainers only. Each package is released and tagged independently. Pushing a r
 [`.github/workflows/publish.yml`](./.github/workflows/publish.yml), which publishes that package to
 npm with a provenance statement (required by n8n for verified community nodes).
 
-| Package                                         | Tag format                           | Notes                                             |
-| ----------------------------------------------- | ------------------------------------ | ------------------------------------------------- |
-| `@deepset-ai/n8n-nodes-haystack-enterprise`     | `haystack-enterprise-v<version>`     | Re-runs contract tests and n8n's scan first.      |
-| `@deepset-ai/n8n-nodes-haystack-enterprise-mcp` | `haystack-enterprise-mcp-v<version>` | Not published yet. Don't tag it until it's ready. |
+| Package                                         | Tag format                           | Notes                                        |
+| ----------------------------------------------- | ------------------------------------ | -------------------------------------------- |
+| `@deepset-ai/n8n-nodes-haystack-enterprise`     | `haystack-enterprise-v<version>`     | Re-runs contract tests and n8n's scan first. |
+| `@deepset-ai/n8n-nodes-haystack-enterprise-mcp` | `haystack-enterprise-mcp-v<version>` | Not n8n-verified (self-hosted only).         |
 
 ### Create a release
 
