@@ -48,10 +48,15 @@ npm run lint:fix
 cloud-eligible ruleset over `nodes credentials package.json`, then the non-cloud ruleset
 (`eslint.test.config.mjs`) over `test/`, which would otherwise flag the `vitest` import.
 `packages/haystack-enterprise-mcp` isn't cloud eligible, so one non-cloud pass covers everything.
-`npm run cloud-scan -w packages/haystack-enterprise` runs n8n's community-package checks, as n8n
-does when a node is submitted for verification: the lint rules over the source with inline
-`eslint-disable` comments ignored (the scanner ignores them too), and n8n's scanner against a packed
-build.
+`npm run cloud-scan -w packages/haystack-enterprise` runs the two checks n8n applies when a node is
+submitted for verification:
+
+1. A lint pass over the source code. Unlike `npm run lint`, it ignores `eslint-disable` comments,
+   because n8n's review ignores them too. A rule you silence with a comment still fails n8n's
+   review, so fix the code instead.
+2. n8n's community-package scanner, run on a packed build (what gets published to npm).
+
+Run it before opening a pull request that changes node code. CI runs it on every pull request.
 
 ### Testing
 
