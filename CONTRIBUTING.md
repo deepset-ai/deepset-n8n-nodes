@@ -98,10 +98,10 @@ Maintainers only. Each package is released and tagged independently. Pushing a r
 [`.github/workflows/publish.yml`](./.github/workflows/publish.yml), which publishes that package to
 npm with a provenance statement (required by n8n for verified community nodes).
 
-| Package                             | Tag format                           | Notes                                             |
-| ----------------------------------- | ------------------------------------ | ------------------------------------------------- |
-| `n8n-nodes-haystack-enterprise`     | `haystack-enterprise-v<version>`     | Re-runs contract tests and n8n's scan first.      |
-| `n8n-nodes-haystack-enterprise-mcp` | `haystack-enterprise-mcp-v<version>` | Not published yet. Don't tag it until it's ready. |
+| Package                                         | Tag format                           | Notes                                             |
+| ----------------------------------------------- | ------------------------------------ | ------------------------------------------------- |
+| `@deepset-ai/n8n-nodes-haystack-enterprise`     | `haystack-enterprise-v<version>`     | Re-runs contract tests and n8n's scan first.      |
+| `@deepset-ai/n8n-nodes-haystack-enterprise-mcp` | `haystack-enterprise-mcp-v<version>` | Not published yet. Don't tag it until it's ready. |
 
 Release tags are protected by a repository ruleset: only repository admins can create, move or
 delete them.
@@ -118,7 +118,7 @@ delete them.
 
    ```bash
    git checkout main && git pull
-   git tag -a haystack-enterprise-v0.1.0 -m "n8n-nodes-haystack-enterprise 0.1.0"
+   git tag -a haystack-enterprise-v0.1.0 -m "@deepset-ai/n8n-nodes-haystack-enterprise 0.1.0"
    git push origin haystack-enterprise-v0.1.0
    ```
 
@@ -144,9 +144,12 @@ delete them.
 
 Before the first release of a package, and only then:
 
-1. The package doesn't exist on npm yet, so publish the first version with a temporary
-   [granular access token](https://docs.npmjs.com/about-access-tokens) (read and write, bypass
-   two-factor authentication, short expiry) stored as the `NPM_TOKEN` repository secret.
+1. The packages are published under the `@deepset-ai` npm organization, and a package doesn't exist
+   on npm until its first publish. So publish the first version with a temporary
+   [granular access token](https://docs.npmjs.com/about-access-tokens) of an organization member
+   (read and write on the organization's packages, bypass two-factor authentication, short expiry)
+   stored as the `NPM_TOKEN` repository secret. `publishConfig.access` is already set to `public` in
+   each `package.json`.
 2. After the package exists, open its npm **Settings → Trusted Publisher → GitHub Actions** and add:
    organization `deepset-ai`, repository `deepset-n8n-nodes`, workflow `publish.yml`, no
    environment, and allow `npm publish`. npm doesn't validate this when you save it, and the
