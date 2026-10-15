@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2
+
+No changes to the nodes.
+
+- Package author contact is now haystack@deepset.ai
+
 ## 0.1.1
 
 Documentation only, no changes to the nodes.
