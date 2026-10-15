@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.1.0
 
-Planned first release (0.1.0, `package.json` version). Not published to npm yet.
+Initial release.
 
 - Connects to a Haystack Enterprise Platform workspace's MCP server and exposes its enabled
   pipelines as tools for an n8n AI Agent

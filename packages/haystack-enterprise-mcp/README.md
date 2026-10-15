@@ -1,7 +1,11 @@
 # @deepset-ai/n8n-nodes-haystack-enterprise-mcp
 
 This is an n8n community node. It lets you use pipelines you've enabled as MCP tools on a
-[Haystack Enterprise Platform](https://cloud.deepset.ai/) workspace as tools for an n8n AI Agent.
+[Haystack Enterprise Platform](https://www.deepset.ai/haystack-platform) workspace as tools for an
+n8n AI Agent.
+
+New to Haystack Enterprise Platform? Start with the
+[getting started guide](https://docs.cloud.deepset.ai/docs/getting-started).
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/)
 workflow automation platform.
@@ -25,12 +29,15 @@ latest n8n release.
 
 ## Installation
 
-> **Status: not yet published.** This package is not available on npm yet, so you can't install it
-> from n8n's **Settings → Community Nodes** by name. It has also not been submitted for n8n
-> verification. For now you can use it by running it from a clone of this repository on a
-> self-hosted n8n instance, see
-> [Local development](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/CONTRIBUTING.md#local-development).
-> The released `@deepset-ai/n8n-nodes-haystack-enterprise` package is unaffected.
+Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in
+the n8n community nodes documentation and enter the package name
+`@deepset-ai/n8n-nodes-haystack-enterprise-mcp`.
+
+This package is **not n8n-verified**: it depends on external libraries (the MCP SDK and LangChain
+core), which verified community nodes can't do. n8n therefore asks you to confirm that you trust the
+package when you install it, and it can't be installed on n8n Cloud. Community nodes must be enabled
+on your n8n instance. For the verified Haystack Enterprise nodes, see
+[`@deepset-ai/n8n-nodes-haystack-enterprise`](https://www.npmjs.com/package/@deepset-ai/n8n-nodes-haystack-enterprise).
 
 **This node is only supported on self-hosted n8n.** It is not available on n8n Cloud and refuses to
 run there (the node checks n8n's own `N8N_DEPLOYMENT_TYPE` environment variable at runtime).
@@ -50,16 +57,18 @@ an n8n AI Agent as tools:
 
 ## Example workflows
 
-[`test/examples/`](./test/examples) has a ready-made workflow for trying out the node once it's
-loaded into your n8n instance:
+The example workflow is not part of the npm package. It lives in the repository, in
+[`packages/haystack-enterprise-mcp/test/examples/`](https://github.com/deepset-ai/deepset-n8n-nodes/tree/main/packages/haystack-enterprise-mcp/test/examples):
 
 - [`ai-agent-with-mcp-tools-example.json`](./test/examples/ai-agent-with-mcp-tools-example.json) —
   an AI Agent with this node wired into its Tools input, exposing the workspace's enabled pipelines
   directly to the agent.
 
-To import it: in the n8n editor, open the menu (**⋮** in the top right) → **Import from File**, and
-select the JSON file. You'll still need to fill in your own credentials (including the OpenAI Chat
-Model node's) and select your own workspace on the Haystack Enterprise MCP node.
+To use it, either open the file on GitHub, click **Copy raw file**, and paste it onto the n8n canvas
+(Ctrl/Cmd+V), or clone the repository and, in the n8n editor, open the menu (**⋮** in the top right)
+→ **Import from File** and select the JSON file. You'll still need to fill in your own credentials
+(including the OpenAI Chat Model node's) and select your own workspace on the Haystack Enterprise
+MCP node.
 
 ## Credentials
 
@@ -69,7 +78,8 @@ The node's **Authentication** dropdown offers two ways to authenticate.
 
 Choose **API Key** on the node (the default) and create a "Haystack Enterprise API" credential:
 
-1. In Haystack Enterprise Platform, go to Settings → API Keys and generate a key.
+1. In [Haystack Enterprise Platform](https://cloud.deepset.ai/), go to Settings → API Keys and
+   generate a key. See [Generate an API key](https://docs.cloud.deepset.ai/docs/generate-api-key).
 2. In n8n, paste the key into the credential. **Server URL** defaults to the hosted Haystack
    Enterprise Platform API (`https://api.cloud.deepset.ai`); for dev or private environments, set it
    to your instance's API origin.
@@ -117,6 +127,8 @@ no effect here. You can safely ignore it.
 
 - [n8n community nodes documentation](https://docs.n8n.io/integrations/#community-nodes)
 - [Use your pipelines as MCP tools](https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool)
+- [Haystack Enterprise Platform](https://cloud.deepset.ai/)
+- [Haystack Enterprise Platform docs](https://docs.cloud.deepset.ai/)
 
 ## Version history
 
