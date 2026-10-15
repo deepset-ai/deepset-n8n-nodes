@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1
+
+Documentation only, no changes to the nodes.
+
+- README: explain where the example workflows live and how to use them, link the Haystack Enterprise
+  Platform website, getting started guide, API key instructions and the API reference for each
+  operation
+
 ## 0.1.0
 
 Initial release.
