@@ -147,6 +147,10 @@ This node sets `usableAsTool: true`, so any operation can be connected to an AI 
 instead of the main flow — the agent decides whether and when to call it, and with what arguments,
 based on the conversation.
 
+This includes **Chat**, **Chat (Streaming)** and **Chat Completions**. For Chat Completions, set the
+message content with `$fromAI(...)`; streaming is only relayed live outside tool mode, the agent gets
+the full answer either way.
+
 To make a Haystack Enterprise **service** the Agent's language model (not just a tool), connect
 **Haystack Enterprise Chat Model** to the Agent's Model input. See
 [`haystack-chat-model-agent-example.json`](./test/examples/haystack-chat-model-agent-example.json).

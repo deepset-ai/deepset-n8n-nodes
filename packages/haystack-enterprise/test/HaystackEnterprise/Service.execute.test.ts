@@ -1047,6 +1047,36 @@ describe('executeService — chatCompletions', () => {
 		]);
 	});
 
+	// Regression: usableAsTool nodes run via ISupplyDataFunctions, where isStreaming()/sendChunk are missing.
+	// Message content is what $fromAI resolves to in tool mode.
+	const TOOL_PARAMS = {
+		...CHAT_COMPLETIONS_PARAMS,
+		messages: { message: [{ role: 'user', content: 'What is Haystack?' }] },
+	};
+
+	it('does not throw as an AI Agent tool (no isStreaming/sendChunk), stream off', async () => {
+		const { context } = createContext(TOOL_PARAMS, async () => CHAT_COMPLETION_RESPONSE);
+		delete (context as { isStreaming?: unknown }).isStreaming;
+		delete (context as { sendChunk?: unknown }).sendChunk;
+
+		const [item] = await executeService.call(context, 'chatCompletions', 0);
+
+		expect(typeof item.json.content).toBe('string');
+	});
+
+	it('does not throw as an AI Agent tool (no isStreaming/sendChunk), stream on', async () => {
+		const { context, stream } = createStreamContext({ params: { ...TOOL_PARAMS, stream: true } });
+		delete (context as { isStreaming?: unknown }).isStreaming;
+		delete (context as { sendChunk?: unknown }).sendChunk;
+
+		const resultPromise = executeService.call(context, 'chatCompletions', 0);
+		await flushMicrotasks();
+		stream.emit('data', sseRecord(openaiChunk({ role: 'assistant', content: 'Hi' }, 'stop')));
+		stream.emit('end');
+
+		expect(await resultPromise).toMatchObject([{ json: { content: 'Hi' } }]);
+	});
+
 	it('returns one item per OpenAI chunk when Stream is on and Simplify Output is off', async () => {
 		const { context, stream } = createStreamContext({
 			params: { ...CHAT_COMPLETIONS_PARAMS, stream: true, simplify: false },
