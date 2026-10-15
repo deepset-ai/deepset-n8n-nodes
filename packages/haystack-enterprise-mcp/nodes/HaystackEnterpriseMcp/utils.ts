@@ -23,8 +23,6 @@ import packageJson from '../../package.json';
 // (DEFAULT_API_ORIGIN / normalizeApiOrigin / getApiOriginFromCredentials / getApiBaseUrlV1FromOrigin).
 export const DEFAULT_API_ORIGIN = 'https://api.cloud.deepset.ai';
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
-// Credential type name, not a secret. Named without "auth" so n8n's no-hardcoded-secrets scan
-// (which ignores eslint-disable comments) doesn't flag it.
 const SIGN_IN_CREDENTIAL_NAME = 'haystackEnterpriseOAuth2Api';
 const MCP_CLIENT_NAME = 'n8n-nodes-haystack-enterprise-mcp';
 
