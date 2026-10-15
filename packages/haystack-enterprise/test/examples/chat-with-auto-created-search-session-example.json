@@ -38,7 +38,7 @@
 			},
 			"id": "c3d4e5f6-0003-4c3c-9c3c-000000000003",
 			"name": "Haystack Enterprise AI",
-			"type": "n8n-nodes-haystack-enterprise.haystackEnterpriseAi",
+			"type": "@deepset-ai/n8n-nodes-haystack-enterprise.haystackEnterpriseAi",
 			"typeVersion": 1,
 			"position": [-460, 0],
 			"credentials": {

@@ -35,7 +35,7 @@
 			},
 			"id": "a1b2c3d4-0003-4e1e-9e1e-000000000003",
 			"name": "Haystack Enterprise Chat Model",
-			"type": "n8n-nodes-haystack-enterprise.haystackEnterpriseChatModel",
+			"type": "@deepset-ai/n8n-nodes-haystack-enterprise.haystackEnterpriseChatModel",
 			"typeVersion": 1,
 			"position": [-520, 240],
 			"credentials": {
