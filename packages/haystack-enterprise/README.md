@@ -50,12 +50,12 @@ The package is n8n Cloud eligible and also works on self-hosted n8n.
 The package ships two nodes:
 
 - **Haystack Enterprise AI** — works with these resources and operations:
+  - **Service** — Get, Get Many, List Models (Chat Completions), Chat, Chat (Streaming), Chat
+    Completions.
   - **File** — Upload, Get, Get Many, Delete, Delete Many, Get Metadata, Update Metadata, Update
     Metadata (Bulk).
   - **Index** — Get, Get Many.
   - **Search Session** — Create, Get Many, Delete.
-  - **Service** — Get, Get Many, List Models (Chat Completions), Chat, Chat (Streaming), Chat
-    Completions.
 - **Haystack Enterprise Chat Model** — a language-model sub-node for n8n's **AI Agent**. It runs
   Chat Completions on a Haystack Enterprise service, the same Service operation as on Haystack
   Enterprise AI. Connect it to the Agent's Model port; the Agent owns conversation history.
