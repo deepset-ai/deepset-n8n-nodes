@@ -23,9 +23,7 @@ import packageJson from '../../package.json';
 // (DEFAULT_API_ORIGIN / normalizeApiOrigin / getApiOriginFromCredentials / getApiBaseUrlV1FromOrigin).
 export const DEFAULT_API_ORIGIN = 'https://api.cloud.deepset.ai';
 const CREDENTIAL_NAME = 'haystackEnterpriseApi';
-// Credential type name, not a secret.
-// eslint-disable-next-line @n8n/community-nodes/no-hardcoded-secrets
-const OAUTH2_CREDENTIAL_NAME = 'haystackEnterpriseOAuth2Api';
+const SIGN_IN_CREDENTIAL_NAME = 'haystackEnterpriseOAuth2Api';
 const MCP_CLIENT_NAME = 'n8n-nodes-haystack-enterprise-mcp';
 
 type McpContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions;
@@ -89,7 +87,7 @@ export async function resolveMcpAuth(context: McpContext, itemIndex: number): Pr
 		};
 	}
 
-	const credentials = await context.getCredentials(OAUTH2_CREDENTIAL_NAME);
+	const credentials = await context.getCredentials(SIGN_IN_CREDENTIAL_NAME);
 	const accessToken = (credentials.oauthTokenData as { access_token?: unknown } | undefined)
 		?.access_token;
 	if (typeof accessToken !== 'string' || !accessToken) {
@@ -106,7 +104,7 @@ export async function resolveMcpAuth(context: McpContext, itemIndex: number): Pr
 			try {
 				const refreshed = (await context.helpers.refreshOAuth2Token.call(
 					context,
-					OAUTH2_CREDENTIAL_NAME,
+					SIGN_IN_CREDENTIAL_NAME,
 				)) as { access_token?: unknown } | undefined;
 				return typeof refreshed?.access_token === 'string' && refreshed.access_token
 					? refreshed.access_token
@@ -322,7 +320,7 @@ export async function loadWorkspaceOptions(
 	context: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const credentialType =
-		getAuthenticationMode(context, 0) === 'oAuth2' ? OAUTH2_CREDENTIAL_NAME : CREDENTIAL_NAME;
+		getAuthenticationMode(context, 0) === 'oAuth2' ? SIGN_IN_CREDENTIAL_NAME : CREDENTIAL_NAME;
 	const credentials = await context.getCredentials(credentialType);
 	const apiOrigin = getApiOriginFromCredentials(credentials);
 

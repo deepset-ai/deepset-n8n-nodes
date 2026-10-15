@@ -24,7 +24,7 @@
 		"build": "n8n-node build",
 		"build:watch": "tsc --watch",
 		"dev": "n8n-node dev",
-		"lint": "eslint nodes credentials package.json test",
+		"lint": "eslint --no-inline-config nodes credentials package.json && eslint test",
 		"lint:fix": "eslint nodes credentials package.json test --fix",
 		"test": "vitest run",
 		"release": "n8n-node release",
