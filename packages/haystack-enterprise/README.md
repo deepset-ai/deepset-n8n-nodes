@@ -18,8 +18,8 @@ workflow automation platform.
 - [Supported n8n versions](#supported-n8n-versions)
 - [Installation](#installation)
 - [Prerequisites](#prerequisites)
-- [Example workflows](#example-workflows)
 - [Operations](#operations)
+- [Example workflows](#example-workflows)
 - [Credentials](#credentials)
 - [Usage](#usage)
 - [Resources](#resources)
@@ -44,6 +44,21 @@ The package is n8n Cloud eligible and also works on self-hosted n8n.
 - A [Haystack Enterprise Platform](https://cloud.deepset.ai/) account with access to a workspace.
 - Either an API key (**Settings → API Keys**) or a sign-in with your Haystack Enterprise account
   (OAuth2, n8n 2.19.2 or later). See [Credentials](#credentials).
+
+## Operations
+
+The package ships two nodes:
+
+- **Haystack Enterprise AI** — works with these resources and operations:
+  - **File** — Upload, Get, Get Many, Delete, Delete Many, Get Metadata, Update Metadata, Update
+    Metadata (Bulk).
+  - **Index** — Get, Get Many.
+  - **Search Session** — Create, Get Many, Delete.
+  - **Service** — Get, Get Many, List Models (Chat Completions), Chat, Chat (Streaming), Chat
+    Completions.
+- **Haystack Enterprise Chat Model** — a language-model sub-node for n8n's **AI Agent**. It runs
+  Chat Completions on a Haystack Enterprise service, the same Service operation as on Haystack
+  Enterprise AI. Connect it to the Agent's Model port; the Agent owns conversation history.
 
 ## Example workflows
 
@@ -76,16 +91,6 @@ Enterprise AI** and supply the OpenAI-style `messages` array yourself (fields or
 To import one: in the n8n editor, open the menu (**⋮** in the top right) → **Import from File**, and
 select the JSON file. You'll still need to fill in your own credentials, and any service-specific
 nodes (e.g. Google Drive) with your own credentials/settings.
-
-## Operations
-
-The package ships two nodes:
-
-- **Haystack Enterprise AI** — File, Index, Search Session, and Service (Get, Get Many, List Models
-  (Chat Completions), Chat, Chat (Streaming), Chat Completions).
-- **Haystack Enterprise Chat Model** — a language-model sub-node for n8n's **AI Agent**. It runs
-  Chat Completions on a Haystack Enterprise service, the same Service operation as on Haystack
-  Enterprise AI. Connect it to the Agent's Model port; the Agent owns conversation history.
 
 ## Credentials
 

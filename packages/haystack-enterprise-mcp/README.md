@@ -10,8 +10,8 @@ workflow automation platform.
 
 - [Supported n8n versions](#supported-n8n-versions)
 - [Installation](#installation)
-- [Example workflows](#example-workflows)
 - [Operations](#operations)
+- [Example workflows](#example-workflows)
 - [Credentials](#credentials)
 - [Usage](#usage)
 - [Resources](#resources)
@@ -35,19 +35,6 @@ latest n8n release.
 **This node is only supported on self-hosted n8n.** It is not available on n8n Cloud and refuses to
 run there (the node checks n8n's own `N8N_DEPLOYMENT_TYPE` environment variable at runtime).
 
-## Example workflows
-
-[`test/examples/`](./test/examples) has a ready-made workflow for trying out the node once it's
-loaded into your n8n instance:
-
-- [`ai-agent-with-mcp-tools-example.json`](./test/examples/ai-agent-with-mcp-tools-example.json) —
-  an AI Agent with this node wired into its Tools input, exposing the workspace's enabled pipelines
-  directly to the agent.
-
-To import it: in the n8n editor, open the menu (**⋮** in the top right) → **Import from File**, and
-select the JSON file. You'll still need to fill in your own credentials (including the OpenAI Chat
-Model node's) and select your own workspace on the Haystack Enterprise MCP node.
-
 ## Operations
 
 The node connects to a Haystack Enterprise Platform MCP server and exposes its enabled pipelines to
@@ -60,6 +47,19 @@ an n8n AI Agent as tools:
   Exclude**).
 - **Options → Timeout** — how long (in ms) to wait for a pipeline call to finish before failing it
   (default 60000).
+
+## Example workflows
+
+[`test/examples/`](./test/examples) has a ready-made workflow for trying out the node once it's
+loaded into your n8n instance:
+
+- [`ai-agent-with-mcp-tools-example.json`](./test/examples/ai-agent-with-mcp-tools-example.json) —
+  an AI Agent with this node wired into its Tools input, exposing the workspace's enabled pipelines
+  directly to the agent.
+
+To import it: in the n8n editor, open the menu (**⋮** in the top right) → **Import from File**, and
+select the JSON file. You'll still need to fill in your own credentials (including the OpenAI Chat
+Model node's) and select your own workspace on the Haystack Enterprise MCP node.
 
 ## Credentials
 
