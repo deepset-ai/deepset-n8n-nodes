@@ -103,9 +103,6 @@ npm with a provenance statement (required by n8n for verified community nodes).
 | `@deepset-ai/n8n-nodes-haystack-enterprise`     | `haystack-enterprise-v<version>`     | Re-runs contract tests and n8n's scan first.      |
 | `@deepset-ai/n8n-nodes-haystack-enterprise-mcp` | `haystack-enterprise-mcp-v<version>` | Not published yet. Don't tag it until it's ready. |
 
-Release tags are protected by a repository ruleset: only repository admins can create, move or
-delete them.
-
 ### Create a release
 
 1. **Prepare the release in a pull request.** In `packages/<name>/`, set the new `version` in
