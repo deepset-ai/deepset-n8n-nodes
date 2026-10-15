@@ -5,9 +5,8 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { fileFields, fileOperations } from './resources/file/File.description';
 import { executeFile } from './resources/file/File.execute';
@@ -21,13 +20,13 @@ import { executeSearchSession } from './resources/searchSession/SearchSession.ex
 import { serviceFields, serviceOperations } from './resources/service/Service.description';
 import { executeService } from './resources/service/Service.execute';
 import {
-	isNodeApiError,
 	loadDeploymentOptions,
 	loadDeploymentOptionsWithAllOption,
 	loadFileOptions,
 	loadIndexOptions,
 	loadSearchSessionOptions,
 	loadWorkspaceOptions,
+	toNodeApiError,
 } from './utils';
 
 export class HaystackEnterpriseAi implements INodeType {
@@ -202,13 +201,8 @@ export class HaystackEnterpriseAi implements INodeType {
 				if (caught instanceof NodeOperationError) {
 					throw new NodeOperationError(this.getNode(), caught.message, { itemIndex: i });
 				}
-				// Preserve errors created by n8n's separate n8n-workflow module copy.
-				if (isNodeApiError(caught)) {
-					if (caught.context) caught.context.itemIndex = i;
-					// eslint-disable-next-line @n8n/community-nodes/require-node-api-error -- already a NodeApiError; constructing a new one replaces .message with the generic status text
-					throw caught;
-				}
-				throw new NodeApiError(this.getNode(), caught as JsonObject, { itemIndex: i });
+				// Keeps errors created by n8n's separate n8n-workflow module copy as they are.
+				throw toNodeApiError(this.getNode(), caught, { itemIndex: i });
 			}
 		}
 

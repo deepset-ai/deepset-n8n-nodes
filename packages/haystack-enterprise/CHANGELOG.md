@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+- Errors from the Haystack Enterprise API are now re-thrown as `NodeApiError` through one helper
+  instead of ignoring n8n's `require-node-api-error` lint rule inline, so the package passes n8n's
+  verification scan. Error messages and details are unchanged.
+
 ## 0.1.2
 
 No changes to the nodes.
