@@ -52,10 +52,8 @@ cloud-eligible ruleset over `nodes credentials package.json`, then the non-cloud
 `npm run cloud-scan -w packages/haystack-enterprise` runs the two checks n8n applies when a node is
 submitted for verification:
 
-1. A lint pass over the source code. Unlike `npm run lint`, it ignores `eslint-disable` comments,
-   because n8n's review ignores them too. A rule you silence with a comment still fails n8n's
-   review, so fix the code instead.
-2. n8n's community-package scanner, run on a packed build (what gets published to npm).
+1. A lint pass over the source code, ignoring `eslint-disable` comments to match n8n’s review.
+2. Scan the packed build with n8n’s community-package scanner.
 
 Run it before opening a pull request that changes node code. CI runs it on every pull request.
 
