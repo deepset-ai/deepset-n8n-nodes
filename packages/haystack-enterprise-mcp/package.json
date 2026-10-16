@@ -1,6 +1,6 @@
 {
 	"name": "@deepset-ai/n8n-nodes-haystack-enterprise-mcp",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "N8n community node package for using Haystack Enterprise Platform's MCP server as AI Agent tools. Self-hosted n8n only.",
 	"license": "MIT",
 	"homepage": "https://www.deepset.ai",

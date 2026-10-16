@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Documentation: simplified the README (supported n8n versions folded into Installation, clearer
+  tool selection, direct link to the example workflow, Usage merged into Operations)
+
 ## 0.1.0
 
 Initial release.
