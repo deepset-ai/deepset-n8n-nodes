@@ -27,8 +27,7 @@ against the latest n8n release). It is not n8n-verified, so it can't run on n8n 
 
 Enable community nodes on your instance, then follow the
 [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) and enter the
-package name `@deepset-ai/n8n-nodes-haystack-enterprise-mcp`. n8n asks you to confirm that you trust
-the package.
+package name `@deepset-ai/n8n-nodes-haystack-enterprise-mcp`.
 
 Looking for the n8n-verified Haystack Enterprise nodes? See
 [`@deepset-ai/n8n-nodes-haystack-enterprise`](https://www.npmjs.com/package/@deepset-ai/n8n-nodes-haystack-enterprise).
