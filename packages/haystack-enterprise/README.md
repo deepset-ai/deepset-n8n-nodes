@@ -69,23 +69,24 @@ The package ships two nodes:
 The example workflows are not part of the npm package. They live in the repository, in
 [`packages/haystack-enterprise/test/examples/`](https://github.com/deepset-ai/deepset-n8n-nodes/tree/main/packages/haystack-enterprise/test/examples):
 
-- [`chat-example.json`](./test/examples/chat-example.json) — a form-triggered workflow that submits
-  a question straight to **Chat** and shows the answer. The simplest example to start with.
-- [`chat-with-auto-created-search-session-example.json`](./test/examples/chat-with-auto-created-search-session-example.json)
+- [`chat-example.json`](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/packages/haystack-enterprise/test/examples/chat-example.json)
+  — a form-triggered workflow that submits a question straight to **Chat** and shows the answer. The
+  simplest example to start with.
+- [`chat-with-auto-created-search-session-example.json`](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/packages/haystack-enterprise/test/examples/chat-with-auto-created-search-session-example.json)
   — the simplest chat workflow: leaves **Search Session ID** empty and lets **Chat (Streaming)**
   create one automatically, remembering the returned ID for the rest of the conversation.
-- [`chat-with-search-session-example.json`](./test/examples/chat-with-search-session-example.json) —
-  the same conversation-history pattern, but managing the **Search Session** explicitly
+- [`chat-with-search-session-example.json`](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/packages/haystack-enterprise/test/examples/chat-with-search-session-example.json)
+  — the same conversation-history pattern, but managing the **Search Session** explicitly
   (create/list/delete) instead of relying on auto-creation.
-- [`haystack-chat-model-agent-example.json`](./test/examples/haystack-chat-model-agent-example.json)
+- [`haystack-chat-model-agent-example.json`](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/packages/haystack-enterprise/test/examples/haystack-chat-model-agent-example.json)
   — recommended for conversational chat: n8n **AI Agent** with **Haystack Enterprise Chat Model** on
   the Model port (deployment chat completions) and Simple Memory. Use this instead of wiring **Chat
   Completions** directly to a Chat Trigger.
-- [`agent-with-chat-tools-example.json`](./test/examples/agent-with-chat-tools-example.json) — an AI
-  Agent with two separate tool instances of this node, one running **Chat** for a one-off question
-  and one running **Chat (Streaming)** for a conversational follow-up, so it can pick whichever fits
-  the user's request.
-- [`mirror-files-in-google-drive-example.json`](./test/examples/mirror-files-in-google-drive-example.json)
+- [`agent-with-chat-tools-example.json`](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/packages/haystack-enterprise/test/examples/agent-with-chat-tools-example.json)
+  — an AI Agent with two separate tool instances of this node, one running **Chat** for a one-off
+  question and one running **Chat (Streaming)** for a conversational follow-up, so it can pick
+  whichever fits the user's request.
+- [`mirror-files-in-google-drive-example.json`](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/packages/haystack-enterprise/test/examples/mirror-files-in-google-drive-example.json)
   — a nightly scheduled workflow that diffs a Google Drive folder against files already indexed in
   Haystack Enterprise, uploading new files, updating changed ones, deleting removed ones, and
   waiting for indexing to finish before reporting.
@@ -168,13 +169,13 @@ Completions on the selected service, n8n's Agent and Simple Memory build `messag
 
 ### Using Chat as an AI Agent tool
 
-This node sets `usableAsTool: true`, so any operation can be connected to an AI Agent's Tool input
-instead of the main flow — the agent decides whether and when to call it, and with what arguments,
-based on the conversation.
+Any operation of **Haystack Enterprise AI** can be connected to an AI Agent's Tool input instead of
+the main flow — the agent decides whether and when to call it, and with what arguments, based on the
+conversation.
 
 To make a Haystack Enterprise **service** the Agent's language model (not just a tool), connect
 **Haystack Enterprise Chat Model** to the Agent's Model input. See
-[`haystack-chat-model-agent-example.json`](./test/examples/haystack-chat-model-agent-example.json).
+[`haystack-chat-model-agent-example.json`](https://github.com/deepset-ai/deepset-n8n-nodes/blob/main/packages/haystack-enterprise/test/examples/haystack-chat-model-agent-example.json).
 
 ## Resources
 
