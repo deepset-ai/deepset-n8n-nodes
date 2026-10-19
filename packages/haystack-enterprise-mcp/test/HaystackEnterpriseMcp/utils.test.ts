@@ -165,6 +165,24 @@ describe('createBearerFetch', () => {
 		expect(init.body).toBe('{}');
 	});
 
+	it('sends X-Organization-ID only when the auth has an organization', async () => {
+		const baseFetch = vi.fn(async () => okResponse());
+		const withOrg = createBearerFetch(
+			{ token: 't', apiOrigin: DEFAULT_API_ORIGIN, organizationId: 'org-1' },
+			baseFetch,
+		);
+		const withoutOrg = createBearerFetch({ token: 't', apiOrigin: DEFAULT_API_ORIGIN }, baseFetch);
+
+		await withOrg('https://example.test/mcp');
+		await withoutOrg('https://example.test/mcp');
+
+		const sent = baseFetch.mock.calls.map(
+			([, init]) => new Headers((init as unknown as RequestInit).headers),
+		);
+		expect(sent[0].get('x-organization-id')).toBe('org-1');
+		expect(sent[1].has('x-organization-id')).toBe(false);
+	});
+
 	it('returns a 401 as-is when the auth has no refresh (API key)', async () => {
 		const baseFetch = vi.fn(async () => unauthorizedResponse());
 		const fetchWithAuth = createBearerFetch(

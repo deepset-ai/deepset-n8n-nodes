@@ -239,6 +239,32 @@ describe('apiRequest', () => {
 		expect(getCredentials).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
 	});
 
+	it('sends X-Organization-ID for OAuth2 credentials only', async () => {
+		const run = async (authentication: string, credentials: Record<string, unknown>) => {
+			const httpRequestWithAuthentication = vi.fn(async () => ({}));
+			const context = {
+				helpers: { httpRequestWithAuthentication },
+				getNode: () => ({ name: 'Haystack Enterprise AI' }),
+				getCredentials: async () => credentials,
+				getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
+					name === 'authentication' ? authentication : fallback,
+			} as unknown as IExecuteFunctions;
+			await apiRequest.call(context, 'GET', '/workspaces', { headers: { 'X-Other': '1' } });
+			return (httpRequestWithAuthentication.mock.calls[0] as unknown[])[1] as {
+				headers?: Record<string, string>;
+			};
+		};
+
+		expect((await run('oAuth2', { organizationId: ' org-1 ' })).headers).toEqual({
+			'X-Other': '1',
+			'X-Organization-ID': 'org-1',
+		});
+		expect((await run('oAuth2', { organizationId: '' })).headers).toEqual({ 'X-Other': '1' });
+		expect((await run('apiKey', { apiKey: 'k', organizationId: 'org-1' })).headers).toEqual({
+			'X-Other': '1',
+		});
+	});
+
 	it('uses the Server URL from credentials when building the request URL', async () => {
 		const httpRequestWithAuthentication = vi.fn(async () => ({ ok: true }));
 		const context = createContext(httpRequestWithAuthentication, {

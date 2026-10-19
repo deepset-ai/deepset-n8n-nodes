@@ -74,6 +74,8 @@ function getAuthenticationMode(context: McpContext, itemIndex: number): 'apiKey'
 export interface McpAuth {
 	token: string;
 	apiOrigin: string;
+	/** Sent as X-Organization-ID; set from the OAuth2 credential only. */
+	organizationId?: string;
 	/** Refreshes and persists an OAuth2 token after a 401 response. */
 	refresh?: () => Promise<string | undefined>;
 }
@@ -100,6 +102,10 @@ export async function resolveMcpAuth(context: McpContext, itemIndex: number): Pr
 	return {
 		token: accessToken,
 		apiOrigin: getApiOriginFromCredentials(credentials),
+		organizationId:
+			typeof credentials.organizationId === 'string' && credentials.organizationId.trim()
+				? credentials.organizationId.trim()
+				: undefined,
 		refresh: async () => {
 			try {
 				const refreshed = (await context.helpers.refreshOAuth2Token.call(
@@ -127,6 +133,7 @@ export function createBearerFetch(auth: McpAuth, baseFetch?: FetchLike): FetchLi
 	const send = async (url: string | URL, init: RequestInit | undefined, bearer: string) => {
 		const headers = new Headers(init?.headers);
 		headers.set('Authorization', `Bearer ${bearer}`);
+		if (auth.organizationId) headers.set('X-Organization-ID', auth.organizationId);
 		return (baseFetch ?? fetch)(url, { ...init, headers });
 	};
 
