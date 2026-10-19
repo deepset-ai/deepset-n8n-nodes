@@ -186,6 +186,20 @@ describe('HaystackEnterpriseChatModel', () => {
 			);
 		});
 
+		it('sends X-Organization-ID from the OAuth2 credential', async () => {
+			const context = createSupplyDataContext(OAUTH2_PARAMS, {
+				organizationId: 'org-1',
+				oauthTokenData: { access_token: 'oauth-token' },
+			});
+
+			await node.supplyData.call(context, 0);
+
+			expect(supplyModel).toHaveBeenCalledWith(
+				context,
+				expect.objectContaining({ defaultHeaders: { 'X-Organization-ID': 'org-1' } }),
+			);
+		});
+
 		it('derives the chat completions URL from the OAuth2 Server URL', async () => {
 			const context = createSupplyDataContext(OAUTH2_PARAMS, {
 				serverUrl: 'https://self-hosted.example.com',

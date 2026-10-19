@@ -234,7 +234,7 @@ async function withApiErrorWrapping<T>(
 }
 
 /** Organization chosen on the OAuth2 credential. API keys are bound to one organization. */
-async function getOrganizationId(context: NodeContext): Promise<string | undefined> {
+export async function getOrganizationId(context: NodeContext): Promise<string | undefined> {
 	if (getCredentialType(context) !== SIGN_IN_CREDENTIAL_NAME) return undefined;
 	const { organizationId } = await context.getCredentials(SIGN_IN_CREDENTIAL_NAME);
 	return typeof organizationId === 'string' && organizationId.trim()
