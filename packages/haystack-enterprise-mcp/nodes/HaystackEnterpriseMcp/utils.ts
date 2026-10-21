@@ -167,7 +167,7 @@ export async function resolveMcpAuth(context: McpContext, itemIndex: number): Pr
 	return {
 		token: accessToken,
 		apiOrigin: getApiOriginFromCredentials(credentials),
-		organizationId: getOrganizationParameter(context, itemIndex),
+		organizationId: getOrganizationParameter(context, 0),
 		refresh: async () => {
 			try {
 				const refreshed = (await context.helpers.refreshOAuth2Token.call(
