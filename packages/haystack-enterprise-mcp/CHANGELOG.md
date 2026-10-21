@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- New optional **Organization ID** field on the OAuth2 credential. Only required if you belong to
+  multiple organizations; it is sent as the `X-Organization-ID` header on every request made with
+  the credential, including the MCP connection and the workspace list. API keys are bound to one
+  organization and ignore it.
+- Fixed the example workflow: its OpenAI Chat Model node now uses a current node version, so the AI
+  Agent no longer fails with "model.includes is not a function".
+
 ## 0.1.1
 
 - Documentation: simplified the README (supported n8n versions folded into Installation, clearer

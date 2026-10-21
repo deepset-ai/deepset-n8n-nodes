@@ -233,6 +233,15 @@ async function withApiErrorWrapping<T>(
 	}
 }
 
+/** Organization chosen on the OAuth2 credential. API keys are bound to one organization. */
+export async function getOrganizationId(context: NodeContext): Promise<string | undefined> {
+	if (getCredentialType(context) !== SIGN_IN_CREDENTIAL_NAME) return undefined;
+	const { organizationId } = await context.getCredentials(SIGN_IN_CREDENTIAL_NAME);
+	return typeof organizationId === 'string' && organizationId.trim()
+		? organizationId.trim()
+		: undefined;
+}
+
 /** Sends an authenticated API request with shared URL and error handling. */
 export async function apiRequest(
 	this: NodeContext,
@@ -241,11 +250,15 @@ export async function apiRequest(
 	options: Partial<IHttpRequestOptions> = {},
 ): Promise<unknown> {
 	const apiBaseUrl = await getApiBaseUrlForContext(this);
+	const organizationId = await getOrganizationId(this);
 	const requestOptions: IHttpRequestOptions = {
 		method,
 		url: `${apiBaseUrl}${endpoint}`,
 		json: true,
 		...options,
+		...(organizationId && {
+			headers: { ...options.headers, 'X-Organization-ID': organizationId },
+		}),
 	};
 
 	return withApiErrorWrapping(this, endpoint, () =>
@@ -325,6 +338,7 @@ export async function apiRequestStream(
 		endpoint,
 		async () => {
 			const apiBaseUrl = await getApiBaseUrlForContext(this);
+			const organizationId = await getOrganizationId(this);
 			const response = (await this.helpers.httpRequestWithAuthentication.call(
 				this,
 				getCredentialType(this),
@@ -332,6 +346,7 @@ export async function apiRequestStream(
 					method,
 					url: `${apiBaseUrl}${endpoint}`,
 					json: true,
+					...(organizationId && { headers: { 'X-Organization-ID': organizationId } }),
 					body,
 					encoding: 'stream',
 					returnFullResponse: true,

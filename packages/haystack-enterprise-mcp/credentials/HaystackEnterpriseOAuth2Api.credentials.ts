@@ -62,5 +62,13 @@ export class HaystackEnterpriseOAuth2Api implements ICredentialType {
 			displayOptions: { show: { useDynamicClientRegistration: [false] } },
 			description: 'Optional for public PKCE clients; required for confidential OAuth2 clients.',
 		},
+		{
+			displayName: 'Organization ID (Optional)',
+			name: 'organizationId',
+			type: 'string',
+			default: '',
+			description:
+				'Only required if you belong to multiple organizations. Used for every request made with this credential.',
+		},
 	];
 }

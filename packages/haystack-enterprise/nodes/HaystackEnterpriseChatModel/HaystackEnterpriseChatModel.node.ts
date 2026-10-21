@@ -11,6 +11,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	getApiBaseUrlForContext,
+	getOrganizationId,
 	loadDeploymentOptions,
 	loadWorkspaceOptions,
 	readAdditionalParameters,
@@ -220,6 +221,7 @@ export class HaystackEnterpriseChatModel implements INodeType {
 		delete additionalParams.temperature;
 
 		const apiBaseUrl = await getApiBaseUrlForContext(this);
+		const organizationId = await getOrganizationId(this);
 
 		// @n8n/ai-node-sdk types ISupplyDataFunctions from its nested n8n-workflow copy.
 		return supplyModel(this as unknown as Parameters<typeof supplyModel>[0], {
@@ -227,6 +229,7 @@ export class HaystackEnterpriseChatModel implements INodeType {
 			baseUrl: `${apiBaseUrl}/workspaces/${workspaceName}/deployments/v1`,
 			model: `${workspaceName}/${deploymentId}`,
 			apiKey,
+			defaultHeaders: organizationId ? { 'X-Organization-ID': organizationId } : undefined,
 			useResponsesApi: false,
 			supportsStrictToolCalling: false,
 			timeout: options.timeout,

@@ -74,8 +74,17 @@ function getAuthenticationMode(context: McpContext, itemIndex: number): 'apiKey'
 export interface McpAuth {
 	token: string;
 	apiOrigin: string;
+	/** Sent as X-Organization-ID; set from the OAuth2 credential only. */
+	organizationId?: string;
 	/** Refreshes and persists an OAuth2 token after a 401 response. */
 	refresh?: () => Promise<string | undefined>;
+}
+
+function readOrganizationId(credentials: IDataObject): string | undefined {
+	const { organizationId } = credentials;
+	return typeof organizationId === 'string' && organizationId.trim()
+		? organizationId.trim()
+		: undefined;
 }
 
 export async function resolveMcpAuth(context: McpContext, itemIndex: number): Promise<McpAuth> {
@@ -100,6 +109,7 @@ export async function resolveMcpAuth(context: McpContext, itemIndex: number): Pr
 	return {
 		token: accessToken,
 		apiOrigin: getApiOriginFromCredentials(credentials),
+		organizationId: readOrganizationId(credentials),
 		refresh: async () => {
 			try {
 				const refreshed = (await context.helpers.refreshOAuth2Token.call(
@@ -127,6 +137,7 @@ export function createBearerFetch(auth: McpAuth, baseFetch?: FetchLike): FetchLi
 	const send = async (url: string | URL, init: RequestInit | undefined, bearer: string) => {
 		const headers = new Headers(init?.headers);
 		headers.set('Authorization', `Bearer ${bearer}`);
+		if (auth.organizationId) headers.set('X-Organization-ID', auth.organizationId);
 		return (baseFetch ?? fetch)(url, { ...init, headers });
 	};
 
@@ -323,6 +334,8 @@ export async function loadWorkspaceOptions(
 		getAuthenticationMode(context, 0) === 'oAuth2' ? SIGN_IN_CREDENTIAL_NAME : CREDENTIAL_NAME;
 	const credentials = await context.getCredentials(credentialType);
 	const apiOrigin = getApiOriginFromCredentials(credentials);
+	const organizationId =
+		credentialType === SIGN_IN_CREDENTIAL_NAME ? readOrganizationId(credentials) : undefined;
 
 	let response: unknown;
 	try {
@@ -330,6 +343,7 @@ export async function loadWorkspaceOptions(
 			method: 'GET',
 			url: `${getApiBaseUrlV1FromOrigin(apiOrigin)}/workspaces`,
 			json: true,
+			headers: organizationId ? { 'X-Organization-ID': organizationId } : undefined,
 		});
 	} catch (caught) {
 		// NodeOperationError keeps load-options failures readable in n8n's parameter popover.

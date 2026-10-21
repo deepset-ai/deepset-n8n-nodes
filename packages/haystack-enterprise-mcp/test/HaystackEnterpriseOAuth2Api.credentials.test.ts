@@ -34,6 +34,7 @@ describe('HaystackEnterpriseOAuth2Api', () => {
 			'serverUrl',
 			'scope',
 			'clientSecret',
+			'organizationId',
 		]);
 	});
 });
