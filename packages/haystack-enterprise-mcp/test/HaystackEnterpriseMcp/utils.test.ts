@@ -437,7 +437,6 @@ describe('loadOrganizationOptions', () => {
 			{ organization_id: 'b' },
 		]);
 		expect(options).toEqual([
-			{ name: 'Default Organization', value: '' },
 			{ name: 'Org A', value: 'a' },
 			{ name: 'b', value: 'b' },
 		]);
@@ -446,9 +445,9 @@ describe('loadOrganizationOptions', () => {
 		});
 	});
 
-	it('offers only the default for a single organization', async () => {
+	it('lists the single organization when there is only one', async () => {
 		const { options } = await load([{ organization_id: 'a', name: 'Org A' }]);
-		expect(options).toEqual([{ name: 'Default Organization', value: '' }]);
+		expect(options).toEqual([{ name: 'Org A', value: 'a' }]);
 	});
 });
 

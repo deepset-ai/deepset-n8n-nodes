@@ -257,18 +257,14 @@ export const organizationIdProperty: INodeProperties = {
 	displayOptions: { show: { authentication: ['oAuth2'] } },
 	default: '',
 	description:
-		'Only needed if your account belongs to several organizations. Applies to the whole node run, so it is read from the first item. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		'Only needed if your account belongs to several organizations; if none is selected, your default organization is used. Applies to the whole node run, so it is read from the first item. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 };
 
-/**
- * Lists the signed-in user's organizations. With zero or one organization only the default is
- * offered, so there is nothing to choose.
- */
+/** Lists the signed-in user's organizations. */
 export async function loadOrganizationOptions(
 	context: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const defaultOption = { name: 'Default Organization', value: '' };
-	if (getCredentialType(context) !== SIGN_IN_CREDENTIAL_NAME) return [defaultOption];
+	if (getCredentialType(context) !== SIGN_IN_CREDENTIAL_NAME) return [];
 
 	const credentials = await context.getCredentials(SIGN_IN_CREDENTIAL_NAME);
 	const origin = apiOriginWithoutVersionPath(getApiOriginFromCredentials(credentials));
@@ -294,7 +290,7 @@ export async function loadOrganizationOptions(
 					: (organization.organization_id as string),
 			value: organization.organization_id as string,
 		}));
-	return options.length > 1 ? [defaultOption, ...options] : [defaultOption];
+	return options;
 }
 
 /** Sends an authenticated API request with shared URL and error handling. */
