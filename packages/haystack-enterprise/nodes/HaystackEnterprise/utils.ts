@@ -257,7 +257,7 @@ export const organizationIdProperty: INodeProperties = {
 	displayOptions: { show: { authentication: ['oAuth2'] } },
 	default: '',
 	description:
-		'Only needed if your account belongs to several organizations; if none is selected, your default organization is used. Applies to the whole node run, so it is read from the first item. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		'The organization to use. Only needed if your account belongs to several organizations; otherwise your default organization is used. Read from the first item for the whole run. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 };
 
 /** Lists the signed-in user's organizations. */
