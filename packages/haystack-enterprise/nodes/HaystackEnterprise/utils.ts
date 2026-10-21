@@ -257,7 +257,7 @@ export const organizationIdProperty: INodeProperties = {
 	displayOptions: { show: { authentication: ['oAuth2'] } },
 	default: '',
 	description:
-		'Select the organization to work in. An expression is evaluated once, for the first item. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		'Select the organization to work in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 };
 
 /** Lists the signed-in user's organizations. */
