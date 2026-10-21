@@ -32,7 +32,6 @@ describe('HaystackEnterpriseOAuth2Api', () => {
 			'dynamicClientRegistrationNotice',
 			'useDynamicClientRegistration',
 			'serverUrl',
-			'organizationId',
 			'scope',
 			'clientSecret',
 		]);

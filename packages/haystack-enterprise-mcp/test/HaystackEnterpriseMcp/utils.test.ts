@@ -16,6 +16,7 @@ import {
 	isStructuredContent,
 	listAllMcpTools,
 	loadMcpToolOptions,
+	loadOrganizationOptions,
 	loadWorkspaceOptions,
 	normalizeMcpInputSchema,
 	resolveMcpAuth,
@@ -414,6 +415,40 @@ describe('isStructuredContent', () => {
 		expect(isStructuredContent(undefined)).toBe(false);
 		expect(isStructuredContent(null)).toBe(false);
 		expect(isStructuredContent([{ foo: 'bar' }])).toBe(false);
+	});
+});
+
+describe('loadOrganizationOptions', () => {
+	const load = async (organizations: unknown[]) => {
+		const httpRequestWithAuthentication = vi.fn(async () => ({ organizations }));
+		const context = {
+			helpers: { httpRequestWithAuthentication },
+			getNode: () => ({ name: 'Haystack Enterprise MCP' }),
+			getCredentials: async () => ({}),
+			getCurrentNodeParameter: () => undefined,
+			getNodeParameter: (name: string) => (name === 'authentication' ? 'oAuth2' : ''),
+		} as unknown as ILoadOptionsFunctions;
+		return { options: await loadOrganizationOptions(context), httpRequestWithAuthentication };
+	};
+
+	it('offers the organizations when the user belongs to several', async () => {
+		const { options, httpRequestWithAuthentication } = await load([
+			{ organization_id: 'a', name: 'Org A' },
+			{ organization_id: 'b' },
+		]);
+		expect(options).toEqual([
+			{ name: 'Default Organization', value: '' },
+			{ name: 'Org A', value: 'a' },
+			{ name: 'b', value: 'b' },
+		]);
+		expect(httpRequestWithAuthentication.mock.calls[0][1]).toMatchObject({
+			url: `${DEFAULT_API_ORIGIN}/api/v2/organizations`,
+		});
+	});
+
+	it('offers only the default for a single organization', async () => {
+		const { options } = await load([{ organization_id: 'a', name: 'Org A' }]);
+		expect(options).toEqual([{ name: 'Default Organization', value: '' }]);
 	});
 });
 

@@ -75,7 +75,7 @@ const fileIdField = (operation: string): INodeProperties => ({
 	type: 'options',
 	typeOptions: {
 		loadOptionsMethod: 'getFiles',
-		loadOptionsDependsOn: ['authentication', 'workspaceName'],
+		loadOptionsDependsOn: ['authentication', 'organizationId', 'workspaceName'],
 	},
 	default: '',
 	required: true,
@@ -412,7 +412,7 @@ export const fileFields: INodeProperties[] = [
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getFiles',
-							loadOptionsDependsOn: ['authentication', 'workspaceName'],
+							loadOptionsDependsOn: ['authentication', 'organizationId', 'workspaceName'],
 						},
 						default: '',
 						description:

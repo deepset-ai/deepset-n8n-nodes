@@ -16,6 +16,7 @@ import {
 	loadDeploymentOptionsWithAllOption,
 	loadFileOptions,
 	loadIndexOptions,
+	loadOrganizationOptions,
 	loadSearchSessionOptions,
 	loadWorkspaceOptions,
 	normalizeApiOrigin,
@@ -239,15 +240,19 @@ describe('apiRequest', () => {
 		expect(getCredentials).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
 	});
 
-	it('sends X-Organization-ID for OAuth2 credentials only', async () => {
-		const run = async (authentication: string, credentials: Record<string, unknown>) => {
+	it('sends the node Organization as X-Organization-ID for OAuth2 only', async () => {
+		const run = async (authentication: string, organizationId: string) => {
 			const httpRequestWithAuthentication = vi.fn(async () => ({}));
 			const context = {
 				helpers: { httpRequestWithAuthentication },
 				getNode: () => ({ name: 'Haystack Enterprise AI' }),
-				getCredentials: async () => credentials,
+				getCredentials: async () => ({ apiKey: 'k' }),
 				getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-					name === 'authentication' ? authentication : fallback,
+					name === 'authentication'
+						? authentication
+						: name === 'organizationId'
+							? organizationId
+							: fallback,
 			} as unknown as IExecuteFunctions;
 			await apiRequest.call(context, 'GET', '/workspaces', { headers: { 'X-Other': '1' } });
 			return (httpRequestWithAuthentication.mock.calls[0] as unknown[])[1] as {
@@ -255,13 +260,46 @@ describe('apiRequest', () => {
 			};
 		};
 
-		expect((await run('oAuth2', { organizationId: ' org-1 ' })).headers).toEqual({
+		expect((await run('oAuth2', ' org-1 ')).headers).toEqual({
 			'X-Other': '1',
 			'X-Organization-ID': 'org-1',
 		});
-		expect((await run('oAuth2', { organizationId: '' })).headers).toEqual({ 'X-Other': '1' });
-		expect((await run('apiKey', { apiKey: 'k', organizationId: 'org-1' })).headers).toEqual({
-			'X-Other': '1',
+		expect((await run('oAuth2', '')).headers).toEqual({ 'X-Other': '1' });
+		expect((await run('apiKey', 'org-1')).headers).toEqual({ 'X-Other': '1' });
+	});
+
+	describe('loadOrganizationOptions', () => {
+		const load = async (organizations: unknown[]) => {
+			const httpRequestWithAuthentication = vi.fn(async () => ({ organizations }));
+			const context = {
+				helpers: { httpRequestWithAuthentication },
+				getNode: () => ({ name: 'Haystack Enterprise AI' }),
+				getCredentials: async () => ({ serverUrl: 'https://api.example.com/api/v1' }),
+				getCurrentNodeParameter: () => undefined,
+				getNodeParameter: (name: string) => (name === 'authentication' ? 'oAuth2' : ''),
+			} as unknown as ILoadOptionsFunctions;
+			const options = await loadOrganizationOptions(context);
+			return { options, httpRequestWithAuthentication };
+		};
+
+		it('offers the organizations when the user belongs to several', async () => {
+			const { options, httpRequestWithAuthentication } = await load([
+				{ organization_id: 'a', name: 'Org A' },
+				{ organization_id: 'b' },
+			]);
+			expect(options).toEqual([
+				{ name: 'Default Organization', value: '' },
+				{ name: 'Org A', value: 'a' },
+				{ name: 'b', value: 'b' },
+			]);
+			expect(httpRequestWithAuthentication.mock.calls[0][1]).toMatchObject({
+				url: 'https://api.example.com/api/v2/organizations',
+			});
+		});
+
+		it('offers only the default for a single organization', async () => {
+			const { options } = await load([{ organization_id: 'a', name: 'Org A' }]);
+			expect(options).toEqual([{ name: 'Default Organization', value: '' }]);
 		});
 	});
 

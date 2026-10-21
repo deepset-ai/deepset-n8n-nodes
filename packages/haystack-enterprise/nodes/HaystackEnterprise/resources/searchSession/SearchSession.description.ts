@@ -51,7 +51,7 @@ export const searchSessionFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDeployments',
-			loadOptionsDependsOn: ['authentication', 'workspaceName'],
+			loadOptionsDependsOn: ['authentication', 'organizationId', 'workspaceName'],
 		},
 		default: '',
 		required: true,
@@ -76,7 +76,7 @@ export const searchSessionFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getSearchSessions',
-			loadOptionsDependsOn: ['authentication', 'workspaceName'],
+			loadOptionsDependsOn: ['authentication', 'organizationId', 'workspaceName'],
 		},
 		default: '',
 		required: true,
@@ -128,7 +128,7 @@ export const searchSessionFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getDeploymentsWithAllOption',
-			loadOptionsDependsOn: ['authentication', 'workspaceName'],
+			loadOptionsDependsOn: ['authentication', 'organizationId', 'workspaceName'],
 		},
 		default: '',
 		description:

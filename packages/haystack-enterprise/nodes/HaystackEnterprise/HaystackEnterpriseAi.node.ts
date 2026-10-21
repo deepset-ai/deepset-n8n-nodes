@@ -24,8 +24,10 @@ import {
 	loadDeploymentOptionsWithAllOption,
 	loadFileOptions,
 	loadIndexOptions,
+	loadOrganizationOptions,
 	loadSearchSessionOptions,
 	loadWorkspaceOptions,
+	organizationIdProperty,
 	toNodeApiError,
 } from './utils';
 
@@ -88,6 +90,7 @@ export class HaystackEnterpriseAi implements INodeType {
 				],
 				default: 'apiKey',
 			},
+			organizationIdProperty,
 			{
 				displayName:
 					'Set up your Haystack Enterprise credential above first, then select your workspace below.',
@@ -106,7 +109,7 @@ export class HaystackEnterpriseAi implements INodeType {
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getWorkspaces',
-					loadOptionsDependsOn: ['authentication'],
+					loadOptionsDependsOn: ['authentication', 'organizationId'],
 				},
 				default: '',
 				required: true,
@@ -139,6 +142,9 @@ export class HaystackEnterpriseAi implements INodeType {
 
 	methods = {
 		loadOptions: {
+			async getOrganizations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return loadOrganizationOptions(this);
+			},
 			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return loadWorkspaceOptions(this);
 			},

@@ -28,8 +28,10 @@ import {
 	isStructuredContent,
 	listAllMcpTools,
 	loadMcpToolOptions,
+	loadOrganizationOptions,
 	loadWorkspaceOptions,
 	normalizeMcpInputSchema,
+	organizationIdProperty,
 	resolveMcpAuth,
 } from './utils';
 
@@ -212,6 +214,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 				],
 				default: 'apiKey',
 			},
+			organizationIdProperty,
 			{
 				displayName:
 					'Make sure you have created an MCP server and enabled at least one pipeline as a tool in Haystack Enterprise Platform under Settings → Workspace → MCP. See the <a href="https://docs.cloud.deepset.ai/docs/use-pipeline-as-mcp-tool/" target="_blank" rel="noopener noreferrer">docs on using a pipeline as an MCP tool</a>.',
@@ -226,7 +229,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getWorkspaces',
-					loadOptionsDependsOn: ['authentication'],
+					loadOptionsDependsOn: ['authentication', 'organizationId'],
 				},
 				default: '',
 				required: true,
@@ -264,7 +267,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getAvailableMcpTools',
-					loadOptionsDependsOn: ['authentication', 'workspaceId'],
+					loadOptionsDependsOn: ['authentication', 'organizationId', 'workspaceId'],
 				},
 				default: [],
 				description:
@@ -277,7 +280,7 @@ export class HaystackEnterpriseMcp implements INodeType {
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getAvailableMcpTools',
-					loadOptionsDependsOn: ['authentication', 'workspaceId'],
+					loadOptionsDependsOn: ['authentication', 'organizationId', 'workspaceId'],
 				},
 				default: [],
 				description:
@@ -307,6 +310,10 @@ export class HaystackEnterpriseMcp implements INodeType {
 
 	methods = {
 		loadOptions: {
+			async getOrganizations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return loadOrganizationOptions(this);
+			},
+
 			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return loadWorkspaceOptions(this);
 			},

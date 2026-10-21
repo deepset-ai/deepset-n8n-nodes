@@ -5,6 +5,7 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INode,
+	INodeProperties,
 	INodePropertyOptions,
 	ISupplyDataFunctions,
 	JsonObject,
@@ -233,13 +234,67 @@ async function withApiErrorWrapping<T>(
 	}
 }
 
-/** Organization chosen on the OAuth2 credential. API keys are bound to one organization. */
+/** Organization picked on the node. API keys are bound to one organization and ignore it. */
 export async function getOrganizationId(context: NodeContext): Promise<string | undefined> {
 	if (getCredentialType(context) !== SIGN_IN_CREDENTIAL_NAME) return undefined;
-	const { organizationId } = await context.getCredentials(SIGN_IN_CREDENTIAL_NAME);
+	const organizationId = isLoadOptionsContext(context)
+		? context.getNodeParameter('organizationId', '')
+		: context.getNodeParameter('organizationId', 0, '');
 	return typeof organizationId === 'string' && organizationId.trim()
 		? organizationId.trim()
 		: undefined;
+}
+
+/** Organization dropdown shown for OAuth2 sign-in, where one account can belong to several. */
+export const organizationIdProperty: INodeProperties = {
+	displayName: 'Organization Name or ID',
+	name: 'organizationId',
+	type: 'options',
+	typeOptions: {
+		loadOptionsMethod: 'getOrganizations',
+		loadOptionsDependsOn: ['authentication'],
+	},
+	displayOptions: { show: { authentication: ['oAuth2'] } },
+	default: '',
+	description:
+		'Only needed if your account belongs to several organizations. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+};
+
+/**
+ * Lists the signed-in user's organizations. With zero or one organization only the default is
+ * offered, so there is nothing to choose.
+ */
+export async function loadOrganizationOptions(
+	context: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const defaultOption = { name: 'Default Organization', value: '' };
+	if (getCredentialType(context) !== SIGN_IN_CREDENTIAL_NAME) return [defaultOption];
+
+	const credentials = await context.getCredentials(SIGN_IN_CREDENTIAL_NAME);
+	const origin = apiOriginWithoutVersionPath(getApiOriginFromCredentials(credentials));
+	let response: unknown;
+	try {
+		response = await context.helpers.httpRequestWithAuthentication.call(
+			context,
+			SIGN_IN_CREDENTIAL_NAME,
+			{ method: 'GET', url: `${origin}/api/v2/organizations`, json: true },
+		);
+	} catch (error) {
+		throw new NodeOperationError(context.getNode(), (error as Error).message);
+	}
+
+	const organizations = ((response as IDataObject | undefined)?.organizations ??
+		[]) as IDataObject[];
+	const options = organizations
+		.filter((organization) => typeof organization.organization_id === 'string')
+		.map((organization) => ({
+			name:
+				typeof organization.name === 'string' && organization.name
+					? organization.name
+					: (organization.organization_id as string),
+			value: organization.organization_id as string,
+		}));
+	return options.length > 1 ? [defaultOption, ...options] : [defaultOption];
 }
 
 /** Sends an authenticated API request with shared URL and error handling. */

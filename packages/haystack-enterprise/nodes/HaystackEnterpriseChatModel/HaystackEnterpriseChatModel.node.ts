@@ -13,7 +13,9 @@ import {
 	getApiBaseUrlForContext,
 	getOrganizationId,
 	loadDeploymentOptions,
+	loadOrganizationOptions,
 	loadWorkspaceOptions,
+	organizationIdProperty,
 	readAdditionalParameters,
 	resolveBearerToken,
 } from '../HaystackEnterprise/utils';
@@ -82,6 +84,7 @@ export class HaystackEnterpriseChatModel implements INodeType {
 				],
 				default: 'apiKey',
 			},
+			organizationIdProperty,
 			{
 				displayName:
 					'Connect this node to an AI Agent Model input. The Agent builds the conversation; this node only supplies the Haystack Enterprise service.',
@@ -107,7 +110,7 @@ export class HaystackEnterpriseChatModel implements INodeType {
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getWorkspaces',
-					loadOptionsDependsOn: ['authentication'],
+					loadOptionsDependsOn: ['authentication', 'organizationId'],
 				},
 				default: '',
 				required: true,
@@ -120,7 +123,7 @@ export class HaystackEnterpriseChatModel implements INodeType {
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getDeployments',
-					loadOptionsDependsOn: ['authentication', 'workspaceName'],
+					loadOptionsDependsOn: ['authentication', 'organizationId', 'workspaceName'],
 				},
 				default: '',
 				required: true,
@@ -173,6 +176,9 @@ export class HaystackEnterpriseChatModel implements INodeType {
 
 	methods = {
 		loadOptions: {
+			async getOrganizations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return loadOrganizationOptions(this);
+			},
 			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return loadWorkspaceOptions(this);
 			},
