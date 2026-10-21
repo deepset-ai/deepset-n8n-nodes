@@ -5,7 +5,6 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	INodeProperties,
 	INodePropertyOptions,
 	ISupplyDataFunctions,
 	JsonObject,
@@ -75,70 +74,17 @@ function getAuthenticationMode(context: McpContext, itemIndex: number): 'apiKey'
 export interface McpAuth {
 	token: string;
 	apiOrigin: string;
-	/** Sent as X-Organization-ID; set from the node's Organization for OAuth2 only. */
+	/** Sent as X-Organization-ID; set from the OAuth2 credential only. */
 	organizationId?: string;
 	/** Refreshes and persists an OAuth2 token after a 401 response. */
 	refresh?: () => Promise<string | undefined>;
 }
 
-function getOrganizationParameter(context: McpContext, itemIndex: number): string | undefined {
-	const organizationId = isLoadOptionsContext(context)
-		? context.getNodeParameter('organizationId', '')
-		: context.getNodeParameter('organizationId', itemIndex, '');
+function readOrganizationId(credentials: IDataObject): string | undefined {
+	const { organizationId } = credentials;
 	return typeof organizationId === 'string' && organizationId.trim()
 		? organizationId.trim()
 		: undefined;
-}
-
-/** Organization dropdown shown for OAuth2 sign-in, where one account can belong to several. */
-export const organizationIdProperty: INodeProperties = {
-	displayName: 'Organization Name or ID',
-	name: 'organizationId',
-	type: 'options',
-	typeOptions: {
-		loadOptionsMethod: 'getOrganizations',
-		loadOptionsDependsOn: ['authentication'],
-	},
-	displayOptions: { show: { authentication: ['oAuth2'] } },
-	default: '',
-	description:
-		'Select the organization to work in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-};
-
-/** Lists the signed-in user's organizations. */
-export async function loadOrganizationOptions(
-	context: ILoadOptionsFunctions,
-): Promise<INodePropertyOptions[]> {
-	if (getAuthenticationMode(context, 0) !== 'oAuth2') return [];
-
-	const credentials = await context.getCredentials(SIGN_IN_CREDENTIAL_NAME);
-	let response: unknown;
-	try {
-		response = await context.helpers.httpRequestWithAuthentication.call(
-			context,
-			SIGN_IN_CREDENTIAL_NAME,
-			{
-				method: 'GET',
-				url: `${getApiBaseUrlV2FromOrigin(getApiOriginFromCredentials(credentials))}/organizations`,
-				json: true,
-			},
-		);
-	} catch (error) {
-		throw new NodeOperationError(context.getNode(), (error as Error).message);
-	}
-
-	const organizations = ((response as IDataObject | undefined)?.organizations ??
-		[]) as IDataObject[];
-	const options = organizations
-		.filter((organization) => typeof organization.organization_id === 'string')
-		.map((organization) => ({
-			name:
-				typeof organization.name === 'string' && organization.name
-					? organization.name
-					: (organization.organization_id as string),
-			value: organization.organization_id as string,
-		}));
-	return options;
 }
 
 export async function resolveMcpAuth(context: McpContext, itemIndex: number): Promise<McpAuth> {
@@ -163,7 +109,7 @@ export async function resolveMcpAuth(context: McpContext, itemIndex: number): Pr
 	return {
 		token: accessToken,
 		apiOrigin: getApiOriginFromCredentials(credentials),
-		organizationId: getOrganizationParameter(context, 0),
+		organizationId: readOrganizationId(credentials),
 		refresh: async () => {
 			try {
 				const refreshed = (await context.helpers.refreshOAuth2Token.call(
@@ -389,7 +335,7 @@ export async function loadWorkspaceOptions(
 	const credentials = await context.getCredentials(credentialType);
 	const apiOrigin = getApiOriginFromCredentials(credentials);
 	const organizationId =
-		credentialType === SIGN_IN_CREDENTIAL_NAME ? getOrganizationParameter(context, 0) : undefined;
+		credentialType === SIGN_IN_CREDENTIAL_NAME ? readOrganizationId(credentials) : undefined;
 
 	let response: unknown;
 	try {

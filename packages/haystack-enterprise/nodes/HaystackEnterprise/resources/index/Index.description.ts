@@ -40,7 +40,7 @@ export const indexFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getIndexes',
-			loadOptionsDependsOn: ['authentication', 'organizationId', 'workspaceName'],
+			loadOptionsDependsOn: ['authentication', 'workspaceName'],
 		},
 		default: '',
 		required: true,

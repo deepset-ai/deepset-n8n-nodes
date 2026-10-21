@@ -45,6 +45,14 @@ export class HaystackEnterpriseOAuth2Api implements ICredentialType {
 				'The Haystack Enterprise API origin (for example, https://api.cloud.deepset.ai).',
 		},
 		{
+			displayName: 'Organization ID (Optional)',
+			name: 'organizationId',
+			type: 'string',
+			default: '',
+			description:
+				'Only required if you belong to multiple organizations. Used for every request made with this credential.',
+		},
+		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'string',

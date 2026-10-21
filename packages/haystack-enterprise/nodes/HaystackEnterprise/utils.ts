@@ -5,7 +5,6 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INode,
-	INodeProperties,
 	INodePropertyOptions,
 	ISupplyDataFunctions,
 	JsonObject,
@@ -234,63 +233,13 @@ async function withApiErrorWrapping<T>(
 	}
 }
 
-/** Organization picked on the node. API keys are bound to one organization and ignore it. */
+/** Organization chosen on the OAuth2 credential. API keys are bound to one organization. */
 export async function getOrganizationId(context: NodeContext): Promise<string | undefined> {
 	if (getCredentialType(context) !== SIGN_IN_CREDENTIAL_NAME) return undefined;
-	const organizationId = isLoadOptionsContext(context)
-		? context.getNodeParameter('organizationId', '')
-		: context.getNodeParameter('organizationId', 0, '');
+	const { organizationId } = await context.getCredentials(SIGN_IN_CREDENTIAL_NAME);
 	return typeof organizationId === 'string' && organizationId.trim()
 		? organizationId.trim()
 		: undefined;
-}
-
-/** Organization dropdown shown for OAuth2 sign-in, where one account can belong to several. */
-export const organizationIdProperty: INodeProperties = {
-	displayName: 'Organization Name or ID',
-	name: 'organizationId',
-	type: 'options',
-	typeOptions: {
-		loadOptionsMethod: 'getOrganizations',
-		loadOptionsDependsOn: ['authentication'],
-	},
-	displayOptions: { show: { authentication: ['oAuth2'] } },
-	default: '',
-	description:
-		'Select the organization to work in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-};
-
-/** Lists the signed-in user's organizations. */
-export async function loadOrganizationOptions(
-	context: ILoadOptionsFunctions,
-): Promise<INodePropertyOptions[]> {
-	if (getCredentialType(context) !== SIGN_IN_CREDENTIAL_NAME) return [];
-
-	const credentials = await context.getCredentials(SIGN_IN_CREDENTIAL_NAME);
-	const origin = apiOriginWithoutVersionPath(getApiOriginFromCredentials(credentials));
-	let response: unknown;
-	try {
-		response = await context.helpers.httpRequestWithAuthentication.call(
-			context,
-			SIGN_IN_CREDENTIAL_NAME,
-			{ method: 'GET', url: `${origin}/api/v2/organizations`, json: true },
-		);
-	} catch (error) {
-		throw new NodeOperationError(context.getNode(), (error as Error).message);
-	}
-
-	const organizations = ((response as IDataObject | undefined)?.organizations ??
-		[]) as IDataObject[];
-	const options = organizations
-		.filter((organization) => typeof organization.organization_id === 'string')
-		.map((organization) => ({
-			name:
-				typeof organization.name === 'string' && organization.name
-					? organization.name
-					: (organization.organization_id as string),
-			value: organization.organization_id as string,
-		}));
-	return options;
 }
 
 /** Sends an authenticated API request with shared URL and error handling. */

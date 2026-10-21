@@ -186,11 +186,11 @@ describe('HaystackEnterpriseChatModel', () => {
 			);
 		});
 
-		it('sends the node Organization as X-Organization-ID', async () => {
-			const context = createSupplyDataContext(
-				{ ...OAUTH2_PARAMS, organizationId: 'org-1' },
-				{ oauthTokenData: { access_token: 'oauth-token' } },
-			);
+		it('sends X-Organization-ID from the OAuth2 credential', async () => {
+			const context = createSupplyDataContext(OAUTH2_PARAMS, {
+				organizationId: 'org-1',
+				oauthTokenData: { access_token: 'oauth-token' },
+			});
 
 			await node.supplyData.call(context, 0);
 

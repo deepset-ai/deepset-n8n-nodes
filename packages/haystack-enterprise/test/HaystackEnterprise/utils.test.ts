@@ -17,7 +17,6 @@ import {
 	loadDeploymentOptionsWithAllOption,
 	loadFileOptions,
 	loadIndexOptions,
-	loadOrganizationOptions,
 	loadSearchSessionOptions,
 	loadWorkspaceOptions,
 	normalizeApiOrigin,
@@ -241,19 +240,15 @@ describe('apiRequest', () => {
 		expect(getCredentials).toHaveBeenCalledWith('haystackEnterpriseOAuth2Api');
 	});
 
-	it('sends the node Organization as X-Organization-ID for OAuth2 only', async () => {
-		const run = async (authentication: string, organizationId: string) => {
+	it('sends X-Organization-ID for OAuth2 credentials only', async () => {
+		const run = async (authentication: string, credentials: Record<string, unknown>) => {
 			const httpRequestWithAuthentication = vi.fn(async () => ({}));
 			const context = {
 				helpers: { httpRequestWithAuthentication },
 				getNode: () => ({ name: 'Haystack Enterprise AI' }),
-				getCredentials: async () => ({ apiKey: 'k' }),
+				getCredentials: async () => credentials,
 				getNodeParameter: (name: string, _itemIndex: number, fallback?: unknown) =>
-					name === 'authentication'
-						? authentication
-						: name === 'organizationId'
-							? organizationId
-							: fallback,
+					name === 'authentication' ? authentication : fallback,
 			} as unknown as IExecuteFunctions;
 			await apiRequest.call(context, 'GET', '/workspaces', { headers: { 'X-Other': '1' } });
 			return (httpRequestWithAuthentication.mock.calls[0] as unknown[])[1] as {
@@ -261,15 +256,17 @@ describe('apiRequest', () => {
 			};
 		};
 
-		expect((await run('oAuth2', ' org-1 ')).headers).toEqual({
+		expect((await run('oAuth2', { organizationId: ' org-1 ' })).headers).toEqual({
 			'X-Other': '1',
 			'X-Organization-ID': 'org-1',
 		});
-		expect((await run('oAuth2', '')).headers).toEqual({ 'X-Other': '1' });
-		expect((await run('apiKey', 'org-1')).headers).toEqual({ 'X-Other': '1' });
+		expect((await run('oAuth2', { organizationId: '' })).headers).toEqual({ 'X-Other': '1' });
+		expect((await run('apiKey', { apiKey: 'k', organizationId: 'org-1' })).headers).toEqual({
+			'X-Other': '1',
+		});
 	});
 
-	it('sends the node Organization on streaming requests', async () => {
+	it('sends X-Organization-ID on streaming requests', async () => {
 		const httpRequestWithAuthentication = vi.fn(async () => ({
 			body: new FakeStream(),
 			headers: {},
@@ -277,48 +274,14 @@ describe('apiRequest', () => {
 		const context = {
 			helpers: { httpRequestWithAuthentication },
 			getNode: () => ({ name: 'Haystack Enterprise AI' }),
-			getCredentials: async () => ({}),
-			getNodeParameter: (name: string) => (name === 'authentication' ? 'oAuth2' : 'org-1'),
+			getCredentials: async () => ({ organizationId: 'org-1' }),
+			getNodeParameter: (name: string) => (name === 'authentication' ? 'oAuth2' : undefined),
 		} as unknown as IExecuteFunctions;
 
 		await apiRequestStream.call(context, 'POST', '/x', {});
 
 		expect(httpRequestWithAuthentication.mock.calls[0][1]).toMatchObject({
 			headers: { 'X-Organization-ID': 'org-1' },
-		});
-	});
-
-	describe('loadOrganizationOptions', () => {
-		const load = async (organizations: unknown[]) => {
-			const httpRequestWithAuthentication = vi.fn(async () => ({ organizations }));
-			const context = {
-				helpers: { httpRequestWithAuthentication },
-				getNode: () => ({ name: 'Haystack Enterprise AI' }),
-				getCredentials: async () => ({ serverUrl: 'https://api.example.com/api/v1' }),
-				getCurrentNodeParameter: () => undefined,
-				getNodeParameter: (name: string) => (name === 'authentication' ? 'oAuth2' : ''),
-			} as unknown as ILoadOptionsFunctions;
-			const options = await loadOrganizationOptions(context);
-			return { options, httpRequestWithAuthentication };
-		};
-
-		it('offers the organizations when the user belongs to several', async () => {
-			const { options, httpRequestWithAuthentication } = await load([
-				{ organization_id: 'a', name: 'Org A' },
-				{ organization_id: 'b' },
-			]);
-			expect(options).toEqual([
-				{ name: 'Org A', value: 'a' },
-				{ name: 'b', value: 'b' },
-			]);
-			expect(httpRequestWithAuthentication.mock.calls[0][1]).toMatchObject({
-				url: 'https://api.example.com/api/v2/organizations',
-			});
-		});
-
-		it('lists the single organization when there is only one', async () => {
-			const { options } = await load([{ organization_id: 'a', name: 'Org A' }]);
-			expect(options).toEqual([{ name: 'Org A', value: 'a' }]);
 		});
 	});
 
