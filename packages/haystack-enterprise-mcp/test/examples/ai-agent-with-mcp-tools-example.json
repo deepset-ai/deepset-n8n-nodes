@@ -28,15 +28,16 @@
 			"parameters": {
 				"model": {
 					"__rl": true,
+					"mode": "list",
 					"value": "gpt-4o-mini",
-					"mode": "list"
+					"cachedResultName": "gpt-4o-mini"
 				},
 				"options": {}
 			},
 			"id": "b2c3d4e5-0003-4a1a-9a1a-000000000003",
 			"name": "OpenAI Chat Model",
 			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-			"typeVersion": 1,
+			"typeVersion": 1.2,
 			"position": [-640, 220],
 			"credentials": {
 				"openAiApi": {
