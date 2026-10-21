@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- New optional **Organization ID** field on the OAuth2 credential. Only required if you belong to
+  multiple organizations; it is sent as the `X-Organization-ID` header on every request made with
+  the credential, including the chat model node and streaming requests. API keys are bound to one
+  organization and ignore it.
+
 ## 0.1.3
 
 - Errors from the Haystack Enterprise API are now re-thrown as `NodeApiError` through one helper
