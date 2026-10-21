@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
 	apiRequest,
+	apiRequestStream,
 	consumeSseStream,
 	extractPaginatedList,
 	extractSearchSessionList,
@@ -266,6 +267,25 @@ describe('apiRequest', () => {
 		});
 		expect((await run('oAuth2', '')).headers).toEqual({ 'X-Other': '1' });
 		expect((await run('apiKey', 'org-1')).headers).toEqual({ 'X-Other': '1' });
+	});
+
+	it('sends the node Organization on streaming requests', async () => {
+		const httpRequestWithAuthentication = vi.fn(async () => ({
+			body: new FakeStream(),
+			headers: {},
+		}));
+		const context = {
+			helpers: { httpRequestWithAuthentication },
+			getNode: () => ({ name: 'Haystack Enterprise AI' }),
+			getCredentials: async () => ({}),
+			getNodeParameter: (name: string) => (name === 'authentication' ? 'oAuth2' : 'org-1'),
+		} as unknown as IExecuteFunctions;
+
+		await apiRequestStream.call(context, 'POST', '/x', {});
+
+		expect(httpRequestWithAuthentication.mock.calls[0][1]).toMatchObject({
+			headers: { 'X-Organization-ID': 'org-1' },
+		});
 	});
 
 	describe('loadOrganizationOptions', () => {

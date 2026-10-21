@@ -257,7 +257,7 @@ export const organizationIdProperty: INodeProperties = {
 	displayOptions: { show: { authentication: ['oAuth2'] } },
 	default: '',
 	description:
-		'Only needed if your account belongs to several organizations. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		'Only needed if your account belongs to several organizations. Applies to the whole node run, so it is read from the first item. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 };
 
 /**
@@ -393,6 +393,7 @@ export async function apiRequestStream(
 		endpoint,
 		async () => {
 			const apiBaseUrl = await getApiBaseUrlForContext(this);
+			const organizationId = await getOrganizationId(this);
 			const response = (await this.helpers.httpRequestWithAuthentication.call(
 				this,
 				getCredentialType(this),
@@ -400,6 +401,7 @@ export async function apiRequestStream(
 					method,
 					url: `${apiBaseUrl}${endpoint}`,
 					json: true,
+					...(organizationId && { headers: { 'X-Organization-ID': organizationId } }),
 					body,
 					encoding: 'stream',
 					returnFullResponse: true,
