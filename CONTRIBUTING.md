@@ -8,8 +8,8 @@ For bugs and feature requests, open a GitHub issue. For other questions, contact
 
 ## Setup
 
-This is an npm workspaces monorepo; each package lives under `packages/`. Use a current LTS release
-of Node.js, as CI does.
+Use Node.js 24, as CI does (`isolated-vm`, which n8n's packages depend on, doesn't build on Node 26
+yet).
 
 ```bash
 npm install
@@ -21,17 +21,22 @@ npm run test
 
 Use `npm run format` to apply Prettier.
 
-`npm install` also enables a pre-commit hook (`.githooks/pre-commit`) that checks the formatting of
-the files you commit and runs `npm run lint`. If it fails, run `npm run format` or
-`npm run lint:fix` and stage the changes. You can skip it with `git commit --no-verify`; CI runs the
-same checks.
+Optionally enable the pre-commit hook (`.githooks/pre-commit`), which checks the formatting of the
+files you commit and runs `npm run lint`:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+If it fails, run `npm run format` or `npm run lint:fix` and stage the changes. You can skip it with
+`git commit --no-verify`; CI runs the same checks. (It isn't set up by an npm `prepare` script,
+because n8n forbids lifecycle scripts in community node packages.)
 
 ## Local development
 
 Run a node in a local n8n instance with hot reload:
 
 ```bash
-cd packages/haystack-enterprise   # or packages/haystack-enterprise-mcp
 npm run dev    # builds the node, loads it into n8n and starts n8n at http://localhost:5678
 ```
 
@@ -45,17 +50,15 @@ N8N_PORT=5679 N8N_RUNNERS_BROKER_PORT=5681 npm run dev
 ### Linting
 
 ```bash
-npm run lint       # from the repo root, or inside a package
+npm run lint
 npm run lint:fix
 ```
 
-`packages/haystack-enterprise` is n8n Cloud eligible, so its `lint` runs in two passes: n8n's
-cloud-eligible ruleset over `nodes credentials package.json`, then the non-cloud ruleset
-(`eslint.test.config.mjs`) over `test/`, which would otherwise flag the `vitest` import.
-`packages/haystack-enterprise-mcp` isn't cloud eligible, so one non-cloud pass covers everything.
+The package is n8n Cloud eligible, so `lint` runs in two passes: n8n's cloud-eligible ruleset over
+`nodes credentials package.json`, then the non-cloud ruleset (`eslint.test.config.mjs`) over
+`test/`, which would otherwise flag the `vitest` import.
 
-`npm run cloud-scan -w packages/haystack-enterprise` runs the two checks n8n applies when a node is
-submitted for verification:
+`npm run cloud-scan` runs the two checks n8n applies when a node is submitted for verification:
 
 1. A lint pass over the source code, ignoring `eslint-disable` comments to match n8n’s review.
 2. Scan the packed build with n8n’s community-package scanner.
@@ -63,18 +66,17 @@ submitted for verification:
 ### Testing
 
 ```bash
-npm run test            # unit tests of every package (vitest)
+npm run test            # unit tests (vitest)
 npm run test:contract   # contract tests against the OpenAPI spec, see below
 ```
 
 ### Contract tests
 
-`packages/contract-tests` validates `@deepset-ai/n8n-nodes-haystack-enterprise`'s nodes against the
-Haystack Enterprise Platform's OpenAPI spec. By default it starts a local
-[Prism](https://github.com/stoplightio/prism) mock server from the published spec
-(`https://docs.cloud.deepset.ai/openapi.yaml`), so no credentials are needed. To use a local spec
-file: `CONTRACT_SPEC=./openapi.yaml npm run test:contract`. See
-`packages/contract-tests/src/registry/` for what is covered.
+`contract-tests/` validates the nodes against the Haystack Enterprise Platform's OpenAPI spec. By
+default it starts a local [Prism](https://github.com/stoplightio/prism) mock server from the
+published spec (`https://docs.cloud.deepset.ai/openapi.yaml`), so no credentials are needed. To use
+a local spec file: `CONTRACT_SPEC=./openapi.yaml npm run test:contract`. See
+`contract-tests/src/registry/` for what is covered.
 
 ## Pull requests
 
@@ -90,12 +92,12 @@ By contributing, you agree that your contributions are licensed under the [MIT L
 
 `.github/workflows/ci.yml` runs on every pull request and on every push to `main`:
 
-- **lint-and-build**: lint, Prettier format check and build for all packages.
-- **test**: unit tests of every package.
+- **lint-and-build**: lint, Prettier format check and build.
+- **test**: unit tests.
 - **contract-tests**: checks the nodes against a mock of the published Haystack Enterprise Platform
   OpenAPI spec (no credentials needed).
-- **cloud-scan**: runs n8n's community-package scanner against a packed build of
-  `haystack-enterprise`, the same checks n8n applies when a node is submitted for verification.
+- **cloud-scan**: runs n8n's community-package scanner against a packed build of the package, the
+  same checks n8n applies when a node is submitted for verification.
 - **latest-n8n**: builds and tests against the latest `n8n-workflow` and `n8n-core`.
 
 Run the same checks locally:
@@ -103,20 +105,16 @@ Run the same checks locally:
 
 ## Releasing
 
-Maintainers only. Each package is released and tagged independently. Pushing a release tag triggers
-[`.github/workflows/publish.yml`](./.github/workflows/publish.yml), which publishes that package to
-npm with a provenance statement (required by n8n for verified community nodes).
-
-| Package                                         | Tag format                           | Notes                                        |
-| ----------------------------------------------- | ------------------------------------ | -------------------------------------------- |
-| `@deepset-ai/n8n-nodes-haystack-enterprise`     | `haystack-enterprise-v<version>`     | Re-runs contract tests and n8n's scan first. |
-| `@deepset-ai/n8n-nodes-haystack-enterprise-mcp` | `haystack-enterprise-mcp-v<version>` | Not n8n-verified (self-hosted only).         |
+Maintainers only. Pushing a `v<version>` tag triggers
+[`.github/workflows/publish.yml`](./.github/workflows/publish.yml), which re-runs the contract tests
+and n8n's scan, then publishes the package to npm with a provenance statement (required by n8n for
+verified community nodes).
 
 ### Create a release
 
-1. **Prepare the release in a pull request.** In `packages/<name>/`, set the new `version` in
-   `package.json` and move the `CHANGELOG.md` entries from `Unreleased` to a heading with that
-   version. Merge the pull request into `main` after CI passes.
+1. **Prepare the release in a pull request.** Set the new `version` in `package.json` and move the
+   `CHANGELOG.md` entries from `Unreleased` to a heading with that version. Merge the pull request
+   into `main` after CI passes.
 2. **Check `main`.** Pull the latest `main` and confirm the merge commit contains the version bump.
    The tag must point at this commit, and the tag version must match `package.json`: the workflow
    publishes the version in `package.json`, not the one in the tag name.
@@ -124,8 +122,8 @@ npm with a provenance statement (required by n8n for verified community nodes).
 
    ```bash
    git checkout main && git pull
-   git tag -a haystack-enterprise-v0.1.0 -m "@deepset-ai/n8n-nodes-haystack-enterprise 0.1.0"
-   git push origin haystack-enterprise-v0.1.0
+   git tag -a v0.2.1 -m "@deepset-ai/n8n-nodes-haystack-enterprise 0.2.1"
+   git push origin v0.2.1
    ```
 
    Or in the GitHub UI: **Releases → Draft a new release → Choose a tag**, type the new tag name,

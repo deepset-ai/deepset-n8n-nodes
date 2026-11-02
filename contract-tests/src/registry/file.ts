@@ -1,6 +1,6 @@
 import type { ContractResourceSuite } from './types';
 
-import { executeFile } from '../../../haystack-enterprise/nodes/HaystackEnterprise/resources/file/File.execute';
+import { executeFile } from '../../../nodes/HaystackEnterprise/resources/file/File.execute';
 import { CONTRACT_TEST_UUID } from './caseFactories';
 
 const CONTRACT_TEST_FILE_ID = CONTRACT_TEST_UUID;

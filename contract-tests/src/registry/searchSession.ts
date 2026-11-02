@@ -1,6 +1,6 @@
 import type { ContractResourceSuite } from './types';
 
-import { executeSearchSession } from '../../../haystack-enterprise/nodes/HaystackEnterprise/resources/searchSession/SearchSession.execute';
+import { executeSearchSession } from '../../../nodes/HaystackEnterprise/resources/searchSession/SearchSession.execute';
 import { CONTRACT_TEST_UUID, cursorPaginationCases } from './caseFactories';
 
 export const searchSessionSuite: ContractResourceSuite = {

@@ -76,7 +76,7 @@ jobs:
         run: 'npm run test:contract'
 
   # Runs n8n's own community-package scanner (the check n8n applies when a node is submitted for
-  # verification) against a packed build of the n8n Cloud eligible package.
+  # verification) against a packed build of the package.
   cloud-scan:
     runs-on: ubuntu-latest
 
@@ -94,7 +94,7 @@ jobs:
         run: 'npm ci'
 
       - name: Scan the package with n8n's community-node checks
-        run: 'npm run cloud-scan -w packages/haystack-enterprise'
+        run: 'npm run cloud-scan'
 
   # The lockfile pins the supported floor (n8n 2.16); this job checks the newest n8n-workflow/n8n-core.
   latest-n8n:

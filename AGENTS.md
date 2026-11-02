@@ -1,27 +1,29 @@
-# deepset-n8n-nodes
+# n8n-nodes-haystack-enterprise
 
-npm workspaces monorepo of n8n community node packages for Haystack Enterprise. The root
-`package.json` is private; each publishable package lives under `packages/` with its own
-`package.json`, `nodes/`, `credentials/`, `test/` and `eslint.config.mjs`.
+n8n community node package (`@deepset-ai/n8n-nodes-haystack-enterprise`) with the Haystack
+Enterprise nodes (Haystack Enterprise AI and the chat model node). The package lives at the repo
+root, as n8n verification requires; there is no monorepo and no npm workspace. It is n8n Cloud
+eligible (`n8n.strict` and the eslint cloud config).
 
-- `packages/haystack-enterprise`: main package (Haystack Enterprise node and chat model node).
-- `packages/haystack-enterprise-mcp`: MCP client node, kept in its own package because it is
-  self-hosted only. n8n cloud eligibility (`n8n.strict` and the eslint cloud config) applies to a
-  whole package.
-- `packages/contract-tests`: tests of the nodes' requests against the Haystack Enterprise OpenAPI
-  spec (`npm run test:contract`), run against a local Prism mock.
+The MCP client node lives in its own repository,
+https://github.com/deepset-ai/n8n-nodes-haystack-enterprise-mcp (self-hosted only, not verified).
+
+- `nodes/`, `credentials/`: the node and credential sources.
+- `test/`: unit tests (vitest).
+- `contract-tests/`: tests of the nodes' requests against the Haystack Enterprise OpenAPI spec
+  (`npm run test:contract`), run against a local Prism mock. Not part of the published package.
 
 ## Conventions
 
-- Nodes and credentials are registered in each package's `package.json` under `n8n.nodes` and
-  `n8n.credentials` (paths to compiled files in `dist/`). Update them when adding, removing or
-  renaming either.
+- Nodes and credentials are registered in `package.json` under `n8n.nodes` and `n8n.credentials`
+  (paths to compiled files in `dist/`). Update them when adding, removing or renaming either.
 - Run `npm run build`, `npm run lint`, `npm test` and `npm run format:check` before pushing. Fix
   lint and type errors rather than disabling them.
+- Don't add npm lifecycle scripts (`prepare`, `postinstall`, ...) to `package.json`: n8n forbids
+  them in community node packages.
 - Mark sensitive credential fields as `password`; never log secrets.
-- Update the package's `CHANGELOG.md` when bumping its version.
-- Packages are released independently by pushing a package-specific tag (see
-  `.github/workflows/publish.yml`).
+- Update `CHANGELOG.md` when bumping the version.
+- Releases are published by pushing a `v<version>` tag (see `.github/workflows/publish.yml`).
 
 ## n8n docs
 

@@ -1,6 +1,6 @@
 import type { ContractResourceSuite } from './types';
 
-import { executeService } from '../../../haystack-enterprise/nodes/HaystackEnterprise/resources/service/Service.execute';
+import { executeService } from '../../../nodes/HaystackEnterprise/resources/service/Service.execute';
 import { CONTRACT_TEST_UUID, cursorPaginationCases } from './caseFactories';
 
 const CONTRACT_TEST_DEPLOYMENT_ID = CONTRACT_TEST_UUID;
