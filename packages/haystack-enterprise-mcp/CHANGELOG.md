@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- The codex file (`HaystackEnterpriseMcp.node.json`) now uses the fully-qualified node identifier,
+  `@deepset-ai/n8n-nodes-haystack-enterprise-mcp.haystackEnterpriseMcp`. No changes to node
+  behavior.
+
 ## 0.2.0
 
 - New optional **Organization ID** field on the OAuth2 credential. Only required if you belong to
