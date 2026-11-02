@@ -3,7 +3,8 @@
 ## Unreleased
 
 - The codex file (`HaystackEnterpriseMcp.node.json`) now uses the fully-qualified node identifier,
-  `@deepset-ai/n8n-nodes-haystack-enterprise-mcp.haystackEnterpriseMcp`. No changes to node behavior.
+  `@deepset-ai/n8n-nodes-haystack-enterprise-mcp.haystackEnterpriseMcp`. No changes to node
+  behavior.
 
 ## 0.2.0
 

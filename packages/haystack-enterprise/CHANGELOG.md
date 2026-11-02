@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-- The codex files (`HaystackEnterpriseAi.node.json`, `HaystackEnterpriseChatModel.node.json`) now use
-  the fully-qualified node identifier, `@deepset-ai/n8n-nodes-haystack-enterprise.<nodeName>`, as
-  required by n8n verification. No changes to node behavior.
+- The codex files (`HaystackEnterpriseAi.node.json`, `HaystackEnterpriseChatModel.node.json`) now
+  use the fully-qualified node identifier, `@deepset-ai/n8n-nodes-haystack-enterprise.<nodeName>`,
+  as required by n8n verification. No changes to node behavior.
 
 ## 0.2.0
 
