@@ -19,8 +19,8 @@ to meet this bar and risk being declined.
 
 ## Out of Scope
 
-These packages are n8n community nodes that run inside your own n8n instance, under credentials you
-configure, against a Haystack Enterprise Platform workspace you already have access to.
+This package contains n8n community nodes that run inside your own n8n instance, under credentials
+you configure, against a Haystack Enterprise Platform workspace you already have access to.
 Vulnerabilities that require an attacker to already control the n8n instance, its credentials, or
 the workflow definitions are out of scope. Issues in n8n itself should be reported to n8n, and
 issues in the Haystack Enterprise Platform API to deepset via the address above.

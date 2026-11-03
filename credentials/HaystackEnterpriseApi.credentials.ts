@@ -5,14 +5,13 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-// Kept in sync by hand with packages/haystack-enterprise; both register the same credential
-// `name` so users configure it once.
+// Same credential `name` as n8n-nodes-haystack-enterprise-mcp so users configure one credential; kept in sync by hand because n8n Cloud eligibility forbids runtime dependencies.
 export class HaystackEnterpriseApi implements ICredentialType {
 	name = 'haystackEnterpriseApi';
 
 	displayName = 'Haystack Enterprise API';
 
-	icon = 'file:../nodes/HaystackEnterpriseMcp/haystack-enterprise-electric-blue.svg' as const;
+	icon = 'file:../nodes/HaystackEnterprise/haystack-enterprise-electric-blue.svg' as const;
 
 	documentationUrl = 'https://docs.cloud.deepset.ai/docs/generate-api-key';
 

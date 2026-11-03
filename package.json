@@ -1,28 +1,70 @@
 {
-	"name": "deepset-n8n-nodes",
-	"private": true,
-	"description": "Monorepo for deepset's n8n community node packages.",
+	"name": "@deepset-ai/n8n-nodes-haystack-enterprise",
+	"version": "0.2.0",
+	"description": "n8n community nodes for integrating with Haystack Enterprise Platform.",
 	"license": "MIT",
 	"homepage": "https://www.deepset.ai",
+	"keywords": [
+		"n8n-community-node-package",
+		"deepset",
+		"haystack",
+		"haystack enterprise",
+		"ai"
+	],
+	"author": {
+		"name": "deepset",
+		"email": "haystack@deepset.ai"
+	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/deepset-ai/deepset-n8n-nodes.git"
+		"url": "https://github.com/deepset-ai/n8n-nodes-haystack-enterprise.git"
 	},
-	"workspaces": [
-		"packages/*"
-	],
 	"scripts": {
-		"prepare": "git config core.hooksPath .githooks || true",
-		"build": "npm run build --workspaces --if-present",
+		"build": "n8n-node build",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "eslint nodes credentials package.json && eslint --config eslint.test.config.mjs test",
+		"lint:fix": "eslint nodes credentials package.json --fix && eslint --config eslint.test.config.mjs test --fix",
+		"test": "vitest run --exclude 'contract-tests/**'",
+		"cloud-scan": "eslint --no-inline-config nodes credentials package.json && node scripts/cloud-scan.mjs",
+		"release": "n8n-node release",
+		"prepublishOnly": "n8n-node prerelease",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"lint": "npm run lint --workspaces --if-present",
-		"lint:fix": "npm run lint:fix --workspaces --if-present",
-		"test": "npm run test --workspaces --if-present",
-		"test:contract": "npm run test:contract --workspaces --if-present"
+		"test:contract": "cd contract-tests && vitest run --config vitest.contract.config.ts"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"aiNodeSdkVersion": 1,
+		"strict": true,
+		"credentials": [
+			"dist/credentials/HaystackEnterpriseApi.credentials.js",
+			"dist/credentials/HaystackEnterpriseOAuth2Api.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/HaystackEnterprise/HaystackEnterpriseAi.node.js",
+			"dist/nodes/HaystackEnterpriseChatModel/HaystackEnterpriseChatModel.node.js"
+		]
 	},
 	"devDependencies": {
 		"@ianvs/prettier-plugin-sort-imports": "^4.7.1",
-		"prettier": "3.9.10"
+		"@n8n/node-cli": "^0.53.0",
+		"@n8n/scan-community-package": "^0.41.1",
+		"@stoplight/prism-cli": "^5.16.0",
+		"eslint": "9.39.5",
+		"prettier": "3.9.10",
+		"release-it": "^21.1.2",
+		"typescript": "6.0.3",
+		"vitest": "^5.0.4"
+	},
+	"peerDependencies": {
+		"@n8n/ai-node-sdk": "*",
+		"n8n-workflow": "*"
 	}
 }

@@ -1,6 +1,6 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-// Keep in sync with packages/haystack-enterprise-mcp/credentials/HaystackEnterpriseOAuth2Api.credentials.ts.
+// Keep in sync with credentials/HaystackEnterpriseOAuth2Api.credentials.ts in https://github.com/deepset-ai/n8n-nodes-haystack-enterprise-mcp.
 //
 // n8n's `oAuth2Api` handles discovery, DCR, PKCE, and token storage. Its manual OAuth2 fields
 // remain available when DCR is disabled.
@@ -13,8 +13,7 @@ export class HaystackEnterpriseOAuth2Api implements ICredentialType {
 
 	icon = 'file:../nodes/HaystackEnterprise/haystack-enterprise-electric-blue.svg' as const;
 
-	documentationUrl =
-		'https://github.com/deepset-ai/deepset-n8n-nodes/tree/main/packages/haystack-enterprise#credentials';
+	documentationUrl = 'https://github.com/deepset-ai/n8n-nodes-haystack-enterprise#credentials';
 
 	properties: INodeProperties[] = [
 		{
