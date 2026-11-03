@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.1
 
 - The package now lives at the root of its own repository,
   [deepset-ai/n8n-nodes-haystack-enterprise](https://github.com/deepset-ai/n8n-nodes-haystack-enterprise),
