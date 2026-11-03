@@ -35,10 +35,6 @@ export class HaystackEnterpriseChatModel implements INodeType {
 		},
 		codex: {
 			categories: ['AI'],
-			subcategories: {
-				AI: ['Language Models'],
-				'Language Models': ['Chat Models (Recommended)'],
-			},
 			resources: {
 				primaryDocumentation: [
 					{
