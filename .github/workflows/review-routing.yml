@@ -13,7 +13,11 @@
 name: Review routing
 
 on:
-  pull_request:
+  # `pull_request_target`, not `pull_request`: this repo is public, and a
+  # `pull_request` run from a fork gets no secrets, so the router could not
+  # assign a reviewer to an outside contribution. Safe here because nothing in
+  # this workflow or the router checks out or runs the PR's code.
+  pull_request_target:
     # `unlabeled` too: taking the label off is how you say "start over", and it
     # clears the record of who already declined. Without it the label is a
     # one-way switch and a mis-routed PR can never be re-routed.
@@ -22,7 +26,7 @@ on:
 jobs:
   route:
     if: github.event.label.name == 'review-roulette' ||
-        startsWith(github.event.label.name, 'team:')
+      startsWith(github.event.label.name, 'team:')
     uses: deepset-ai/dc-review-router/.github/workflows/route.yml@main
     # Passes the deepset-cloud-bot App credentials through. The router mints
     # a short-lived installation token from them, scoped to this repo and its
