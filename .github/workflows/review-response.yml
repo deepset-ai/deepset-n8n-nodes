@@ -1,0 +1,19 @@
+# Applies `/accept`, `/decline <reason>` and `/skip` typed on a PR here.
+#
+# The companion to review-routing.yml, and not optional alongside it:
+# `issue_comment` fires in the repository the comment was made in, so without
+# this file a reviewer offered a PR here has no way to answer it. The offer,
+# its deadline and the Slack buttons would all still work, which makes the
+# missing half easy not to notice.
+
+name: Review response
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  respond:
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/')
+    uses: deepset-ai/dc-review-router/.github/workflows/respond.yml@main
+    secrets: inherit

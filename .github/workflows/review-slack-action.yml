@@ -1,0 +1,18 @@
+# Applies a Slack button click on one of this repo's PRs.
+#
+# The third of the router's callers, and the one that fails most quietly.
+# n8n dispatches to the repository the PR lives in — the Slack button value
+# carries `owner/repo#number` — so without this file a click here arrives as a
+# repository_dispatch that nothing is listening for. That is a successful API
+# call: Slack shows the click landing, n8n reports a 204, and nothing runs.
+
+name: Slack action
+
+on:
+  repository_dispatch:
+    types: [slack-review-response]
+
+jobs:
+  apply:
+    uses: deepset-ai/dc-review-router/.github/workflows/slack-action.yml@main
+    secrets: inherit
