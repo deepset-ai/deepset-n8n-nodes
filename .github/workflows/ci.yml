@@ -96,7 +96,8 @@ jobs:
       - name: Scan the package with n8n's community-node checks
         run: 'npm run cloud-scan'
 
-  # The lockfile pins the supported floor (n8n 2.16); this job checks the newest n8n-workflow/n8n-core.
+  # The lockfile pins the supported floor (n8n 2.16); this job checks the n8n-workflow/n8n-core
+  # versions the latest n8n release ships.
   latest-n8n:
     runs-on: ubuntu-latest
 
@@ -113,8 +114,15 @@ jobs:
       - name: Install dependencies
         run: 'npm ci'
 
-      - name: Upgrade n8n-workflow and n8n-core to latest
-        run: 'npm install --no-save n8n-workflow@latest n8n-core@latest'
+      - name: Upgrade n8n-workflow and n8n-core to the versions the latest n8n ships
+        # Not n8n-workflow@latest / n8n-core@latest: those npm tags lag far behind n8n itself (2.16
+        # vs 2.45 at the time of writing), so read the versions from n8n@latest's dependencies.
+        run: |
+          WORKFLOW=$(npm view n8n@latest dependencies.n8n-workflow)
+          CORE=$(npm view n8n@latest dependencies.n8n-core)
+          [ -n "$WORKFLOW" ] && [ -n "$CORE" ] || { echo "Could not read n8n@latest's dependencies"; exit 1; }
+          echo "Testing against n8n $(npm view n8n@latest version): n8n-workflow $WORKFLOW, n8n-core $CORE"
+          npm install --no-save "n8n-workflow@$WORKFLOW" "n8n-core@$CORE"
 
       - name: Build and test
         run: 'npm run build && npm run test'

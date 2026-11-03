@@ -98,7 +98,8 @@ By contributing, you agree that your contributions are licensed under the [MIT L
   OpenAPI spec (no credentials needed).
 - **cloud-scan**: runs n8n's community-package scanner against a packed build of the package, the
   same checks n8n applies when a node is submitted for verification.
-- **latest-n8n**: builds and tests against the latest `n8n-workflow` and `n8n-core`.
+- **latest-n8n**: builds and tests against the `n8n-workflow` and `n8n-core` versions that the
+  latest n8n release ships.
 
 Run the same checks locally:
 `npm run lint && npm run format:check && npm run build && npm run test`.
