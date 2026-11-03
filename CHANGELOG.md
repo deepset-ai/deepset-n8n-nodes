@@ -9,9 +9,6 @@
   [its own repository](https://github.com/deepset-ai/n8n-nodes-haystack-enterprise-mcp).
   `repository.url` in `package.json` points to the new repository, and the README points to the MCP
   node. No changes to node behavior.
-- CI: the `latest-n8n` job now tests the `n8n-workflow`/`n8n-core` versions the latest n8n ships.
-  The npm `latest` tags of those two packages lag far behind n8n itself, so it had been re-testing
-  the 2.16 floor.
 - The codex files (`HaystackEnterpriseAi.node.json`, `HaystackEnterpriseChatModel.node.json`) now
   use the fully-qualified node identifier, `@deepset-ai/n8n-nodes-haystack-enterprise.<nodeName>`,
   as required by n8n verification. No changes to node behavior.
