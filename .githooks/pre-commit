@@ -1,5 +1,5 @@
 #!/bin/sh
-# Checks formatting of the staged files (Prettier) and lints all packages, like CI does.
+# Checks formatting of the staged files (Prettier) and lints the package, like CI does.
 # Fix formatting with `npm run format`; skip the hook with `git commit --no-verify`.
 files=$(git diff --cached --name-only --diff-filter=ACMR)
 [ -z "$files" ] && exit 0

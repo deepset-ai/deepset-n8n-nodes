@@ -1,6 +1,6 @@
 # @deepset-ai/n8n-nodes-haystack-enterprise
 
-This is an n8n community node. It lets you query AI services and manage files on a
+This package contains n8n community nodes. They let you query AI services and manage files on a
 [Haystack Enterprise Platform](https://www.deepset.ai/haystack-platform) workspace from your n8n
 workflows.
 
@@ -24,6 +24,7 @@ workflow automation platform.
 - [Prerequisites](#prerequisites)
 - [Operations](#operations)
 - [Example workflows](#example-workflows)
+- [Haystack Enterprise MCP companion node](#haystack-enterprise-mcp-companion-node)
 - [Credentials](#credentials)
 - [Usage](#usage)
 - [Resources](#resources)
@@ -62,7 +63,7 @@ The package ships two nodes:
   - **Search Session** — Create, Get Many, Delete.
 - **Haystack Enterprise Chat Model** — a language-model sub-node for n8n's **AI Agent**. It runs
   Chat Completions on a Haystack Enterprise service, the same Service operation as on Haystack
-  Enterprise AI. Connect it to the Agent's Model port; the Agent owns conversation history.
+  Enterprise AI. Connect it to the Agent's Model input; the Agent owns conversation history.
 
 ## Example workflows
 
@@ -99,8 +100,16 @@ To use one, either:
   and, in the n8n editor, open the menu (**⋮** in the top right) → **Import from File** and select
   the JSON file.
 
-You'll still need to fill in your own credentials, and any service-specific nodes (e.g. Google
-Drive) with your own credentials and settings.
+You'll still need to add your own credentials, and to set up any other service-specific nodes (for
+example, Google Drive) with your own credentials and settings.
+
+## Haystack Enterprise MCP companion node
+
+Use these nodes to query services and manage files on your workspace. To give an AI Agent access to
+your pipelines as MCP tools, use the companion package
+[`@deepset-ai/n8n-nodes-haystack-enterprise-mcp`](https://www.npmjs.com/package/@deepset-ai/n8n-nodes-haystack-enterprise-mcp)
+([source](https://github.com/deepset-ai/n8n-nodes-haystack-enterprise-mcp)). It works on self-hosted
+n8n only and is not n8n-verified, so it can't run on n8n Cloud.
 
 ## Credentials
 
@@ -165,9 +174,9 @@ to discover valid `model` values (`{workspace}/{deployment_id}`) for Chat Comple
 workspace.
 
 For multi-turn chat on an **AI Agent**, use **Haystack Enterprise Chat Model**: it runs Chat
-Completions on the selected service, n8n's Agent and Simple Memory build `messages` for you.
+Completions on the selected service; n8n's Agent and Simple Memory build `messages` for you.
 
-### Using Chat as an AI Agent tool
+### Using Haystack Enterprise AI as an AI Agent tool
 
 Any operation of **Haystack Enterprise AI** can be connected to an AI Agent's Tool input instead of
 the main flow — the agent decides whether and when to call it, and with what arguments, based on the

@@ -7,10 +7,8 @@
   as n8n verification requires (previously `packages/haystack-enterprise` in a monorepo). The MCP
   node moved to
   [its own repository](https://github.com/deepset-ai/n8n-nodes-haystack-enterprise-mcp).
-  `repository.url` in `package.json` points to the new repository. No changes to node behavior.
-
-## Unreleased
-
+  `repository.url` in `package.json` points to the new repository, and the README points to the MCP
+  node. No changes to node behavior.
 - The codex files (`HaystackEnterpriseAi.node.json`, `HaystackEnterpriseChatModel.node.json`) now
   use the fully-qualified node identifier, `@deepset-ai/n8n-nodes-haystack-enterprise.<nodeName>`,
   as required by n8n verification. No changes to node behavior.
