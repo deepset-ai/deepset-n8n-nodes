@@ -2,8 +2,8 @@
 
 n8n community node package (`@deepset-ai/n8n-nodes-haystack-enterprise`) with the Haystack
 Enterprise nodes (Haystack Enterprise AI and the chat model node). The package lives at the repo
-root, as n8n verification requires; there is no monorepo and no npm workspace. It is n8n Cloud
-eligible (`n8n.strict` and the eslint cloud config).
+root, as n8n verification requires. It is n8n Cloud eligible (`n8n.strict` and the eslint cloud
+config).
 
 The MCP client node lives in its own repository,
 https://github.com/deepset-ai/n8n-nodes-haystack-enterprise-mcp (self-hosted only, not verified).
