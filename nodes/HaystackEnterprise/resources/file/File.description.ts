@@ -243,24 +243,6 @@ export const fileFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'After File ID',
-				name: 'afterFileId',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6',
-				description:
-					'Only applies when Return All is off. Returns files after this file ID — must be used together with After Value.',
-			},
-			{
-				displayName: 'After Value',
-				name: 'afterValue',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. 2023-04-25T07:37:58.326042+00:00',
-				description:
-					"Only applies when Return All is off. Returns files sorted after this value (matching the Sort field's type — e.g. a created_at datetime, or a name) — must be used together with After File ID.",
-			},
-			{
 				displayName: 'Content',
 				name: 'content',
 				type: 'string',

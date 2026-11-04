@@ -292,24 +292,6 @@ export const serviceFields: INodeProperties[] = [
 				description:
 					'An OData filter expression, supporting exact match and AND. Supported fields: status (one of DEPLOYED, UNDEPLOYED, DEPLOYMENT_IN_PROGRESS, DEPLOYMENT_FAILED, or IDLE — IDLE is accepted but always returns 0 rows since it\'s derived at read time rather than persisted; any other value returns a 422 error) and pipeline_name. See the <a href="https://www.odata.org/getting-started/basic-tutorial/#queryData">OData filter syntax</a>.',
 			},
-			{
-				displayName: 'Before (Service ID)',
-				name: 'before',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6',
-				description:
-					'Only applies when Return All is off. Returns entries before this service ID (cursor-based pagination) instead of using Limit\'s page-number pagination. Not supported together with Sort Field "Pipeline Name" (returns a 422 error).',
-			},
-			{
-				displayName: 'After (Service ID)',
-				name: 'after',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6',
-				description:
-					'Only applies when Return All is off. Returns entries after this service ID (cursor-based pagination) instead of using Limit\'s page-number pagination. Not supported together with Sort Field "Pipeline Name" (returns a 422 error).',
-			},
 		],
 	},
 	{

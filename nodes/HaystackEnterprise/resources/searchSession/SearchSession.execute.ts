@@ -5,7 +5,7 @@ import {
 	apiRequest,
 	createSearchSession,
 	extractSearchSessionList,
-	fetchListWithCursorOrPaging,
+	fetchPaginatedResults,
 	readAdditionalParameters,
 } from '../../utils';
 
@@ -43,13 +43,12 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 
 	const limit = returnAll ? 100 : (this.getNodeParameter('limit', itemIndex) as number);
 
-	return fetchListWithCursorOrPaging(
+	return fetchPaginatedResults(
 		this,
 		`/workspaces/${workspaceName}/search_sessions`,
 		qs,
 		returnAll,
 		limit,
-		filters,
 		extractSearchSessionList,
 	);
 }
