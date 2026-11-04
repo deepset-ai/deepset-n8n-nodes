@@ -1,7 +1,7 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { apiRequest, extractPaginatedList, fetchListWithCursorOrPaging } from '../../utils';
+import { apiRequest, extractPaginatedList, fetchPaginatedResults } from '../../utils';
 
 async function get(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
 	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
@@ -36,13 +36,12 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 
 	const limit = returnAll ? 100 : (this.getNodeParameter('limit', itemIndex) as number);
 
-	return fetchListWithCursorOrPaging(
+	return fetchPaginatedResults(
 		this,
 		`/workspaces/${workspaceName}/indexes`,
 		qs,
 		returnAll,
 		limit,
-		filters,
 		extractPaginatedList,
 	);
 }

@@ -483,29 +483,6 @@ export async function fetchPaginatedResults<T>(
 	return items;
 }
 
-/** Uses cursor filters for one-page requests and numbered pagination otherwise. */
-export async function fetchListWithCursorOrPaging<T>(
-	context: IExecuteFunctions,
-	endpoint: string,
-	qs: IDataObject,
-	returnAll: boolean,
-	limit: number,
-	filters: IDataObject,
-	extractList: (response: unknown) => T[],
-): Promise<T[]> {
-	if (!returnAll && (filters.before || filters.after)) {
-		const cursorQs: IDataObject = { ...qs, limit };
-		// Cursor and page-number parameters are mutually exclusive.
-		delete cursorQs.page_number;
-		if (filters.before) cursorQs.before = filters.before;
-		if (filters.after) cursorQs.after = filters.after;
-		const response = await apiRequest.call(context, 'GET', endpoint, { qs: cursorQs });
-		return extractList(response);
-	}
-
-	return fetchPaginatedResults(context, endpoint, qs, returnAll, limit, extractList);
-}
-
 /** Loads and maps options for a workspace-scoped resource. */
 async function loadResourceOptions(
 	context: ILoadOptionsFunctions,

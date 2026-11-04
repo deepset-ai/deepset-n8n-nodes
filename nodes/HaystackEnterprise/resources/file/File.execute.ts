@@ -66,13 +66,6 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 
 	if (!returnAll) {
 		const limit = this.getNodeParameter('limit', itemIndex) as number;
-		// after_value/after_file_id are only sent for a single query (Return All manages its own cursor), and only when both are set, since the API requires them together.
-		const hasAfterValue = filters.afterValue !== undefined && filters.afterValue !== '';
-		const hasAfterFileId = filters.afterFileId !== undefined && filters.afterFileId !== '';
-		if (hasAfterValue && hasAfterFileId) {
-			qs.after_value = filters.afterValue;
-			qs.after_file_id = filters.afterFileId;
-		}
 		const response = await apiRequest.call(this, 'GET', `/workspaces/${workspaceName}/files`, {
 			qs: { ...qs, limit },
 		});

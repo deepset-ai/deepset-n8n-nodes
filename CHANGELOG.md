@@ -10,6 +10,9 @@
   **Wait for Service to Activate** and **Max Wait Time (Minutes)** moved into **Additional Fields**.
   Service → Chat Completions: **Stream**, **Wait for Service to Activate** and **Max Wait Time
   (Minutes)** moved into **Additional Fields**.
+- Removed the manual cursor fields from the Get Many operations (File: **After File ID** and **After
+  Value**; Index, Search Session and Service: **Before** and **After**), as required by n8n
+  verification. Get Many now exposes only **Return All** and **Limit**.
 - Removed the unsupported `subcategories` field from the Chat Model node's codex
   (`HaystackEnterpriseChatModel.node.json` and the inline codex), as required by n8n verification.
   No changes to node behavior.

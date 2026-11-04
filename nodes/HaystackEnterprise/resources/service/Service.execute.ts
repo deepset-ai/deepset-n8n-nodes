@@ -7,7 +7,7 @@ import {
 	consumeSseStream,
 	extractPaginatedList,
 	extractStreamErrorDetail,
-	fetchListWithCursorOrPaging,
+	fetchPaginatedResults,
 	getResponseHeader,
 	parseCommaSeparatedList,
 	parseJsonField,
@@ -38,14 +38,12 @@ async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IData
 
 	const limit = returnAll ? 100 : (this.getNodeParameter('limit', itemIndex) as number);
 
-	// `before`/`after` cannot be combined with `page_number`; see fetchListWithCursorOrPaging().
-	return fetchListWithCursorOrPaging(
+	return fetchPaginatedResults(
 		this,
 		`/workspaces/${workspaceName}/deployments`,
 		qs,
 		returnAll,
 		limit,
-		filters,
 		extractPaginatedList,
 	);
 }
