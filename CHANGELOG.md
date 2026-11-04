@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Removed the unsupported `subcategories` field from the Chat Model node's codex (`HaystackEnterpriseChatModel.node.json` and the inline codex), as required by n8n verification. No changes to node behavior.
+
 ## 0.2.1
 
 - The package now lives at the root of its own repository,
