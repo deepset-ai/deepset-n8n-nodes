@@ -1,6 +1,6 @@
 {
 	"name": "@deepset-ai/n8n-nodes-haystack-enterprise",
-	"version": "0.2.1",
+	"version": "0.3.0",
 	"description": "n8n community nodes for integrating with Haystack Enterprise Platform.",
 	"license": "MIT",
 	"homepage": "https://www.deepset.ai",

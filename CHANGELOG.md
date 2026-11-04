@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
 - Optional parameters now live in collections instead of the top level of the node form, as required
   by n8n verification. File → Upload: **Write Mode**, **Metadata** and **Extra Parameters (JSON)**
