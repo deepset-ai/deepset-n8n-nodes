@@ -156,7 +156,6 @@
 				"operation": "chat",
 				"deploymentId": "my-docs-search-service",
 				"query": "={{ $fromAI('Query', 'The question to ask the knowledge base', 'string') }}",
-				"searchSessionId": "",
 				"additionalFields": {}
 			},
 			"id": "d1e2f3a4-0005-4b1b-9b1b-000000000005",
@@ -179,9 +178,10 @@
 				"operation": "chatStream",
 				"deploymentId": "my-support-chat-service",
 				"query": "={{ $fromAI('Query', 'The question or message to send to the support chat service', 'string') }}",
-				"searchSessionId": "={{ $json.searchSessionId }}",
 				"simplify": true,
-				"additionalFields": {}
+				"additionalFields": {
+					"searchSessionId": "={{ $json.searchSessionId }}"
+				}
 			},
 			"id": "d1e2f3a4-0006-4b1b-9b1b-000000000006",
 			"name": "Chat With Knowledge Base",

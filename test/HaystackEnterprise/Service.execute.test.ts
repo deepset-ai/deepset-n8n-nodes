@@ -101,10 +101,7 @@ describe('executeService — stream request error handling', () => {
 				deploymentId: 'dep-1',
 				query: 'hello',
 				simplify: true,
-				additionalFields: {},
-				searchSessionId: 'session-1',
-				waitForActivation: false,
-				maxWaitMinutes: 5,
+				additionalFields: { searchSessionId: 'session-1' },
 			},
 			streamRequestError: apiError,
 		});
@@ -128,10 +125,7 @@ describe('executeService — stream request error handling', () => {
 				deploymentId: 'dep-1',
 				query: 'hello',
 				simplify: true,
-				additionalFields: {},
-				searchSessionId: 'session-1',
-				waitForActivation: false,
-				maxWaitMinutes: 5,
+				additionalFields: { searchSessionId: 'session-1' },
 			},
 			streamRequestError: apiError,
 		});
@@ -152,10 +146,7 @@ describe('executeService — stream request error handling', () => {
 				deploymentId: 'dep-1',
 				query: 'hello',
 				simplify: true,
-				additionalFields: {},
-				searchSessionId: 'session-1',
-				waitForActivation: false,
-				maxWaitMinutes: 5,
+				additionalFields: { searchSessionId: 'session-1' },
 			},
 			streamRequestError: apiError,
 		});
@@ -174,13 +165,10 @@ describe('executeService — chat', () => {
 				workspaceName: 'ws',
 				deploymentId: 'dep-1',
 				query: 'hello',
-				searchSessionId: '',
 				additionalFields: {
 					chatHistoryLimit: 3,
 					extraParameters: '{"chat_history_limit": 9, "new_field": true, "queries": ["nope"]}',
 				},
-				waitForActivation: false,
-				maxWaitMinutes: 5,
 			},
 			async () => ({
 				body: { results: [{ answers: [{ answer: 'Hi' }] }] },
@@ -207,10 +195,7 @@ describe('executeService — chat', () => {
 				workspaceName: 'ws',
 				deploymentId: 'dep-1',
 				query: 'hello',
-				searchSessionId: '',
 				additionalFields: { chatHistoryLimit: 3 },
-				waitForActivation: false,
-				maxWaitMinutes: 5,
 			},
 			async () => ({
 				body: { results: [{ answers: [{ answer: 'Hi' }] }] },
@@ -242,10 +227,7 @@ describe('executeService — chat', () => {
 				workspaceName: 'ws',
 				deploymentId: 'dep-1',
 				query: 'hello',
-				searchSessionId: '',
 				additionalFields: { chatHistoryGranularity: 'QUERY_ANSWER' },
-				waitForActivation: false,
-				maxWaitMinutes: 5,
 			},
 			async () => ({
 				body: { results: [{ answers: [{ answer: 'Hi' }] }] },
@@ -268,10 +250,7 @@ describe('executeService — chat', () => {
 				workspaceName: 'ws',
 				deploymentId: 'dep-1',
 				query: 'hello again',
-				searchSessionId: 'existing-session',
-				additionalFields: {},
-				waitForActivation: false,
-				maxWaitMinutes: 5,
+				additionalFields: { searchSessionId: 'existing-session' },
 			},
 			async () => ({
 				body: { results: [{ answers: [{ answer: 'Still here' }] }] },
@@ -309,8 +288,6 @@ describe('executeService — streaming (chatStream)', () => {
 				query: 'hello',
 				simplify: true,
 				additionalFields: {},
-				waitForActivation: false,
-				maxWaitMinutes: 5,
 			},
 		});
 
@@ -337,8 +314,6 @@ describe('executeService — streaming (chatStream)', () => {
 				query: 'hello',
 				simplify: false,
 				additionalFields: {},
-				waitForActivation: false,
-				maxWaitMinutes: 5,
 			},
 		});
 
@@ -358,8 +333,6 @@ describe('executeService — streaming (chatStream)', () => {
 				query: 'hello',
 				simplify: true,
 				additionalFields: {},
-				waitForActivation: false,
-				maxWaitMinutes: 5,
 			},
 			isStreaming: true,
 		});
@@ -385,8 +358,6 @@ describe('executeService — streaming (chatStream)', () => {
 				query: 'hello',
 				simplify: true,
 				additionalFields: {},
-				waitForActivation: false,
-				maxWaitMinutes: 5,
 			},
 			isStreaming: false,
 		});
@@ -409,8 +380,6 @@ describe('executeService — streaming (chatStream)', () => {
 				query: 'hello',
 				simplify: true,
 				additionalFields: {},
-				waitForActivation: false,
-				maxWaitMinutes: 5,
 			},
 		});
 		delete (context as { isStreaming?: unknown }).isStreaming;
@@ -432,8 +401,6 @@ describe('executeService — streaming (chatStream)', () => {
 				query: 'hello',
 				simplify: true,
 				additionalFields: {},
-				waitForActivation: false,
-				maxWaitMinutes: 5,
 			},
 			isStreaming: true,
 		});
@@ -455,8 +422,6 @@ describe('executeService — streaming (chatStream)', () => {
 				query: 'hello',
 				simplify: true,
 				additionalFields: {},
-				waitForActivation: false,
-				maxWaitMinutes: 5,
 			},
 			isStreaming: true,
 		});
@@ -484,8 +449,6 @@ describe('executeService — streaming (chatStream)', () => {
 				query: 'hello',
 				simplify: true,
 				additionalFields: {},
-				waitForActivation: false,
-				maxWaitMinutes: 5,
 			},
 			isStreaming: true,
 		});
@@ -509,9 +472,6 @@ describe('executeService — streaming (chatStream)', () => {
 				additionalFields: {
 					extraParameters: '{"query": "nope", "include_result": false, "new_field": 1}',
 				},
-				searchSessionId: '',
-				waitForActivation: false,
-				maxWaitMinutes: 5,
 			},
 		});
 
@@ -536,9 +496,6 @@ describe('executeService — streaming (chatStream)', () => {
 				query: 'hello',
 				simplify: true,
 				additionalFields: { storeSearchHistory: false },
-				searchSessionId: '',
-				waitForActivation: false,
-				maxWaitMinutes: 5,
 			},
 		});
 
@@ -562,10 +519,10 @@ describe('executeService — streaming (chatStream)', () => {
 				deploymentId: 'dep-1',
 				query: 'hello',
 				simplify: true,
-				additionalFields: { chatHistoryGranularity: 'ALL_MESSAGES' },
-				searchSessionId: 'existing-session',
-				waitForActivation: false,
-				maxWaitMinutes: 5,
+				additionalFields: {
+					searchSessionId: 'existing-session',
+					chatHistoryGranularity: 'ALL_MESSAGES',
+				},
 			},
 		});
 
@@ -601,9 +558,6 @@ describe('executeService — streaming (chatStream)', () => {
 				query: 'hello',
 				simplify: true,
 				additionalFields: {},
-				searchSessionId: '',
-				waitForActivation: false,
-				maxWaitMinutes: 5,
 			},
 			responseHeaders: { 'X-Search-Session-Id': 'auto-created-session' },
 		});
@@ -633,9 +587,6 @@ describe('executeService — streaming (chatStream)', () => {
 				query: 'hello',
 				simplify: false,
 				additionalFields: {},
-				searchSessionId: '',
-				waitForActivation: false,
-				maxWaitMinutes: 5,
 			},
 			responseHeaders: { 'X-Search-Session-Id': 'auto-created-session' },
 		});
@@ -656,11 +607,8 @@ const CHAT_COMPLETIONS_PARAMS = {
 	deploymentId: 'dep-1',
 	messagesInput: 'fields',
 	messages: { message: [{ role: 'user', content: 'hello' }] },
-	stream: false,
 	simplify: true,
 	additionalFields: {},
-	waitForActivation: false,
-	maxWaitMinutes: 5,
 };
 
 const CHAT_COMPLETION_RESPONSE = {
@@ -927,7 +875,7 @@ describe('executeService — chatCompletions', () => {
 
 	it('aggregates streamed content and tool-call deltas when Simplify Output is on', async () => {
 		const { context, stream } = createStreamContext({
-			params: { ...CHAT_COMPLETIONS_PARAMS, stream: true },
+			params: { ...CHAT_COMPLETIONS_PARAMS, additionalFields: { stream: true } },
 		});
 
 		const resultPromise = executeService.call(context, 'chatCompletions', 0);
@@ -980,7 +928,7 @@ describe('executeService — chatCompletions', () => {
 
 	it('returns one item per OpenAI chunk when Stream is on and Simplify Output is off', async () => {
 		const { context, stream } = createStreamContext({
-			params: { ...CHAT_COMPLETIONS_PARAMS, stream: true, simplify: false },
+			params: { ...CHAT_COMPLETIONS_PARAMS, simplify: false, additionalFields: { stream: true } },
 		});
 
 		const first = openaiChunk({ role: 'assistant', content: 'Hi' });
@@ -994,7 +942,7 @@ describe('executeService — chatCompletions', () => {
 
 	it('relays streamed delta text via sendChunk and skips the [DONE] sentinel', async () => {
 		const { context, stream, sendChunk } = createStreamContext({
-			params: { ...CHAT_COMPLETIONS_PARAMS, stream: true },
+			params: { ...CHAT_COMPLETIONS_PARAMS, additionalFields: { stream: true } },
 			isStreaming: true,
 		});
 
@@ -1014,7 +962,7 @@ describe('executeService — chatCompletions', () => {
 
 	it('throws when the stream reports an OpenAI error object', async () => {
 		const { context, stream, sendChunk } = createStreamContext({
-			params: { ...CHAT_COMPLETIONS_PARAMS, stream: true },
+			params: { ...CHAT_COMPLETIONS_PARAMS, additionalFields: { stream: true } },
 			isStreaming: true,
 		});
 

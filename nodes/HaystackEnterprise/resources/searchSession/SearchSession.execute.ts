@@ -15,7 +15,8 @@ async function create(this: IExecuteFunctions, itemIndex: number): Promise<IData
 	const body = readAdditionalParameters.call(
 		this,
 		itemIndex,
-		this.getNodeParameter('extraParameters', itemIndex, '{}'),
+		(this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject).extraParameters ??
+			'{}',
 	);
 
 	const searchSessionId = await createSearchSession.call(this, workspaceName, deploymentId, body);
@@ -25,13 +26,13 @@ async function create(this: IExecuteFunctions, itemIndex: number): Promise<IData
 async function getAll(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject[]> {
 	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
 	const returnAll = this.getNodeParameter('returnAll', itemIndex) as boolean;
-	const deploymentId = this.getNodeParameter('deploymentId', itemIndex, '');
+	const filters = this.getNodeParameter('filters', itemIndex, {}) as IDataObject;
+	const deploymentId = filters.deploymentId ?? '';
 	if (typeof deploymentId !== 'string') {
 		throw new NodeOperationError(this.getNode(), '"Service Name or ID" must resolve to a string', {
 			itemIndex,
 		});
 	}
-	const filters = this.getNodeParameter('filters', itemIndex, {}) as IDataObject;
 
 	// Hide any search sessions that are not owned by a deployed service.
 	const scopeFilter = deploymentId

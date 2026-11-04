@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { createApiDocsNotice, extraParametersField } from '../shared';
+import { createApiDocsNotice, extraParametersOption } from '../shared';
 
 const apiDocsNotice = createApiDocsNotice('file');
 
@@ -156,49 +156,52 @@ export const fileFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Write Mode',
-		name: 'writeMode',
-		type: 'options',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['upload'],
+			},
+		},
 		options: [
 			{
-				name: 'Keep',
-				value: 'KEEP',
-				description: 'Keep both files if a file with the same name already exists',
+				displayName: 'Write Mode',
+				name: 'writeMode',
+				type: 'options',
+				options: [
+					{
+						name: 'Keep',
+						value: 'KEEP',
+						description: 'Keep both files if a file with the same name already exists',
+					},
+					{
+						name: 'Overwrite',
+						value: 'OVERWRITE',
+						description: 'Overwrite all files with the same name',
+					},
+					{
+						name: 'Fail',
+						value: 'FAIL',
+						description: 'Fail if a file with the same name already exists',
+					},
+				],
+				default: 'KEEP',
 			},
 			{
-				name: 'Overwrite',
-				value: 'OVERWRITE',
-				description: 'Overwrite all files with the same name',
+				displayName: 'Metadata',
+				name: 'metadata',
+				type: 'json',
+				default: '{}',
+				description:
+					'Metadata to attach to the file, as a JSON object. Usable as filters during search.',
 			},
-			{
-				name: 'Fail',
-				value: 'FAIL',
-				description: 'Fail if a file with the same name already exists',
-			},
+			extraParametersOption('query'),
 		],
-		default: 'KEEP',
-		displayOptions: {
-			show: {
-				resource: ['file'],
-				operation: ['upload'],
-			},
-		},
 	},
-	{
-		displayName: 'Metadata',
-		name: 'metadata',
-		type: 'json',
-		default: '{}',
-		description:
-			'Metadata to attach to the file, as a JSON object. Usable as filters during search.',
-		displayOptions: {
-			show: {
-				resource: ['file'],
-				operation: ['upload'],
-			},
-		},
-	},
-	extraParametersField('file', 'upload', 'query'),
 	// Get Many
 	apiDocsNotice('getAll', 'list-files-api-v-1-workspaces-workspace-name-files-get'),
 	{
@@ -411,7 +414,20 @@ export const fileFields: INodeProperties[] = [
 			},
 		],
 	},
-	extraParametersField('file', 'updateMetaBulk', 'body'),
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['updateMetaBulk'],
+			},
+		},
+		options: [extraParametersOption('body')],
+	},
 	// Delete
 	apiDocsNotice('delete', 'delete-file-api-v-1-workspaces-workspace-name-files-file-id-delete'),
 	fileIdField('delete'),

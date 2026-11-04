@@ -12,14 +12,10 @@ import {
 async function upload(this: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
 	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
 	const uploadFrom = this.getNodeParameter('uploadFrom', itemIndex) as string;
-	const writeMode = this.getNodeParameter('writeMode', itemIndex) as string;
+	const additionalFields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
+	const writeMode = (additionalFields.writeMode as string | undefined) ?? 'KEEP';
 	const metadata =
-		parseJsonField.call(
-			this,
-			itemIndex,
-			'Metadata',
-			this.getNodeParameter('metadata', itemIndex, '{}'),
-		) ?? {};
+		parseJsonField.call(this, itemIndex, 'Metadata', additionalFields.metadata ?? '{}') ?? {};
 
 	const formData = new FormData();
 	formData.append('meta', JSON.stringify(metadata));
@@ -44,11 +40,7 @@ async function upload(this: IExecuteFunctions, itemIndex: number): Promise<IData
 
 	Object.assign(
 		qs,
-		readAdditionalParameters.call(
-			this,
-			itemIndex,
-			this.getNodeParameter('extraParameters', itemIndex, '{}'),
-		),
+		readAdditionalParameters.call(this, itemIndex, additionalFields.extraParameters ?? '{}'),
 	);
 
 	return (await apiRequest.call(this, 'POST', `/workspaces/${workspaceName}/files`, {
@@ -181,7 +173,8 @@ async function updateMetaBulk(this: IExecuteFunctions, itemIndex: number): Promi
 		readAdditionalParameters.call(
 			this,
 			itemIndex,
-			this.getNodeParameter('extraParameters', itemIndex, '{}'),
+			(this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject).extraParameters ??
+				'{}',
 		),
 	);
 

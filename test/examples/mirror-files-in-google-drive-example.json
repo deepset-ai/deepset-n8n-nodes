@@ -321,8 +321,10 @@
 				"operation": "upload",
 				"uploadFrom": "binaryData",
 				"binaryPropertyName": "data",
-				"writeMode": "KEEP",
-				"metadata": "={{ JSON.stringify({\n  source_system: 'google_drive',\n  source_id: $json.source_id,\n  source_url: $json.source_url,\n  folder_path: $('Config').first().json.folderName,\n  owner_email: $json.owner_email,\n  last_modified_by: $json.last_modified_by,\n  drive_modified_time: $json.drive_modified_time,\n  content_hash_text: $json.content_hash,\n  mime_type: $json.mimeType,\n  synced_at: $json.synced_at\n}) }}"
+				"additionalFields": {
+					"writeMode": "KEEP",
+					"metadata": "={{ JSON.stringify({\n  source_system: 'google_drive',\n  source_id: $json.source_id,\n  source_url: $json.source_url,\n  folder_path: $('Config').first().json.folderName,\n  owner_email: $json.owner_email,\n  last_modified_by: $json.last_modified_by,\n  drive_modified_time: $json.drive_modified_time,\n  content_hash_text: $json.content_hash,\n  mime_type: $json.mimeType,\n  synced_at: $json.synced_at\n}) }}"
+				}
 			},
 			"id": "8fa8e921-58ef-4d83-820e-d2c6e5209437",
 			"name": "Upload To Haystack",
@@ -364,8 +366,10 @@
 				"operation": "upload",
 				"uploadFrom": "binaryData",
 				"binaryPropertyName": "data",
-				"writeMode": "OVERWRITE",
-				"metadata": "={{ JSON.stringify({\n  source_system: 'google_drive',\n  source_id: $json.source_id,\n  source_url: $json.source_url,\n  folder_path: $('Config').first().json.folderName,\n  owner_email: $json.owner_email,\n  last_modified_by: $json.last_modified_by,\n  drive_modified_time: $json.drive_modified_time,\n  content_hash_text: $json.content_hash,\n  mime_type: $json.mimeType,\n  synced_at: $json.synced_at\n}) }}"
+				"additionalFields": {
+					"writeMode": "OVERWRITE",
+					"metadata": "={{ JSON.stringify({\n  source_system: 'google_drive',\n  source_id: $json.source_id,\n  source_url: $json.source_url,\n  folder_path: $('Config').first().json.folderName,\n  owner_email: $json.owner_email,\n  last_modified_by: $json.last_modified_by,\n  drive_modified_time: $json.drive_modified_time,\n  content_hash_text: $json.content_hash,\n  mime_type: $json.mimeType,\n  synced_at: $json.synced_at\n}) }}"
+				}
 			},
 			"id": "a9184893-3a71-4046-a8b1-2927879c3cbc",
 			"name": "Overwrite In Haystack",

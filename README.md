@@ -148,12 +148,12 @@ The nodes run as the signed-in user, with that user's workspace access and permi
 
 ### Chat and search sessions
 
-**Chat** and **Chat (Streaming)** both take an optional **Search Session ID**, used to store a chat
-history. Leave it empty and the node starts a session automatically, returning its ID in the
-output's `search_session_id` field — feed that back into **Search Session ID** on the next call to
-continue the conversation. For a one-off question, leave it empty and ignore the returned ID. To
-manage sessions explicitly instead (e.g. to list or delete them later), create one with the **Search
-Session** resource's **Create** operation
+**Chat** and **Chat (Streaming)** both take an optional **Search Session ID** (under **Additional
+Fields**), used to store a chat history. Leave it empty and the node starts a session automatically,
+returning its ID in the output's `search_session_id` field — feed that back into **Search Session
+ID** on the next call to continue the conversation. For a one-off question, leave it empty and
+ignore the returned ID. To manage sessions explicitly instead (e.g. to list or delete them later),
+create one with the **Search Session** resource's **Create** operation
 ([API reference](https://docs.cloud.deepset.ai/docs/api/main/create-search-session-api-v-1-workspaces-workspace-name-deployments-deployment-id-search-sessions-post))
 and pass its ID in from the start.
 
@@ -167,8 +167,9 @@ the concatenated answer.
 **Chat Completions**
 ([API reference](https://docs.cloud.deepset.ai/docs/api/main/chat-completions-api-v-1-workspaces-workspace-name-deployments-v-1-chat-completions-post))
 is the OpenAI-compatible alternative: you send the full conversation as `messages` (the client owns
-history — there is no search session) and get a `chat.completion` back. Turn **Stream** on to
-receive OpenAI SSE chunks instead of a single JSON response. Use **List Models (Chat Completions)**
+history — there is no search session) and get a `chat.completion` back. Turn **Stream** on (under
+**Additional Fields**) to receive OpenAI SSE chunks instead of a single JSON response. Use **List
+Models (Chat Completions)**
 ([API reference](https://docs.cloud.deepset.ai/docs/api/main/list-models-api-v-1-workspaces-workspace-name-deployments-v-1-models-get))
 to discover valid `model` values (`{workspace}/{deployment_id}`) for Chat Completions in that
 workspace.
