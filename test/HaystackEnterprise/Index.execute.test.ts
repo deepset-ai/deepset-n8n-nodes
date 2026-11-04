@@ -103,5 +103,4 @@ describe('executeIndex — get many', () => {
 			}),
 		);
 	});
-
 });

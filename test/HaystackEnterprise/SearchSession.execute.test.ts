@@ -212,7 +212,6 @@ describe('executeSearchSession — get many', () => {
 			}),
 		);
 	});
-
 });
 
 describe('executeSearchSession — delete', () => {

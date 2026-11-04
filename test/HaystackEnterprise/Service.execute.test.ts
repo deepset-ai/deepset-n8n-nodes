@@ -84,7 +84,6 @@ describe('executeService — get many', () => {
 			}),
 		);
 	});
-
 });
 
 describe('executeService — stream request error handling', () => {

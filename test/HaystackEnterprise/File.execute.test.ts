@@ -201,7 +201,6 @@ describe('executeFile — get many', () => {
 		await executeFile.call(context, 'getAll', 0);
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
 	});
-
 });
 
 describe('executeFile — get', () => {
