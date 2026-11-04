@@ -94,14 +94,15 @@ interface ChatRequest {
 }
 
 function readChatRequest(this: IExecuteFunctions, itemIndex: number): ChatRequest {
+	const additionalFields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
 	return {
 		workspaceName: this.getNodeParameter('workspaceName', itemIndex) as string,
 		deploymentId: this.getNodeParameter('deploymentId', itemIndex) as string,
 		query: this.getNodeParameter('query', itemIndex) as string,
-		additionalFields: this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject,
-		searchSessionId: this.getNodeParameter('searchSessionId', itemIndex, '') as string,
-		waitForActivation: this.getNodeParameter('waitForActivation', itemIndex, false) as boolean,
-		maxWaitMinutes: this.getNodeParameter('maxWaitMinutes', itemIndex, 5) as number,
+		additionalFields,
+		searchSessionId: (additionalFields.searchSessionId as string | undefined) ?? '',
+		waitForActivation: (additionalFields.waitForActivation as boolean | undefined) ?? false,
+		maxWaitMinutes: (additionalFields.maxWaitMinutes as number | undefined) ?? 5,
 	};
 }
 
@@ -498,9 +499,9 @@ async function runChatCompletions(
 ): Promise<IDataObject[]> {
 	const workspaceName = this.getNodeParameter('workspaceName', itemIndex) as string;
 	const deploymentId = this.getNodeParameter('deploymentId', itemIndex) as string;
-	const stream = this.getNodeParameter('stream', itemIndex, false) as boolean;
 	const simplify = this.getNodeParameter('simplify', itemIndex, true) as boolean;
 	const additionalFields = this.getNodeParameter('additionalFields', itemIndex, {}) as IDataObject;
+	const stream = (additionalFields.stream as boolean | undefined) ?? false;
 
 	const body: IDataObject = {
 		model: `${workspaceName}/${deploymentId}`,
@@ -510,8 +511,8 @@ async function runChatCompletions(
 	applyChatCompletionExtras.call(this, itemIndex, body, additionalFields);
 	assertSingleChoiceWhenSimplifying.call(this, itemIndex, body, simplify);
 
-	const waitForActivation = this.getNodeParameter('waitForActivation', itemIndex, false) as boolean;
-	const maxWaitMinutes = this.getNodeParameter('maxWaitMinutes', itemIndex, 5) as number;
+	const waitForActivation = (additionalFields.waitForActivation as boolean | undefined) ?? false;
+	const maxWaitMinutes = (additionalFields.maxWaitMinutes as number | undefined) ?? 5;
 	const endpoint = `/workspaces/${workspaceName}/deployments/v1/chat/completions`;
 	const relayLive = typeof this.isStreaming === 'function' && this.isStreaming();
 

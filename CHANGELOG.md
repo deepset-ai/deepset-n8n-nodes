@@ -2,7 +2,18 @@
 
 ## Unreleased
 
-- Removed the unsupported `subcategories` field from the Chat Model node's codex (`HaystackEnterpriseChatModel.node.json` and the inline codex), as required by n8n verification. No changes to node behavior.
+- Optional parameters now live in collections instead of the top level of the node form, as required
+  by n8n verification. **Breaking for existing workflows:** values set on the old top-level fields
+  are ignored until re-entered in the new location. File → Upload: **Write Mode**, **Metadata** and
+  **Extra Parameters (JSON)** moved into **Additional Fields**. File → Update Meta Bulk and Search
+  Session → Create: **Extra Parameters (JSON)** moved into a new **Additional Fields**. Search
+  Session → Get Many: **Service Name or ID** moved into **Filters**. Service → Chat and Chat
+  (Streaming): **Search Session ID**, **Wait for Service to Activate** and **Max Wait Time
+  (Minutes)** moved into **Additional Fields**. Service → Chat Completions: **Stream**, **Wait for
+  Service to Activate** and **Max Wait Time (Minutes)** moved into **Additional Fields**.
+- Removed the unsupported `subcategories` field from the Chat Model node's codex
+  (`HaystackEnterpriseChatModel.node.json` and the inline codex), as required by n8n verification.
+  No changes to node behavior.
 
 ## 0.2.1
 

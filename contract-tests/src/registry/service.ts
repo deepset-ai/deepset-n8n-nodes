@@ -60,7 +60,6 @@ export const serviceSuite: ContractResourceSuite = {
 				workspaceName: 'contract-test-workspace',
 				deploymentId: CONTRACT_TEST_DEPLOYMENT_ID,
 				query: 'hello from a contract test',
-				searchSessionId: '',
 			},
 		},
 		{
@@ -70,8 +69,8 @@ export const serviceSuite: ContractResourceSuite = {
 				workspaceName: 'contract-test-workspace',
 				deploymentId: CONTRACT_TEST_DEPLOYMENT_ID,
 				query: 'hello from a contract test',
-				searchSessionId: CONTRACT_TEST_UUID,
 				additionalFields: {
+					searchSessionId: CONTRACT_TEST_UUID,
 					files: CONTRACT_TEST_UUID,
 					filters: '{"field":"meta.category","operator":"==","value":"contract-test"}',
 					params: '{"retriever":{"top_k":2}}',
@@ -87,7 +86,6 @@ export const serviceSuite: ContractResourceSuite = {
 				workspaceName: 'contract-test-workspace',
 				deploymentId: CONTRACT_TEST_DEPLOYMENT_ID,
 				query: 'hello from a contract test',
-				searchSessionId: '',
 				simplify: true,
 			},
 		},
@@ -99,9 +97,9 @@ export const serviceSuite: ContractResourceSuite = {
 				workspaceName: 'contract-test-workspace',
 				deploymentId: CONTRACT_TEST_DEPLOYMENT_ID,
 				query: 'hello from a contract test',
-				searchSessionId: CONTRACT_TEST_UUID,
 				simplify: false,
 				additionalFields: {
+					searchSessionId: CONTRACT_TEST_UUID,
 					files: CONTRACT_TEST_UUID,
 					filters: '{"field":"meta.category","operator":"==","value":"contract-test"}',
 					params: '{"retriever":{"top_k":2}}',
@@ -128,7 +126,6 @@ export const serviceSuite: ContractResourceSuite = {
 						{ role: 'user', content: 'hello from a contract test' },
 					],
 				},
-				stream: false,
 				simplify: false,
 			},
 		},
@@ -141,7 +138,6 @@ export const serviceSuite: ContractResourceSuite = {
 				messagesInput: 'json',
 				messagesJson:
 					'[{"role":"user","content":[{"type":"text","text":"hello from a contract test"}]}]',
-				stream: false,
 				simplify: false,
 				additionalFields: {
 					maxCompletionTokens: 64,

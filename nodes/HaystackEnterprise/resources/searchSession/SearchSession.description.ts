@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { createApiDocsNotice, extraParametersField } from '../shared';
+import { createApiDocsNotice, extraParametersOption } from '../shared';
 
 const apiDocsNotice = createApiDocsNotice('searchSession');
 
@@ -64,7 +64,20 @@ export const searchSessionFields: INodeProperties[] = [
 			},
 		},
 	},
-	extraParametersField('searchSession', 'create', 'body'),
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['searchSession'],
+				operation: ['create'],
+			},
+		},
+		options: [extraParametersOption('body')],
+	},
 	// Delete
 	apiDocsNotice(
 		'delete',
@@ -123,24 +136,6 @@ export const searchSessionFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Service Name or ID',
-		name: 'deploymentId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getDeploymentsWithAllOption',
-			loadOptionsDependsOn: ['authentication', 'workspaceName'],
-		},
-		default: '',
-		description:
-			'Only return search sessions for this service; choose "All Services" to return sessions for every service. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-		displayOptions: {
-			show: {
-				resource: ['searchSession'],
-				operation: ['getAll'],
-			},
-		},
-	},
-	{
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
@@ -153,6 +148,18 @@ export const searchSessionFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Service Name or ID',
+				name: 'deploymentId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getDeploymentsWithAllOption',
+					loadOptionsDependsOn: ['authentication', 'workspaceName'],
+				},
+				default: '',
+				description:
+					'Only return search sessions for this service; choose "All Services" to return sessions for every service. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
 			{
 				displayName: 'OData Filter',
 				name: 'odataFilter',
