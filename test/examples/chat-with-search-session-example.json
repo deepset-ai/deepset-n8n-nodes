@@ -90,9 +90,10 @@
 				"operation": "chatStream",
 				"deploymentId": "my-service-name",
 				"query": "={{ $json.chatInput }}",
-				"searchSessionId": "={{ $json.searchSessionId }}",
 				"simplify": true,
-				"additionalFields": {}
+				"additionalFields": {
+					"searchSessionId": "={{ $json.searchSessionId }}"
+				}
 			},
 			"id": "a1b2c3d4-0007-4a1a-9a1a-000000000007",
 			"name": "Haystack Enterprise AI",

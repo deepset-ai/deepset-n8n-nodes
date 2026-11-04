@@ -129,6 +129,40 @@ const chatHistoryGranularityField: INodeProperties = {
 /** Selects the additional event types returned by streaming endpoints. */
 const extraBodyParameters = extraParametersOption('body');
 
+const searchSessionIdField: INodeProperties = {
+	displayName: 'Search Session ID',
+	name: 'searchSessionId',
+	type: 'string',
+	default: '',
+	description:
+		"The ID of an existing search session to continue, for chat history. Leave empty to start a new session automatically — its ID is returned in the output's search_session_id field, ready to reuse on the next call to continue the conversation.",
+};
+
+const waitForActivationFields: INodeProperties[] = [
+	{
+		displayName: 'Wait for Service to Activate',
+		name: 'waitForActivation',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to automatically retry with backoff if the service is idle and being activated (API error 591), instead of failing immediately',
+	},
+	{
+		displayName: 'Max Wait Time (Minutes)',
+		name: 'maxWaitMinutes',
+		type: 'number',
+		typeOptions: { minValue: 1 },
+		default: 5,
+		description:
+			'Only used when "Wait for Service to Activate" is enabled. The maximum total time to keep retrying before giving up and returning the error.',
+		displayOptions: {
+			show: {
+				waitForActivation: [true],
+			},
+		},
+	},
+];
+
 const streamingAdditionalFields: INodeProperties[] = [
 	{
 		displayName: 'Include Result',
@@ -201,36 +235,6 @@ export const serviceFields: INodeProperties[] = [
 			show: {
 				resource: ['service'],
 				operation: ['get', 'chat', 'chatStream', 'chatCompletions'],
-			},
-		},
-	},
-	{
-		displayName: 'Wait for Service to Activate',
-		name: 'waitForActivation',
-		type: 'boolean',
-		default: false,
-		description:
-			'Whether to automatically retry with backoff if the service is idle and being activated (API error 591), instead of failing immediately',
-		displayOptions: {
-			show: {
-				resource: ['service'],
-				operation: ['chat', 'chatStream', 'chatCompletions'],
-			},
-		},
-	},
-	{
-		displayName: 'Max Wait Time (Minutes)',
-		name: 'maxWaitMinutes',
-		type: 'number',
-		typeOptions: { minValue: 1 },
-		default: 5,
-		description:
-			'Only used when "Wait for Service to Activate" is enabled. The maximum total time to keep retrying before giving up and returning the error.',
-		displayOptions: {
-			show: {
-				resource: ['service'],
-				operation: ['chat', 'chatStream', 'chatCompletions'],
-				waitForActivation: [true],
 			},
 		},
 	},
@@ -369,20 +373,6 @@ export const serviceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Search Session ID',
-		name: 'searchSessionId',
-		type: 'string',
-		default: '',
-		description:
-			"The ID of an existing search session to continue, for chat history. Leave empty to start a new session automatically — its ID is returned in the output's search_session_id field, ready to reuse on the next call to continue the conversation.",
-		displayOptions: {
-			show: {
-				resource: ['service'],
-				operation: ['chat', 'chatStream'],
-			},
-		},
-	},
-	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -396,8 +386,10 @@ export const serviceFields: INodeProperties[] = [
 		},
 		options: [
 			...commonAdditionalFields,
+			searchSessionIdField,
 			chatHistoryLimitField,
 			chatHistoryGranularityField,
+			...waitForActivationFields,
 			extraBodyParameters,
 		],
 	},
@@ -429,9 +421,11 @@ export const serviceFields: INodeProperties[] = [
 		},
 		options: [
 			...commonAdditionalFields,
+			searchSessionIdField,
 			chatHistoryLimitField,
 			chatHistoryGranularityField,
 			storeSearchHistoryField,
+			...waitForActivationFields,
 			...streamingAdditionalFields,
 			extraBodyParameters,
 		],
@@ -533,20 +527,6 @@ export const serviceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Stream',
-		name: 'stream',
-		type: 'boolean',
-		default: false,
-		description:
-			'Whether to receive the response as Server-Sent Events. When off (the default), a single JSON chat completion is returned once generation finishes.',
-		displayOptions: {
-			show: {
-				resource: ['service'],
-				operation: ['chatCompletions'],
-			},
-		},
-	},
-	{
 		displayName: 'Simplify Output',
 		name: 'simplify',
 		type: 'boolean',
@@ -573,6 +553,15 @@ export const serviceFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Stream',
+				name: 'stream',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to receive the response as Server-Sent Events. When off (the default), a single JSON chat completion is returned once generation finishes.',
+			},
+			...waitForActivationFields,
 			{
 				displayName: 'Extra Parameters (JSON)',
 				name: 'extraParameters',

@@ -50,7 +50,7 @@ describe('executeSearchSession — create', () => {
 			params: {
 				workspaceName: 'ws',
 				deploymentId: 'dep-1',
-				extraParameters: '{"title": "Support"}',
+				additionalFields: { extraParameters: '{"title": "Support"}' },
 			},
 		});
 
@@ -67,7 +67,11 @@ describe('executeSearchSession — create', () => {
 
 	it('does not send a body when extra parameters are empty', async () => {
 		const { context, httpRequestWithAuthentication } = createContext({
-			params: { workspaceName: 'ws', deploymentId: 'dep-1', extraParameters: '{}' },
+			params: {
+				workspaceName: 'ws',
+				deploymentId: 'dep-1',
+				additionalFields: { extraParameters: '{}' },
+			},
 		});
 
 		await executeSearchSession.call(context, 'create', 0);
@@ -137,7 +141,7 @@ describe('executeSearchSession — get many', () => {
 
 	it('throws a clear NodeOperationError when the Service expression resolves to a non-string', async () => {
 		const { context } = createContext({
-			params: { workspaceName: 'ws', returnAll: false, limit: 50, deploymentId: 42, filters: {} },
+			params: { workspaceName: 'ws', returnAll: false, limit: 50, filters: { deploymentId: 42 } },
 			listResponse: { search_sessions: [], has_more: false, total: 0 },
 		});
 
@@ -152,8 +156,7 @@ describe('executeSearchSession — get many', () => {
 				workspaceName: 'ws',
 				returnAll: false,
 				limit: 50,
-				deploymentId: 'dep-1',
-				filters: {},
+				filters: { deploymentId: 'dep-1' },
 			},
 			listResponse: { search_sessions: [], has_more: false, total: 0 },
 		});
@@ -174,8 +177,7 @@ describe('executeSearchSession — get many', () => {
 				workspaceName: 'ws',
 				returnAll: false,
 				limit: 50,
-				deploymentId: "dep-1'",
-				filters: {},
+				filters: { deploymentId: "dep-1'" },
 			},
 			listResponse: { search_sessions: [], has_more: false, total: 0 },
 		});

@@ -10,8 +10,7 @@ describe('executeFile — upload', () => {
 			{
 				workspaceName: 'ws',
 				uploadFrom: 'textContent',
-				writeMode: 'overwrite',
-				metadata: '{"source":"api"}',
+				additionalFields: { writeMode: 'overwrite', metadata: '{"source":"api"}' },
 				text: 'hello world',
 				fileName: 'note.txt',
 			},
@@ -39,11 +38,13 @@ describe('executeFile — upload', () => {
 			{
 				workspaceName: 'ws',
 				uploadFrom: 'textContent',
-				writeMode: 'KEEP',
-				metadata: '{}',
+				additionalFields: {
+					writeMode: 'KEEP',
+					metadata: '{}',
+					extraParameters: '{"custom_flag": "yes", "write_mode": "FAIL"}',
+				},
 				text: 'hello',
 				fileName: 'note.txt',
-				extraParameters: '{"custom_flag": "yes", "write_mode": "FAIL"}',
 			},
 			async () => ({ file_id: 'f1' }),
 		);
@@ -66,7 +67,7 @@ describe('executeFile — upload', () => {
 			{
 				workspaceName: 'ws',
 				uploadFrom: 'textContent',
-				writeMode: 'overwrite',
+				additionalFields: { writeMode: 'overwrite' },
 				text: 'hi',
 				fileName: 'note.txt',
 			},
@@ -86,8 +87,7 @@ describe('executeFile — upload', () => {
 			{
 				workspaceName: 'ws',
 				uploadFrom: 'binaryData',
-				writeMode: 'overwrite',
-				metadata: '{}',
+				additionalFields: { writeMode: 'overwrite', metadata: '{}' },
 				binaryPropertyName: 'data',
 			},
 			async () => ({ file_id: 'f1' }),
@@ -112,8 +112,7 @@ describe('executeFile — upload', () => {
 			{
 				workspaceName: 'ws',
 				uploadFrom: 'binaryData',
-				writeMode: 'overwrite',
-				metadata: '{}',
+				additionalFields: { writeMode: 'overwrite', metadata: '{}' },
 				binaryPropertyName: 'data',
 			},
 			async () => ({ file_id: 'f1' }),
@@ -419,7 +418,7 @@ describe('executeFile — update meta bulk', () => {
 			{
 				workspaceName: 'ws',
 				'filesMetadata.file': [{ fileId: 'f1', metadata: '{"a":1}' }],
-				extraParameters: '{"dry_run": true}',
+				additionalFields: { extraParameters: '{"dry_run": true}' },
 			},
 			async () => ({ updated: 1 }),
 		);

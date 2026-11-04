@@ -19,8 +19,7 @@ export const fileSuite: ContractResourceSuite = {
 			params: {
 				workspaceName: 'contract-test-workspace',
 				uploadFrom: 'textContent',
-				writeMode: 'KEEP',
-				metadata: '{"category":"contract-test"}',
+				additionalFields: { writeMode: 'KEEP', metadata: '{"category":"contract-test"}' },
 				text: 'hello from a contract test',
 				fileName: 'contract-test.txt',
 			},
