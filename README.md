@@ -47,8 +47,9 @@ The package is n8n Cloud eligible and also works on self-hosted n8n.
 ## Prerequisites
 
 - A [Haystack Enterprise Platform](https://cloud.deepset.ai/) account with access to a workspace.
-- Either an API key (**Settings → API Keys**) or a sign-in with your Haystack Enterprise account
-  (OAuth2, n8n 2.19.2 or later). See [Credentials](#credentials).
+- Either an API key (**Settings → API Keys**), or an OAuth2 client set up by a Haystack Enterprise
+  admin so you can sign in with your account (n8n 2.19.2 or later). See
+  [Credentials](#credentials).
 
 ## Operations
 
@@ -114,7 +115,8 @@ n8n only and is not n8n-verified, so it can't run on n8n Cloud.
 ## Credentials
 
 Both nodes (**Haystack Enterprise AI** and **Haystack Enterprise Chat Model**) have an
-**Authentication** dropdown offering two ways to authenticate.
+**Authentication** dropdown offering two ways to authenticate. **API Key** is the simplest and works
+for most users.
 
 ### API Key
 
@@ -130,13 +132,15 @@ example `https://api.your-company.com`.
 
 ### OAuth2 (sign in with your Haystack Enterprise account)
 
-OAuth2 credentials require n8n 2.19.2 or later.
+OAuth2 credentials require n8n 2.19.2 or later and an OAuth2 client created by a Haystack Enterprise
+admin. You can't register a client yourself, so ask your admin to create one before you start.
 
 1. On the node, choose **OAuth2** and create a **Haystack Enterprise OAuth2 API** credential.
-2. In Haystack Enterprise, register an OAuth2 client (public PKCE clients don't need a client
-   secret) and add the callback URL shown on the credential as a redirect URI.
-3. In the credential, enter the client's **Client ID**, the **Authorization URL** and **Access Token
-   URL**, and a **Client Secret** if the client is confidential. Leave **Scope** at its default.
+2. Copy the **OAuth Redirect URL** shown on the credential and send it to your admin. They add it as
+   a redirect URI on a new OAuth2 client (a public PKCE client needs no client secret).
+3. Ask your admin for the client's **Client ID**, **Authorization URL** and **Access Token URL**
+   (and the **Client Secret**, if the client is confidential). Enter them in the credential and
+   leave **Scope** at its default.
 4. Click **Connect** and sign in with your [Haystack Enterprise Platform](https://cloud.deepset.ai/)
    account.
 
