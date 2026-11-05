@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 - Removed Dynamic Client Registration from the OAuth2 credential, as required by n8n verification.
   The credential now uses the standard OAuth2 flow with a manually configured client.
