@@ -1,8 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { createApiDocsNotice, extraParametersOption } from '../shared';
-
-const apiDocsNotice = createApiDocsNotice('file');
+import { extraParametersOption } from '../shared';
 
 export const fileOperations: INodeProperties[] = [
 	{
@@ -91,7 +89,6 @@ const fileIdField = (operation: string): INodeProperties => ({
 
 export const fileFields: INodeProperties[] = [
 	// Upload
-	apiDocsNotice('upload', 'upload-file-api-v-1-workspaces-workspace-name-files-post'),
 	{
 		displayName: 'Upload From',
 		name: 'uploadFrom',
@@ -203,7 +200,6 @@ export const fileFields: INodeProperties[] = [
 		],
 	},
 	// Get Many
-	apiDocsNotice('getAll', 'list-files-api-v-1-workspaces-workspace-name-files-get'),
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -306,7 +302,6 @@ export const fileFields: INodeProperties[] = [
 		],
 	},
 	// Get
-	apiDocsNotice('get', 'get-file-api-v-1-workspaces-workspace-name-files-file-id-get'),
 	fileIdField('get'),
 	{
 		displayName: 'Output Format',
@@ -341,16 +336,8 @@ export const fileFields: INodeProperties[] = [
 		},
 	},
 	// Get Meta
-	apiDocsNotice(
-		'getMeta',
-		'get-file-meta-api-v-1-workspaces-workspace-name-files-file-id-meta-get',
-	),
 	fileIdField('getMeta'),
 	// Update Meta
-	apiDocsNotice(
-		'updateMeta',
-		'update-file-meta-api-v-1-workspaces-workspace-name-files-file-id-meta-patch',
-	),
 	fileIdField('updateMeta'),
 	{
 		displayName: 'Metadata',
@@ -368,10 +355,6 @@ export const fileFields: INodeProperties[] = [
 		},
 	},
 	// Update Meta Bulk
-	apiDocsNotice(
-		'updateMetaBulk',
-		'update-file-meta-bulk-api-v-1-workspaces-workspace-name-files-update-meta-post',
-	),
 	{
 		displayName: 'Files',
 		name: 'filesMetadata',
@@ -429,10 +412,8 @@ export const fileFields: INodeProperties[] = [
 		options: [extraParametersOption('body')],
 	},
 	// Delete
-	apiDocsNotice('delete', 'delete-file-api-v-1-workspaces-workspace-name-files-file-id-delete'),
 	fileIdField('delete'),
 	// Delete Many
-	apiDocsNotice('deleteMany', 'delete-files-api-v-1-workspaces-workspace-name-files-delete'),
 	{
 		displayName: 'File Names',
 		name: 'names',

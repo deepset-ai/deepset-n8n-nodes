@@ -65,6 +65,33 @@ The package ships two nodes:
   Chat Completions on a Haystack Enterprise service, the same Service operation as on Haystack
   Enterprise AI. Connect it to the Agent's Model input; the Agent owns conversation history.
 
+### API reference per operation
+
+Each operation maps to one endpoint of the
+[Haystack Enterprise API](https://docs.cloud.deepset.ai/docs/api/):
+
+| Resource       | Operation       | API reference                                                                                                                                              |
+| -------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Service        | chat            | [docs](https://docs.cloud.deepset.ai/docs/api/main/chat-api-v-1-workspaces-workspace-name-deployments-deployment-id-chat-post)                             |
+| Service        | chatStream      | [docs](https://docs.cloud.deepset.ai/docs/api/main/chat-stream-api-v-1-workspaces-workspace-name-deployments-deployment-id-chat-stream-post)               |
+| Service        | chatCompletions | [docs](https://docs.cloud.deepset.ai/docs/api/main/chat-completions-api-v-1-workspaces-workspace-name-deployments-v-1-chat-completions-post)               |
+| Service        | get             | [docs](https://docs.cloud.deepset.ai/docs/api/main/get-deployment-api-v-1-workspaces-workspace-name-deployments-deployment-id-get)                         |
+| Service        | getAll          | [docs](https://docs.cloud.deepset.ai/docs/api/main/list-deployments-api-v-1-workspaces-workspace-name-deployments-get)                                     |
+| Service        | listModels      | [docs](https://docs.cloud.deepset.ai/docs/api/main/list-models-api-v-1-workspaces-workspace-name-deployments-v-1-models-get)                               |
+| File           | upload          | [docs](https://docs.cloud.deepset.ai/docs/api/main/upload-file-api-v-1-workspaces-workspace-name-files-post)                                               |
+| File           | getAll          | [docs](https://docs.cloud.deepset.ai/docs/api/main/list-files-api-v-1-workspaces-workspace-name-files-get)                                                 |
+| File           | get             | [docs](https://docs.cloud.deepset.ai/docs/api/main/get-file-api-v-1-workspaces-workspace-name-files-file-id-get)                                           |
+| File           | getMeta         | [docs](https://docs.cloud.deepset.ai/docs/api/main/get-file-meta-api-v-1-workspaces-workspace-name-files-file-id-meta-get)                                 |
+| File           | updateMeta      | [docs](https://docs.cloud.deepset.ai/docs/api/main/update-file-meta-api-v-1-workspaces-workspace-name-files-file-id-meta-patch)                            |
+| File           | updateMetaBulk  | [docs](https://docs.cloud.deepset.ai/docs/api/main/update-file-meta-bulk-api-v-1-workspaces-workspace-name-files-update-meta-post)                         |
+| File           | delete          | [docs](https://docs.cloud.deepset.ai/docs/api/main/delete-file-api-v-1-workspaces-workspace-name-files-file-id-delete)                                     |
+| File           | deleteMany      | [docs](https://docs.cloud.deepset.ai/docs/api/main/delete-files-api-v-1-workspaces-workspace-name-files-delete)                                            |
+| Index          | get             | [docs](https://docs.cloud.deepset.ai/docs/api/main/get-index-by-name-api-v-1-workspaces-workspace-name-indexes-index-name-get)                             |
+| Index          | getAll          | [docs](https://docs.cloud.deepset.ai/docs/api/main/get-indexes-api-v-1-workspaces-workspace-name-indexes-get)                                              |
+| Search Session | create          | [docs](https://docs.cloud.deepset.ai/docs/api/main/create-search-session-api-v-1-workspaces-workspace-name-deployments-deployment-id-search-sessions-post) |
+| Search Session | delete          | [docs](https://docs.cloud.deepset.ai/docs/api/main/delete-search-session-api-v-1-workspaces-workspace-name-search-sessions-search-session-id-delete)       |
+| Search Session | getAll          | [docs](https://docs.cloud.deepset.ai/docs/api/main/get-search-sessions-api-v-1-workspaces-workspace-name-search-sessions-get)                              |
+
 ## Example workflows
 
 The example workflows are not part of the npm package. They live in the repository, in
