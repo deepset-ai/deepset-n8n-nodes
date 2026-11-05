@@ -1,7 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const DOCS_BASE_URL = 'https://docs.cloud.deepset.ai/docs/api/main';
-
 /** Extra Parameters (JSON). `sentAs` chooses the query-string or body hint. */
 export function extraParametersOption(sentAs: 'body' | 'query'): INodeProperties {
 	return {
@@ -30,20 +28,4 @@ export function extraParametersField(
 			},
 		},
 	};
-}
-
-/** Builds an `apiDocsNotice(operation, urlSlug)` helper: an API docs link notice shown for the matching resource+operation. */
-export function createApiDocsNotice(resource: string) {
-	return (operation: string, urlSlug: string): INodeProperties => ({
-		displayName: `See the <a href="${DOCS_BASE_URL}/${urlSlug}" target="_blank" rel="noopener noreferrer">Haystack Enterprise API docs</a> for this endpoint`,
-		name: `apiDocsNotice_${operation}`,
-		type: 'notice',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [resource],
-				operation: [operation],
-			},
-		},
-	});
 }

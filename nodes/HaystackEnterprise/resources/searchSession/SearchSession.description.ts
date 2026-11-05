@@ -1,8 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { createApiDocsNotice, extraParametersOption } from '../shared';
-
-const apiDocsNotice = createApiDocsNotice('searchSession');
+import { extraParametersOption } from '../shared';
 
 export const searchSessionOperations: INodeProperties[] = [
 	{
@@ -41,10 +39,6 @@ export const searchSessionOperations: INodeProperties[] = [
 
 export const searchSessionFields: INodeProperties[] = [
 	// Create
-	apiDocsNotice(
-		'create',
-		'create-search-session-api-v-1-workspaces-workspace-name-deployments-deployment-id-search-sessions-post',
-	),
 	{
 		displayName: 'Service Name or ID',
 		name: 'deploymentId',
@@ -79,10 +73,6 @@ export const searchSessionFields: INodeProperties[] = [
 		options: [extraParametersOption('body')],
 	},
 	// Delete
-	apiDocsNotice(
-		'delete',
-		'delete-search-session-api-v-1-workspaces-workspace-name-search-sessions-search-session-id-delete',
-	),
 	{
 		displayName: 'Search Session Name or ID',
 		name: 'searchSessionId',
@@ -103,10 +93,6 @@ export const searchSessionFields: INodeProperties[] = [
 		},
 	},
 	// Get Many
-	apiDocsNotice(
-		'getAll',
-		'get-search-sessions-api-v-1-workspaces-workspace-name-search-sessions-get',
-	),
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

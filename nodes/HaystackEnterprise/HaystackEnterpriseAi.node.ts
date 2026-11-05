@@ -89,18 +89,6 @@ export class HaystackEnterpriseAi implements INodeType {
 				default: 'apiKey',
 			},
 			{
-				displayName:
-					'Set up your Haystack Enterprise credential above first, then select your workspace below.',
-				name: 'workspaceNotice',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					show: {
-						workspaceName: [''],
-					},
-				},
-			},
-			{
 				displayName: 'Workspace Name or ID',
 				name: 'workspaceName',
 				type: 'options',
@@ -111,7 +99,7 @@ export class HaystackEnterpriseAi implements INodeType {
 				default: '',
 				required: true,
 				description:
-					'Select your <a href="https://docs.cloud.deepset.ai/docs/basic-concepts#workspace" target="_blank" rel="noopener noreferrer">workspace</a>, populated from your Haystack Enterprise Platform account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Set up your Haystack Enterprise credential above first, then select your <a href="https://docs.cloud.deepset.ai/docs/basic-concepts#workspace" target="_blank" rel="noopener noreferrer">workspace</a>, populated from your Haystack Enterprise Platform account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Resource',

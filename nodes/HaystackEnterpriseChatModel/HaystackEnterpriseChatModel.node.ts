@@ -29,7 +29,7 @@ export class HaystackEnterpriseChatModel implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["deploymentId"]}}',
 		description:
-			'Language model for n8n AI Agent. Runs Chat Completions on a Haystack Enterprise service.',
+			'Language model for n8n AI Agent. Runs Chat Completions on a Haystack Enterprise service. Connect it to an AI Agent Model input; the Agent builds the conversation.',
 		defaults: {
 			name: 'Haystack Enterprise Chat Model',
 		},
@@ -79,25 +79,6 @@ export class HaystackEnterpriseChatModel implements INodeType {
 				default: 'apiKey',
 			},
 			{
-				displayName:
-					'Connect this node to an AI Agent Model input. The Agent builds the conversation; this node only supplies the Haystack Enterprise service.',
-				name: 'connectionNotice',
-				type: 'notice',
-				default: '',
-			},
-			{
-				displayName:
-					'Set up your Haystack Enterprise credential above first, then select your workspace below.',
-				name: 'workspaceNotice',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					show: {
-						workspaceName: [''],
-					},
-				},
-			},
-			{
 				displayName: 'Workspace Name or ID',
 				name: 'workspaceName',
 				type: 'options',
@@ -108,7 +89,7 @@ export class HaystackEnterpriseChatModel implements INodeType {
 				default: '',
 				required: true,
 				description:
-					'Select your <a href="https://docs.cloud.deepset.ai/docs/basic-concepts#workspace" target="_blank" rel="noopener noreferrer">workspace</a>, populated from your Haystack Enterprise Platform account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Set up your Haystack Enterprise credential above first, then select your <a href="https://docs.cloud.deepset.ai/docs/basic-concepts#workspace" target="_blank" rel="noopener noreferrer">workspace</a>, populated from your Haystack Enterprise Platform account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Service Name or ID',

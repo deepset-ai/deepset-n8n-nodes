@@ -1,8 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { createApiDocsNotice, extraParametersOption } from '../shared';
-
-const apiDocsNotice = createApiDocsNotice('service');
+import { extraParametersOption } from '../shared';
 
 export const serviceOperations: INodeProperties[] = [
 	{
@@ -197,27 +195,6 @@ const streamingAdditionalFields: INodeProperties[] = [
 ];
 
 export const serviceFields: INodeProperties[] = [
-	apiDocsNotice(
-		'chat',
-		'chat-api-v-1-workspaces-workspace-name-deployments-deployment-id-chat-post',
-	),
-	apiDocsNotice(
-		'chatStream',
-		'chat-stream-api-v-1-workspaces-workspace-name-deployments-deployment-id-chat-stream-post',
-	),
-	apiDocsNotice(
-		'chatCompletions',
-		'chat-completions-api-v-1-workspaces-workspace-name-deployments-v-1-chat-completions-post',
-	),
-	apiDocsNotice(
-		'get',
-		'get-deployment-api-v-1-workspaces-workspace-name-deployments-deployment-id-get',
-	),
-	apiDocsNotice('getAll', 'list-deployments-api-v-1-workspaces-workspace-name-deployments-get'),
-	apiDocsNotice(
-		'listModels',
-		'list-models-api-v-1-workspaces-workspace-name-deployments-v-1-models-get',
-	),
 	// Get / Chat / Chat (Streaming) / Chat Completions
 	{
 		displayName: 'Service Name or ID',

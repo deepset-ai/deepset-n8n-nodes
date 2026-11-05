@@ -1,9 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { createApiDocsNotice } from '../shared';
-
-const apiDocsNotice = createApiDocsNotice('index');
-
 export const indexOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -30,10 +26,6 @@ export const indexOperations: INodeProperties[] = [
 
 export const indexFields: INodeProperties[] = [
 	// Get
-	apiDocsNotice(
-		'get',
-		'get-index-by-name-api-v-1-workspaces-workspace-name-indexes-index-name-get',
-	),
 	{
 		displayName: 'Index Name or ID',
 		name: 'indexName',
@@ -54,7 +46,6 @@ export const indexFields: INodeProperties[] = [
 		},
 	},
 	// Get Many
-	apiDocsNotice('getAll', 'get-indexes-api-v-1-workspaces-workspace-name-indexes-get'),
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
