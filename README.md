@@ -137,10 +137,11 @@ admin. You can't register a client yourself, so ask your admin to create one bef
 
 1. On the node, choose **OAuth2** and create a **Haystack Enterprise OAuth2 API** credential.
 2. Copy the **OAuth Redirect URL** shown on the credential and send it to your admin. They add it as
-   a redirect URI on a new OAuth2 client (a public PKCE client needs no client secret).
+   a redirect URI on a new OAuth2 client. It should be a PKCE client, and a public one needs no client secret.
 3. Ask your admin for the client's **Client ID**, **Authorization URL** and **Access Token URL**
-   (and the **Client Secret**, if the client is confidential). Enter them in the credential and
-   leave **Scope** at its default.
+   (and the **Client Secret**, if the client is confidential). Enter them in the credential, set
+   **Grant Type** to **PKCE** (don't use *Client Credentials*; the nodes run as a signed-in user),
+   and leave **Scope** at its default.
 4. Click **Connect** and sign in with your [Haystack Enterprise Platform](https://cloud.deepset.ai/)
    account.
 
