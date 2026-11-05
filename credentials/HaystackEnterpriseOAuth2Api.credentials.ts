@@ -17,21 +17,13 @@ export class HaystackEnterpriseOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName:
-				'Click <b>Connect</b> below and sign in with your Haystack Enterprise account. n8n registers itself with Haystack Enterprise automatically.',
-			name: 'dynamicClientRegistrationNotice',
-			type: 'notice',
-			default: '',
-			displayOptions: { show: { useDynamicClientRegistration: [true] } },
-		},
-		{
 			// DCR is hidden and disabled by default in oAuth2Api.
 			displayName: 'Use Dynamic Client Registration',
 			name: 'useDynamicClientRegistration',
 			type: 'boolean',
 			default: true,
 			description:
-				'Whether to let n8n register itself as an OAuth2 client automatically (RFC 7591); turn this off to configure or reuse an OAuth2 client manually.',
+				'Whether to let n8n register itself as an OAuth2 client automatically (RFC 7591), so you only click Connect and sign in with your Haystack Enterprise account; turn this off to configure or reuse an OAuth2 client manually.',
 		},
 		{
 			// The node also derives API request URLs from this value.

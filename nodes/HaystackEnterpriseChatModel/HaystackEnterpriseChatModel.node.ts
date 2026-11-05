@@ -29,7 +29,7 @@ export class HaystackEnterpriseChatModel implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["deploymentId"]}}',
 		description:
-			'Language model for n8n AI Agent. Runs Chat Completions on a Haystack Enterprise service.',
+			'Language model for n8n AI Agent. Runs Chat Completions on a Haystack Enterprise service. Connect it to an AI Agent Model input; the Agent builds the conversation.',
 		defaults: {
 			name: 'Haystack Enterprise Chat Model',
 		},
@@ -77,13 +77,6 @@ export class HaystackEnterpriseChatModel implements INodeType {
 					},
 				],
 				default: 'apiKey',
-			},
-			{
-				displayName:
-					'Connect this node to an AI Agent Model input. The Agent builds the conversation; this node only supplies the Haystack Enterprise service.',
-				name: 'connectionNotice',
-				type: 'notice',
-				default: '',
 			},
 			{
 				displayName: 'Workspace Name or ID',

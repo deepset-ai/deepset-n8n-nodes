@@ -29,7 +29,6 @@ describe('HaystackEnterpriseOAuth2Api', () => {
 			displayOptions: { show: { useDynamicClientRegistration: [false] } },
 		});
 		expect([...properties.keys()]).toEqual([
-			'dynamicClientRegistrationNotice',
 			'useDynamicClientRegistration',
 			'serverUrl',
 			'scope',
