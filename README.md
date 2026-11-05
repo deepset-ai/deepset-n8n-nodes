@@ -48,8 +48,7 @@ The package is n8n Cloud eligible and also works on self-hosted n8n.
 
 - A [Haystack Enterprise Platform](https://cloud.deepset.ai/) account with access to a workspace.
 - Either an API key (**Settings → API Keys**), or an OAuth2 client set up by a Haystack Enterprise
-  admin so you can sign in with your account (n8n 2.19.2 or later). See
-  [Credentials](#credentials).
+  admin so you can sign in with your account (n8n 2.19.2 or later). See [Credentials](#credentials).
 
 ## Operations
 
@@ -137,10 +136,11 @@ admin. You can't register a client yourself, so ask your admin to create one bef
 
 1. On the node, choose **OAuth2** and create a **Haystack Enterprise OAuth2 API** credential.
 2. Copy the **OAuth Redirect URL** shown on the credential and send it to your admin. They add it as
-   a redirect URI on a new OAuth2 client. It should be a PKCE client, and a public one needs no client secret.
+   a redirect URI on a new OAuth2 client. It should be a PKCE client, and a public one needs no
+   client secret.
 3. Ask your admin for the client's **Client ID**, **Authorization URL** and **Access Token URL**
    (and the **Client Secret**, if the client is confidential). Enter them in the credential, set
-   **Grant Type** to **PKCE** (don't use *Client Credentials*; the nodes run as a signed-in user),
+   **Grant Type** to **PKCE** (don't use _Client Credentials_; the nodes run as a signed-in user),
    and leave **Scope** at its default.
 4. Click **Connect** and sign in with your [Haystack Enterprise Platform](https://cloud.deepset.ai/)
    account.
