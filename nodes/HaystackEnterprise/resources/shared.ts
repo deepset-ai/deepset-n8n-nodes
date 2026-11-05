@@ -13,19 +13,3 @@ export function extraParametersOption(sentAs: 'body' | 'query'): INodeProperties
 				: 'Other API fields forwarded as-is on the request body.',
 	};
 }
-
-export function extraParametersField(
-	resource: string,
-	operation: string,
-	sentAs: 'body' | 'query',
-): INodeProperties {
-	return {
-		...extraParametersOption(sentAs),
-		displayOptions: {
-			show: {
-				resource: [resource],
-				operation: [operation],
-			},
-		},
-	};
-}
