@@ -133,16 +133,17 @@ example `https://api.your-company.com`.
 OAuth2 credentials require n8n 2.19.2 or later.
 
 1. On the node, choose **OAuth2** and create a **Haystack Enterprise OAuth2 API** credential.
-2. Leave the default settings as they are.
-3. Click **Connect** and sign in with your [Haystack Enterprise Platform](https://cloud.deepset.ai/)
+2. In Haystack Enterprise, register an OAuth2 client (public PKCE clients don't need a client
+   secret) and add the callback URL shown on the credential as a redirect URI.
+3. In the credential, enter the client's **Client ID**, the **Authorization URL** and **Access Token
+   URL**, and a **Client Secret** if the client is confidential. Leave **Scope** at its default.
+4. Click **Connect** and sign in with your [Haystack Enterprise Platform](https://cloud.deepset.ai/)
    account.
 
 The nodes run as the signed-in user, with that user's workspace access and permissions.
 
-> **Using a private Haystack Enterprise deployment?** Change **Server URL** to your API origin. To
-> configure or reuse an existing OAuth2 client, turn **Use Dynamic Client Registration** off and
-> provide its OAuth2 settings. Add the callback URL shown on the credential as a redirect URI on
-> that client. Public PKCE clients do not require a client secret.
+> **Using a private Haystack Enterprise deployment?** Change **Server URL** to your API origin and
+> use an OAuth2 client registered on that deployment.
 
 ## Usage
 
