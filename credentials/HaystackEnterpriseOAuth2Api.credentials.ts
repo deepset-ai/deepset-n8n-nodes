@@ -2,8 +2,8 @@ import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 // Keep in sync with credentials/HaystackEnterpriseOAuth2Api.credentials.ts in https://github.com/deepset-ai/n8n-nodes-haystack-enterprise-mcp.
 //
-// n8n's `oAuth2Api` handles discovery, DCR, PKCE, and token storage. Its manual OAuth2 fields
-// remain available when DCR is disabled.
+// Uses n8n's standard `oAuth2Api` flow with a manually configured client. Dynamic Client
+// Registration is not yet available for community nodes; add it back once it is.
 export class HaystackEnterpriseOAuth2Api implements ICredentialType {
 	name = 'haystackEnterpriseOAuth2Api';
 
@@ -16,15 +16,6 @@ export class HaystackEnterpriseOAuth2Api implements ICredentialType {
 	documentationUrl = 'https://github.com/deepset-ai/n8n-nodes-haystack-enterprise#credentials';
 
 	properties: INodeProperties[] = [
-		{
-			// DCR is hidden and disabled by default in oAuth2Api.
-			displayName: 'Use Dynamic Client Registration',
-			name: 'useDynamicClientRegistration',
-			type: 'boolean',
-			default: true,
-			description:
-				'Whether to let n8n register itself as an OAuth2 client automatically (RFC 7591), so you only click Connect and sign in with your Haystack Enterprise account; turn this off to configure or reuse an OAuth2 client manually.',
-		},
 		{
 			// The node also derives API request URLs from this value.
 			displayName: 'Server URL',
@@ -40,7 +31,6 @@ export class HaystackEnterpriseOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'string',
 			default: 'openid profile email offline_access',
-			displayOptions: { show: { useDynamicClientRegistration: [false] } },
 			description: 'The OAuth2 scopes requested when using a manually configured client.',
 		},
 		{
@@ -50,7 +40,6 @@ export class HaystackEnterpriseOAuth2Api implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 			required: false,
-			displayOptions: { show: { useDynamicClientRegistration: [false] } },
 			description: 'Optional for public PKCE clients; required for confidential OAuth2 clients.',
 		},
 		{

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Removed Dynamic Client Registration from the OAuth2 credential, as required by n8n verification.
+  The credential now uses the standard OAuth2 flow with a manually configured client.
+
 ## 0.3.0
 
 - Optional parameters now live in collections instead of the top level of the node form, as required
