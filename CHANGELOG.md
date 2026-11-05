@@ -4,6 +4,10 @@
 
 - Removed Dynamic Client Registration from the OAuth2 credential, as required by n8n verification.
   The credential now uses the standard OAuth2 flow with a manually configured client.
+- Removed the notice banners from the node forms (API docs links per operation and the workspace
+  hint), as required by n8n verification. The API docs links are now in the README, and the
+  workspace hint is part of the **Workspace Name or ID** description. Same for the Chat Model
+  node's connection hint.
 
 ## 0.3.0
 
