@@ -1,0 +1,34 @@
+# Hands review assignment for this repo to the router in dc-review-router.
+#
+# The logic lives there, not here: this file is only the caller, so routing
+# rules, the reviewer rotation and the SLA change in one place rather than
+# once per product repo. Who reviews what for this repo is configured in
+# dc-review-router's config/domains.yaml and config/teams.yaml.
+#
+# Label a PR `review-roulette` and the router picks a reviewer from the
+# ecosystem chapter, which owns this repo outright, offers it to them, and
+# re-offers if they decline or go quiet. `team:<name>` overrides that and
+# routes to the team you name instead.
+
+name: Review routing
+
+on:
+  # `pull_request_target`, not `pull_request`: this repo is public, and a
+  # `pull_request` run from a fork gets no secrets, so the router could not
+  # assign a reviewer to an outside contribution. Safe here because nothing in
+  # this workflow or the router checks out or runs the PR's code.
+  pull_request_target:
+    # `unlabeled` too: taking the label off is how you say "start over", and it
+    # clears the record of who already declined. Without it the label is a
+    # one-way switch and a mis-routed PR can never be re-routed.
+    types: [labeled, unlabeled]
+
+jobs:
+  route:
+    if: github.event.label.name == 'review-roulette' ||
+      startsWith(github.event.label.name, 'team:')
+    uses: deepset-ai/dc-review-router/.github/workflows/route.yml@main
+    # Passes the deepset-cloud-bot App credentials through. The router mints
+    # a short-lived installation token from them, scoped to this repo and its
+    # own — this repo's GITHUB_TOKEN can read neither.
+    secrets: inherit
